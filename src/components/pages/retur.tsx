@@ -25,7 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Return, Sale, ReturnItem, SaleItem } from '@/lib/types';
+import type { Return, Sale, ReturnItem } from '@/lib/types';
 import { PlusCircle, MinusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getReturns, addReturn, getSales } from '@/lib/data-service';
@@ -60,7 +60,7 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
                 productName: saleItem.product.name,
                 quantity: 1,
                 priceAtSale: saleItem.price,
-                costPriceAtSale: saleItem.costPriceAtSale,
+                costPriceAtSale: saleItem.product.costPrice,
             }]);
         }
     };
@@ -116,6 +116,7 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
     ) || [];
     
     const sortedSales = useMemo(() => sales.sort((a,b) => b.date.getTime() - a.date.getTime()), [sales]);
+    const salesMap = useMemo(() => new Map(sales.map((sale, index) => [sale.id, sales.length - index])), [sales]);
 
     return (
         <DialogContent className="max-w-2xl">
@@ -237,6 +238,11 @@ const ReturPage: FC = () => {
     };
     fetchData();
   }, [toast]);
+
+  const salesMap = useMemo(() => {
+    const sortedSales = sales.sort((a,b) => b.date.getTime() - a.date.getTime());
+    return new Map(sortedSales.map((sale, index) => [sale.id, sortedSales.length - index]));
+  }, [sales]);
   
   const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
     try {
@@ -284,7 +290,7 @@ const ReturPage: FC = () => {
                     <TableHeader className="sticky top-0 bg-background">
                     <TableRow>
                         <TableHead className="w-[150px]">Tanggal</TableHead>
-                        <TableHead>ID Retur</TableHead>
+                        <TableHead>ID Transaksi Asal</TableHead>
                         <TableHead>Item Diretur</TableHead>
                         <TableHead>Alasan</TableHead>
                         <TableHead className="text-right">Total Refund</TableHead>
@@ -294,7 +300,9 @@ const ReturPage: FC = () => {
                     {returns.length > 0 ? returns.map((item) => (
                         <TableRow key={item.id}>
                         <TableCell>{item.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
-                        <TableCell className="font-mono text-muted-foreground">retur...{item.id.slice(-6)}</TableCell>
+                        <TableCell className="font-mono text-muted-foreground">
+                            trx {salesMap.has(item.saleId) ? String(salesMap.get(item.saleId)).padStart(4, '0') : `...${item.saleId.slice(-6)}`}
+                        </TableCell>
                         <TableCell>
                             <ul className="list-disc pl-4 text-sm">
                                 {item.items.map((product, index) => (
