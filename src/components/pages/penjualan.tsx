@@ -41,7 +41,7 @@ import { Edit, Loader2, MinusCircle, PlusCircle, Trash2 } from 'lucide-react';
 
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
 const EditSaleForm = ({ sale, onSave, onOpenChange }: { sale: Sale, onSave: () => void, onOpenChange: (open: boolean) => void }) => {
@@ -242,7 +242,7 @@ const PenjualanPage: FC = () => {
                     date: new Date(sale.date), // Ensure date is a JS Date object
                     items: sale.items.map((item: any) => ({
                         ...item,
-                        product: item.product || { id: item.product, name: 'Produk Tidak Ditemukan', category: '' }
+                        product: item.product || { id: 'unknown', name: 'Produk Dihapus', costPrice: 0, sellingPrice: 0, stock: 0, category: 'Lainnya' }
                     }))
                 }));
             setSales(salesWithDisplayId);
@@ -257,7 +257,7 @@ const PenjualanPage: FC = () => {
 
     useEffect(() => {
         fetchSalesData();
-    }, [toast]);
+    }, []);
     
     const handleEditClick = async (saleId: string) => {
       const saleToEdit = sales.find(s => s.id === saleId);
@@ -296,7 +296,11 @@ const PenjualanPage: FC = () => {
                 </CardHeader>
                 <CardContent>
                     <Accordion type="single" collapsible className="w-full">
-                        {sales.length > 0 ? sales.map((sale: Sale, index) => (
+                        {sales.length > 0 ? sales.map((sale: Sale) => {
+                            const totalCost = sale.items.reduce((acc, item) => acc + (item.costPriceAtSale * item.quantity), 0);
+                            const profit = sale.finalTotal - totalCost;
+
+                            return (
                             <AccordionItem value={sale.id} key={sale.id}>
                                 <AccordionTrigger>
                                     <div className="flex justify-between items-center w-full pr-4 text-sm">
@@ -322,7 +326,8 @@ const PenjualanPage: FC = () => {
                                         <div className="text-right space-y-1 text-sm flex-grow">
                                             <p>Subtotal: <span className="font-medium">{formatCurrency(sale.subtotal)}</span></p>
                                             <p>Diskon: <span className="font-medium">{sale.discount}% (-{formatCurrency(sale.subtotal * sale.discount / 100)})</span></p>
-                                            <p className="font-bold text-base border-t pt-2 mt-2">Total Akhir: <span className="text-primary">{formatCurrency(sale.finalTotal)}</span></p>
+                                            <p className="font-bold text-base pt-2 mt-2 border-t">Total Akhir: <span className="text-primary">{formatCurrency(sale.finalTotal)}</span></p>
+                                            <p className="text-sm font-semibold">Perkiraan Laba: <span className={profit >= 0 ? 'text-green-600' : 'text-destructive'}>{formatCurrency(profit)}</span></p>
                                         </div>
                                          <Button variant="outline" size="sm" onClick={() => handleEditClick(sale.id)}>
                                             <Edit className="mr-2 h-4 w-4" />
@@ -332,7 +337,8 @@ const PenjualanPage: FC = () => {
                                 </div>
                                 </AccordionContent>
                             </AccordionItem>
-                        )) : (
+                        )
+                        }) : (
                             <div className="text-center text-muted-foreground py-10">
                                 <p>Belum ada riwayat penjualan.</p>
                             </div>
