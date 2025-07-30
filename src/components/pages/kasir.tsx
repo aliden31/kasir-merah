@@ -22,7 +22,7 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { getProducts, addSale, getSales, getReturns, addReturn, getExpenses, addExpense } from '@/lib/data-service';
+import { addSale, getSales, addReturn, addExpense } from '@/lib/data-service';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -324,14 +324,13 @@ interface KasirPageProps {
   onDataNeedsRefresh: () => void;
 }
 
-const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products: initialProducts, onDataNeedsRefresh }) => {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNeedsRefresh }) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [discount, setDiscount] = useState(settings.defaultDiscount);
   const [transactionDate, setTransactionDate] = useState<Date>(new Date());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [carouselApi, setCarouselApi] = React.useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = React.useState(0)
   const [sortOrder, setSortOrder] = useState('terlaris');
@@ -340,7 +339,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products: initialP
 
   const { toast } = useToast();
 
-  const fetchData = async () => {
+  const fetchSalesData = async () => {
     setLoading(true);
     try {
         const salesData = await getSales();
@@ -353,16 +352,13 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products: initialP
   };
 
   useEffect(() => {
-    setProducts(initialProducts);
-  }, [initialProducts]);
+    fetchSalesData();
+  }, []);
   
   useEffect(() => {
     setDiscount(settings.defaultDiscount);
   }, [settings.defaultDiscount]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   React.useEffect(() => {
     if (!carouselApi) {

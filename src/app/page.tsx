@@ -47,6 +47,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type View =
   | 'dashboard'
@@ -76,10 +77,11 @@ export default function Home() {
   const [flashSale, setFlashSale] = useState<FlashSale>(defaultFlashSale);
   const [products, setProducts] = useState<Product[]>([]);
   const [userRole, setUserRole] = useState<UserRole>('admin');
-  const [dataVersion, setDataVersion] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   const refreshAllData = async () => {
+    setIsLoading(true);
     try {
       const [appSettings, flashSaleSettings, productsData] = await Promise.all([
         getSettings(),
@@ -95,17 +97,11 @@ export default function Home() {
         description: "Terjadi kesalahan saat memuat data aplikasi.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const refreshKasirData = () => {
-    setDataVersion(prev => prev + 1);
-  };
-
-  const handleSettingsSave = async () => {
-    await refreshAllData();
-    refreshKasirData();
-  }
 
   useEffect(() => {
     refreshAllData();
@@ -146,33 +142,41 @@ export default function Home() {
   const activeMenu = menuItems.find(item => item.id === activeView);
 
   const renderView = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-6">
+          <Skeleton className="h-8 w-48 mb-4" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      )
+    }
     switch (activeView) {
       case 'dashboard':
         return <DashboardPage onNavigate={setActiveView} />;
       case 'kasir':
         return <KasirPage 
-          key={dataVersion} // Re-mount component when data needs refresh
           settings={settings}
           flashSale={flashSale}
           products={products}
-          onDataNeedsRefresh={handleSettingsSave}
+          onDataNeedsRefresh={refreshAllData}
         />;
       case 'produk':
-        return <ProdukPage onDataChange={handleSettingsSave} />;
+        return <ProdukPage onDataChange={refreshAllData} />;
       case 'stok-opname':
-        return <StokOpnamePage onDataChange={handleSettingsSave} />;
+        return <StokOpnamePage onDataChange={refreshAllData} />;
       case 'penjualan':
-        return <PenjualanPage onDataChange={handleSettingsSave} />;
+        return <PenjualanPage onDataChange={refreshAllData} />;
       case 'retur':
-        return <ReturPage onDataChange={handleSettingsSave} />;
+        return <ReturPage onDataChange={refreshAllData} />;
       case 'pengeluaran':
         return <PengeluaranPage />;
       case 'laporan':
         return <LaporanPage onNavigate={setActiveView} />;
       case 'flash-sale':
-        return <FlashSalePage onSettingsSave={handleSettingsSave} />;
+        return <FlashSalePage onSettingsSave={refreshAllData} />;
       case 'pengaturan':
-        return <PengaturanPage settings={settings} onSettingsChange={handleSettingsSave} />;
+        return <PengaturanPage settings={settings} onSettingsChange={refreshAllData} />;
       default:
         return <DashboardPage onNavigate={setActiveView} />;
     }
@@ -239,3 +243,4 @@ export default function Home() {
     </SidebarProvider>
   );
 }
+
