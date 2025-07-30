@@ -344,3 +344,5 @@ const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange, userRole }) => 
 };
 
 export default StokOpnamePage;
+
+    

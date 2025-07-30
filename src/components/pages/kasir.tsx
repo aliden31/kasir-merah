@@ -535,7 +535,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
         </div>
       </CardHeader>
       <CardContent className="flex-grow p-0">
-        <ScrollArea className={isMobile ? "h-[calc(100vh-20rem)]" : "h-full lg:h-[calc(100vh-16rem)]"}>
+        <ScrollArea className={isMobile ? "h-[calc(100vh-22rem)]" : "h-full lg:h-[calc(100vh-16rem)]"}>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
             {filteredProducts.map((product) => {
               let displayPrice = product.sellingPrice;
@@ -552,17 +552,17 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
                 <Card
                   key={product.id}
                   onClick={() => addToCart(product)}
-                  className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col p-2"
+                  className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col p-3"
                 >
-                  <div className="flex-grow flex flex-col text-center justify-center p-2">
-                    <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
+                  <div className="flex-grow flex flex-col text-center justify-center">
+                    <h3 className="font-semibold text-sm md:text-base leading-tight">{product.name}</h3>
                     {originalPrice !== undefined ? (
                       <div className="mt-1">
-                        <p className="text-xs text-muted-foreground line-through">{formatCurrency(originalPrice)}</p>
-                        <p className="text-sm text-destructive font-bold">{formatCurrency(displayPrice)}</p>
+                        <p className="text-xs md:text-sm text-muted-foreground line-through">{formatCurrency(originalPrice)}</p>
+                        <p className="text-sm md:text-base text-destructive font-bold">{formatCurrency(displayPrice)}</p>
                       </div>
                     ) : (
-                      <p className="text-sm text-primary font-medium mt-1">{formatCurrency(displayPrice)}</p>
+                      <p className="text-sm md:text-base text-primary font-medium mt-1">{formatCurrency(displayPrice)}</p>
                     )}
                   </div>
                 </Card>
@@ -607,7 +607,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
             </div>
         </CardHeader>
         <CardContent className="flex-grow">
-            <ScrollArea className={isMobile ? "h-[calc(100vh-28rem)]" : "h-full lg:h-[calc(100vh-29rem)]"}>
+            <ScrollArea className={isMobile ? "h-[calc(100vh-30rem)]" : "h-full lg:h-[calc(100vh-29rem)]"}>
             {cart.length === 0 ? (
                 <div className="text-center text-muted-foreground py-10 flex flex-col items-center justify-center h-full">
                   <ShoppingCart className="h-10 w-10 mb-4 text-muted-foreground/50"/>
@@ -619,8 +619,8 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
                 {cart.map((item) => (
                     <div key={item.product.id} className="flex items-center gap-4">
                         <div className="flex-grow">
-                            <p className="font-semibold text-sm">{item.product.name}</p>
-                            <p className="text-xs text-muted-foreground">{formatCurrency(item.price)}</p>
+                            <p className="font-semibold text-sm md:text-base">{item.product.name}</p>
+                            <p className="text-xs md:text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
                             <div className="flex items-center gap-2 mt-1">
                             <Button
                                 variant="ghost"
@@ -641,7 +641,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
                             </Button>
                             </div>
                         </div>
-                        <p className="font-semibold text-sm">{formatCurrency(item.price * item.quantity)}</p>
+                        <p className="font-semibold text-sm md:text-base">{formatCurrency(item.price * item.quantity)}</p>
                     </div>
                 ))}
                 </div>
@@ -798,3 +798,5 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
 };
 
 export default KasirPage;
+
+    

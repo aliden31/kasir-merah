@@ -485,3 +485,5 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
 };
 
 export default LaporanPage;
+
+    
