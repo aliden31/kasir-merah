@@ -205,7 +205,7 @@ const ProdukPage: FC = () => {
   }, [products, sales, sortOrder]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
   };
   
   const handleSaveProduct = async (productData: Product | Omit<Product, 'id'>) => {
@@ -382,5 +382,3 @@ const ProdukPage: FC = () => {
 };
 
 export default ProdukPage;
-
-    
