@@ -65,9 +65,9 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     }, [toast]);
     
     const filteredData = useMemo(() => {
-        if (!date?.from) return { filteredSales: [], filteredExpenses: [], filteredReturns: [] };
+        if (!date?.from || !date.to) return { filteredSales: [], filteredExpenses: [], filteredReturns: [] };
 
-        const interval = { start: date.from, end: date.to || date.from };
+        const interval = { start: date.from, end: date.to };
         
         const filteredSales = sales.filter(sale => isWithinInterval(sale.date, interval));
         const filteredExpenses = expenses.filter(expense => isWithinInterval(expense.date, interval));

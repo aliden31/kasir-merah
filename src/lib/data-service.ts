@@ -1,3 +1,4 @@
+
 import { db } from './firebase';
 import {
   collection,
@@ -85,11 +86,9 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
             product: item.product, // Store the entire product object
             quantity: item.quantity,
             price: item.price,
+            // Always store cost price at sale for historical accuracy
+            costPriceAtSale: item.product.costPrice,
         };
-        // If sync is enabled, store the current cost price.
-        if (settings.syncCostPrice) {
-            saleItem.costPriceAtSale = item.product.costPrice;
-        }
         return saleItem;
     });
 
