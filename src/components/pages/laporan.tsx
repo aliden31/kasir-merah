@@ -24,6 +24,17 @@ import {
   Legend,
   Line,
 } from 'recharts';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
@@ -81,9 +92,9 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         const toDate = endOfDay(date.to);
         const interval = { start: startOfDay(date.from), end: toDate };
         
-        const filteredSales = sales.filter(sale => isWithinInterval(sale.date, interval));
-        const filteredExpenses = expenses.filter(expense => isWithinInterval(expense.date, interval));
-        const filteredReturns = returns.filter(ret => isWithinInterval(ret.date, interval));
+        const filteredSales = sales.filter(sale => isWithinInterval(new Date(sale.date), interval));
+        const filteredExpenses = expenses.filter(expense => isWithinInterval(new Date(expense.date), interval));
+        const filteredReturns = returns.filter(ret => isWithinInterval(new Date(ret.date), interval));
 
         return { filteredSales, filteredExpenses, filteredReturns };
 
@@ -102,9 +113,9 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
             const dayStart = startOfDay(day);
             const dayEnd = endOfDay(day);
 
-            const daySales = filteredSales.filter(s => isWithinInterval(s.date, { start: dayStart, end: dayEnd }));
-            const dayExpenses = filteredExpenses.filter(e => isWithinInterval(e.date, { start: dayStart, end: dayEnd }));
-            const dayReturns = filteredReturns.filter(r => isWithinInterval(r.date, { start: dayStart, end: dayEnd }));
+            const daySales = filteredSales.filter(s => isWithinInterval(new Date(s.date), { start: dayStart, end: dayEnd }));
+            const dayExpenses = filteredExpenses.filter(e => isWithinInterval(new Date(e.date), { start: dayStart, end: dayEnd }));
+            const dayReturns = filteredReturns.filter(r => isWithinInterval(new Date(r.date), { start: dayStart, end: dayEnd }));
 
             const totalSalesValue = daySales.reduce((sum, sale) => sum + sale.finalTotal, 0);
             const totalReturnValue = dayReturns.reduce((sum, ret) => sum + ret.totalRefund, 0);
@@ -186,7 +197,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
                 return acc + (costPrice * item.quantity);
             }, 0);
             const labaKotor = sale.finalTotal - totalPokok;
-            return { ...sale, totalPokok, labaKotor };
+            return { ...sale, totalPokok, labaKotor, displayId: salesMap.get(sale.id) };
         });
         
         const totalReturnsValue = filteredReturns.reduce((acc, ret) => acc + ret.totalRefund, 0);
@@ -248,7 +259,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         salesWithDetails.forEach(sale => {
             sale.items.forEach((item, index) => {
                 const row = [
-                    index === 0 ? format(sale.date, 'dd/MM/yyyy') : '',
+                    index === 0 ? format(new Date(sale.date), 'dd/MM/yyyy') : '',
                     index === 0 ? `trx ${String(sale.displayId || sale.id).padStart(4, '0')}` : '',
                     item.product.name,
                     item.quantity,
@@ -264,7 +275,6 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
             const summaryRow = [
                 '', '', '', '', '', 'Total Transaksi:', sale.subtotal, '', 'Total HPP:', sale.totalPokok, 'Laba Transaksi:', sale.labaKotor
             ].join(',');
-            // csvContent += summaryRow + '\n';
         });
         csvContent += "\n";
 
@@ -274,7 +284,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         filteredReturns.forEach(ret => {
             ret.items.forEach(item => {
                 const row = [
-                    format(ret.date, 'dd/MM/yyyy'),
+                    format(new Date(ret.date), 'dd/MM/yyyy'),
                     `trx ${salesMap.has(ret.saleId) ? String(salesMap.get(ret.saleId)).padStart(4, '0') : `...${ret.saleId.slice(-6)}`}`,
                     item.productName,
                     item.quantity,
@@ -290,7 +300,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         csvContent += "Tanggal,Kategori,Pengeluaran,Jumlah\n";
         filteredExpenses.forEach(exp => {
             const row = [
-                format(exp.date, 'dd/MM/yyyy'),
+                format(new Date(exp.date), 'dd/MM/yyyy'),
                 exp.category,
                 exp.name,
                 exp.amount
@@ -364,10 +374,57 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
                     />
                     </PopoverContent>
                 </Popover>
-                <Button onClick={handleExportCSV}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Ekspor CSV
-                </Button>
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <Download className="mr-2 h-4 w-4" />
+                            Ekspor CSV
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Pratinjau Laporan</DialogTitle>
+                            <DialogDescription>
+                                Ini adalah ringkasan laporan untuk periode <span className="font-semibold">{date?.from && date.to ? `${format(date.from, "d MMM yyyy")} - ${format(date.to, "d MMM yyyy")}` : 'yang dipilih'}</span>. File CSV akan berisi rincian lengkap.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-2">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Penjualan Bersih</span>
+                                <span className="font-medium">{formatCurrency(exportData.summary.penjualanBersih)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Total Pokok (HPP)</span>
+                                <span className="font-medium">{formatCurrency(exportData.summary.totalPokokBersih)}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center text-sm font-semibold">
+                                <span>Laba Kotor</span>
+                                <span>{formatCurrency(exportData.summary.labaKotor)}</span>
+                            </div>
+                             <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Total Pengeluaran</span>
+                                <span className="font-medium text-destructive">-{formatCurrency(exportData.summary.totalPengeluaran)}</span>
+                            </div>
+                            <Separator />
+                             <div className="flex justify-between items-center text-base font-bold">
+                                <span>LABA BERSIH</span>
+                                <span className={exportData.summary.labaBersih >= 0 ? 'text-green-600' : 'text-destructive'}>{formatCurrency(exportData.summary.labaBersih)}</span>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Batal</Button>
+                            </DialogClose>
+                            <DialogClose asChild>
+                                <Button onClick={handleExportCSV}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Unduh CSV
+                                </Button>
+                            </DialogClose>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
         
@@ -400,7 +457,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
                     <LineChart data={dailyChartData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rp${value/1000}k`} />
+                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rp${Math.round(value/1000)}k`} />
                         <Tooltip
                             contentStyle={{
                                 background: "hsl(var(--background))",
