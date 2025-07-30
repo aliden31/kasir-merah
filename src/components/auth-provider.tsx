@@ -53,7 +53,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (loading) return;
 
-    const isAuthPage = pathname === '/login' || pathname === '/register';
+    const isAuthPage = pathname === '/login';
     const isAppPage = pathname.startsWith('/app');
 
     // If user is not logged in and is trying to access a protected app page
