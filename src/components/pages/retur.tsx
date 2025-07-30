@@ -28,8 +28,8 @@ import { Textarea } from '@/components/ui/textarea';
 import type { Return, Sale, ReturnItem, SaleItem } from '@/lib/types';
 import { PlusCircle, MinusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getReturns, addReturn, getSales, getProducts } from '@/lib/data-service';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getReturns, addReturn, getSales } from '@/lib/data-service';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -38,12 +38,13 @@ const formatCurrency = (amount: number) => {
 };
 
 
-const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetails: Sale[], onSave: (item: Omit<Return, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
+const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
     const [selectedSaleId, setSelectedSaleId] = useState<string>('');
     const [reason, setReason] = useState('');
     const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
+    const { toast } = useToast();
     
-    const selectedSale = useMemo(() => salesWithDetails.find(s => s.id === selectedSaleId), [selectedSaleId, salesWithDetails]);
+    const selectedSale = useMemo(() => sales.find(s => s.id === selectedSaleId), [selectedSaleId, sales]);
 
     useEffect(() => {
         // Reset items when a new sale is selected
@@ -51,21 +52,22 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
     }, [selectedSaleId]);
 
     const handleAddProductToReturn = (productId: string) => {
-        const productInSale = selectedSale?.items.find(item => item.product.id === productId);
-        if (productInSale && !itemsToReturn.find(item => item.productId === productId)) {
+        if (!selectedSale) return;
+        const saleItem = selectedSale.items.find(item => item.product.id === productId);
+        if (saleItem && !itemsToReturn.find(item => item.productId === productId)) {
             setItemsToReturn(prev => [...prev, {
-                productId: productInSale.product.id,
-                productName: productInSale.product.name,
+                productId: saleItem.product.id,
+                productName: saleItem.product.name,
                 quantity: 1,
-                priceAtSale: productInSale.price,
-                costPriceAtSale: productInSale.costPriceAtSale
+                priceAtSale: saleItem.price,
+                costPriceAtSale: saleItem.costPriceAtSale,
             }]);
         }
     };
     
     const updateReturnQuantity = (productId: string, quantity: number) => {
-        const productInSale = selectedSale?.items.find(item => item.product.id === productId);
-        const maxQuantity = productInSale?.quantity || 0;
+        const saleItem = selectedSale?.items.find(item => item.product.id === productId);
+        const maxQuantity = saleItem?.quantity || 0;
 
         if (quantity <= 0) {
              setItemsToReturn(prev => prev.filter(item => item.productId !== productId));
@@ -73,7 +75,11 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
         }
 
         if (quantity > maxQuantity) {
-            alert(`Jumlah retur tidak boleh melebihi jumlah pembelian (${maxQuantity})`);
+            toast({
+                variant: "destructive",
+                title: "Jumlah Melebihi Pembelian",
+                description: `Jumlah retur tidak boleh melebihi jumlah pembelian (${maxQuantity})`,
+            });
             setItemsToReturn(prev => prev.map(item => item.productId === productId ? { ...item, quantity: maxQuantity } : item));
             return;
         }
@@ -83,7 +89,11 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
 
     const handleSubmit = () => {
         if (!selectedSaleId || itemsToReturn.length === 0) {
-            alert('Pilih transaksi dan produk yang akan diretur.');
+            toast({
+                variant: "destructive",
+                title: "Input Tidak Lengkap",
+                description: "Pilih transaksi dan produk yang akan diretur.",
+            });
             return;
         }
 
@@ -99,10 +109,13 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
         onSave(newReturn);
         onOpenChange(false);
     }
-
+    
+    // Products from the selected sale that haven't been added to the return list yet
     const availableProductsForReturn = selectedSale?.items.filter(
         saleItem => !itemsToReturn.some(returnItem => returnItem.productId === saleItem.product.id)
     ) || [];
+    
+    const sortedSales = useMemo(() => sales.sort((a,b) => b.date.getTime() - a.date.getTime()), [sales]);
 
     return (
         <DialogContent className="max-w-2xl">
@@ -113,14 +126,14 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
             <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="saleId" className="text-right">Transaksi</Label>
-                    <Select onValueChange={setSelectedSaleId}>
+                    <Select onValueChange={setSelectedSaleId} value={selectedSaleId}>
                         <SelectTrigger className="col-span-3">
                             <SelectValue placeholder="Pilih ID Transaksi..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {salesWithDetails.map((sale, index) => (
+                            {sortedSales.map((sale, index) => (
                                 <SelectItem key={sale.id} value={sale.id}>
-                                    trx {String(salesWithDetails.length - index).padStart(4, '0')} - {sale.date.toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
+                                    trx {String(sales.length - index).padStart(4, '0')} - {sale.date.toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -195,7 +208,7 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
                  <DialogClose asChild>
                     <Button type="button" variant="secondary">Batal</Button>
                 </DialogClose>
-                <Button onClick={handleSubmit} disabled={itemsToReturn.length === 0}>Simpan Retur</Button>
+                <Button onClick={handleSubmit} disabled={itemsToReturn.length === 0 || !selectedSaleId}>Simpan Retur</Button>
             </DialogFooter>
         </DialogContent>
     )
@@ -210,6 +223,7 @@ const ReturPage: FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+        setLoading(true);
         try {
             const [returnsData, salesData] = await Promise.all([getReturns(), getSales()]);
             setReturns(returnsData.sort((a,b) => b.date.getTime() - a.date.getTime()));
@@ -227,32 +241,18 @@ const ReturPage: FC = () => {
   const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
     try {
         const newReturn = await addReturn(itemData);
-        setReturns(prev => [newReturn, ...prev]);
+        setReturns(prev => [newReturn, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
         toast({
             title: "Retur Disimpan",
             description: "Data retur baru telah berhasil disimpan.",
         });
-        // re-fetch sales to reflect any potential changes (though none are made here)
-        const updatedSales = await getSales();
-        setSales(updatedSales);
+        // Optionally re-fetch products to show updated stock, or update locally for performance
     } catch(error) {
-        toast({ title: "Error", description: "Gagal menyimpan data retur.", variant: "destructive" });
+        const errorMessage = error instanceof Error ? error.message : "Gagal menyimpan data retur.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
         console.error(error);
     }
   }
-  
-  const salesWithDetails = useMemo(() => {
-    return sales
-        .map(sale => ({
-            ...sale,
-            items: sale.items.map((item: SaleItem) => ({
-                ...item,
-                product: item.product || { id: 'unknown', name: 'Produk Dihapus', category: '', costPrice: 0, sellingPrice: 0, stock: 0 }
-            }))
-        }))
-        .sort((a, b) => b.date.getTime() - a.date.getTime());
-}, [sales]);
-
 
   if (loading) {
       return <div>Memuat data retur...</div>
@@ -269,7 +269,7 @@ const ReturPage: FC = () => {
                     Catat Retur
                 </Button>
             </DialogTrigger>
-            <ReturnForm salesWithDetails={salesWithDetails} onSave={handleSaveReturn} onOpenChange={setFormOpen} />
+            <ReturnForm sales={sales} onSave={handleSaveReturn} onOpenChange={setFormOpen} />
         </Dialog>
       </div>
 

@@ -38,7 +38,6 @@ interface LaporanPageProps {
 const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
     const [returns, setReturns] = useState<Return[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
@@ -49,11 +48,11 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
 
     useEffect(() => {
         const fetchData = async () => {
+            setLoading(true);
             try {
-                const [salesData, expensesData, productsData, returnsData] = await Promise.all([getSales(), getExpenses(), getProducts(), getReturns()]);
+                const [salesData, expensesData, returnsData] = await Promise.all([getSales(), getExpenses(), getReturns()]);
                 setSales(salesData);
                 setExpenses(expensesData);
-                setProducts(productsData);
                 setReturns(returnsData);
             } catch (error) {
                 toast({ title: "Error", description: "Gagal memuat data laporan.", variant: "destructive" });
@@ -68,10 +67,8 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     const filteredData = useMemo(() => {
         if (!date?.from || !date.to) return { filteredSales: [], filteredExpenses: [], filteredReturns: [] };
 
-        // Set time to end of day for 'to' date to include all of the last day.
         const toDate = new Date(date.to);
         toDate.setHours(23, 59, 59, 999);
-
         const interval = { start: date.from, end: toDate };
         
         const filteredSales = sales.filter(sale => isWithinInterval(sale.date, interval));
@@ -86,34 +83,28 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
         
         const totalSalesValue = filteredSales.reduce((sum, sale) => sum + sale.finalTotal, 0);
-        
-        const totalCostOfGoodsValue = filteredSales.reduce((totalCost, sale) => {
+        const totalReturnValue = filteredReturns.reduce((sum, ret) => sum + ret.totalRefund, 0);
+
+        const totalCostOfGoodsSold = filteredSales.reduce((totalCost, sale) => {
             const saleCost = sale.items.reduce((itemCost, item: SaleItem) => {
                 const costPrice = typeof item.costPriceAtSale === 'number' ? item.costPriceAtSale : 0;
                 return itemCost + (costPrice * item.quantity);
             }, 0);
             return totalCost + saleCost;
         }, 0);
-        
-        const totalReturnValue = filteredReturns.reduce((sum, ret) => sum + ret.totalRefund, 0);
 
         const totalCostOfReturnedGoods = filteredReturns.reduce((totalCost, ret) => {
-            const originalSale = sales.find(s => s.id === ret.saleId);
-            if (!originalSale) return totalCost;
-
-            const returnCost = ret.items.reduce((itemCost, returnedItem) => {
-                const originalSaleItem = originalSale.items.find(i => i.product.id === returnedItem.productId);
-                const costPrice = originalSaleItem?.costPriceAtSale ?? 0;
+             const returnCost = ret.items.reduce((itemCost, returnedItem) => {
+                const costPrice = returnedItem.costPriceAtSale || 0;
                 return itemCost + (costPrice * returnedItem.quantity);
             }, 0);
-            
             return totalCost + returnCost;
         }, 0);
 
         const totalExpensesValue = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
         
         const netSales = totalSalesValue - totalReturnValue;
-        const netCOGS = totalCostOfGoodsValue - totalCostOfReturnedGoods;
+        const netCOGS = totalCostOfGoodsSold - totalCostOfReturnedGoods;
 
         const grossProfit = netSales - netCOGS;
         const netProfit = grossProfit - totalExpensesValue;
@@ -126,7 +117,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
             grossProfit, 
             netProfit 
         };
-    }, [filteredData, sales]);
+    }, [filteredData]);
 
     const handleExport = () => {
         const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
@@ -157,15 +148,10 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         };
         
         const totalCostOfReturnedGoods = filteredReturns.reduce((totalCost, ret) => {
-            const originalSale = sales.find(s => s.id === ret.saleId);
-            if (!originalSale) return totalCost;
-
             const returnCost = ret.items.reduce((itemCost, returnedItem) => {
-                const originalSaleItem = originalSale.items.find(i => i.product.id === returnedItem.productId);
-                const costPrice = originalSaleItem?.costPriceAtSale ?? 0;
+                const costPrice = returnedItem.costPriceAtSale || 0;
                 return itemCost + (costPrice * returnedItem.quantity);
             }, 0);
-            
             return totalCost + returnCost;
         }, 0);
 

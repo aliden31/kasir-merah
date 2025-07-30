@@ -80,14 +80,22 @@ export async function getSales(): Promise<Sale[]> {
 }
 
 export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promise<Sale> => {
-    // 1. Prepare sale items for Firestore
     const itemsForFirestore = sale.items.map(item => {
-        const saleItem: SaleItem = {
-            product: item.product, // Store the entire product object
+        // Ensure the full product data is embedded, not just a reference
+        const fullProduct: Product = {
+            id: item.product.id,
+            name: item.product.name,
+            costPrice: item.product.costPrice,
+            sellingPrice: item.product.sellingPrice,
+            stock: item.product.stock,
+            category: item.product.category,
+        };
+
+        const saleItem: Omit<SaleItem, 'product'> & { product: Product } = {
+            product: fullProduct, // Store the entire product object snapshot
             quantity: item.quantity,
             price: item.price, // This is the selling price before discount
-            // costPriceAtSale is crucial for historical profit calculation
-            costPriceAtSale: item.product.costPrice,
+            costPriceAtSale: item.product.costPrice, // Always record cost price for historical profit calculation
         };
         return saleItem;
     });
@@ -98,10 +106,8 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
         date: Timestamp.fromDate(sale.date)
     };
 
-    // 2. Add the sale document
     const docRef = await addDoc(collection(db, "sales"), saleDataForFirestore);
 
-    // 3. Update stock for each product in the sale
     const batch = writeBatch(db);
     sale.items.forEach(item => {
         const productRef = doc(db, "products", item.product.id);
@@ -110,7 +116,13 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
     });
     await batch.commit();
     
-    const newSale: Sale = { ...sale, id: docRef.id };
+    // Construct the full Sale object to return
+    const newSale: Sale = { 
+        id: docRef.id, 
+        ...sale,
+        // The items in the returned object should match what was saved
+        items: itemsForFirestore as SaleItem[] 
+    };
     return newSale;
 }
 
@@ -142,7 +154,6 @@ export async function getReturns(): Promise<Return[]> {
 
 export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return> => {
     try {
-        // Use a transaction to ensure atomicity
         const newReturnRef = doc(collection(db, 'returns'));
         
         await runTransaction(db, async (transaction) => {
@@ -155,6 +166,7 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
                     const newStock = currentStock + item.quantity;
                     transaction.update(productRef, { stock: newStock });
                 } else {
+                    // This case should ideally not happen if products are not hard-deleted
                     console.warn(`Product with ID ${item.productId} not found during return. Stock not updated.`);
                 }
             }
