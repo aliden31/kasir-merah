@@ -56,6 +56,13 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
             setSellingPrice(product.sellingPrice);
             setStock(product.stock);
             setCategory(product.category);
+        } else {
+            // Reset form when there's no product (for 'Add New')
+            setName('');
+            setCostPrice(0);
+            setSellingPrice(0);
+            setStock(0);
+            setCategory('');
         }
     }, [product]);
 
@@ -302,5 +309,3 @@ const ProdukPage: FC = () => {
 };
 
 export default ProdukPage;
-
-    
