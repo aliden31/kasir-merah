@@ -161,30 +161,20 @@ const KasirPage: FC = () => {
                 </CardHeader>
                 <CardContent className="flex-grow p-0">
                     <ScrollArea className="h-[calc(100vh-16rem)]">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-1">
+                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-1">
                         {filteredProducts.map((product) => (
-                        <Card
+                          <Card
                             key={product.id}
                             onClick={() => addToCart(product)}
-                            className="cursor-pointer hover:shadow-lg transition-shadow group"
-                        >
-                            <CardContent className="p-0">
-                            <Image
-                                src={`https://placehold.co/300x200.png`}
-                                data-ai-hint={`${product.category}`}
-                                alt={product.name}
-                                width={300}
-                                height={200}
-                                className="rounded-t-lg object-cover"
-                            />
-                            <div className="p-4">
-                                <h3 className="font-semibold text-sm truncate">{product.name}</h3>
+                            className="cursor-pointer hover:shadow-lg transition-shadow group flex items-center justify-center p-4"
+                          >
+                            <CardContent className="p-0 text-center">
+                                <h3 className="font-semibold text-sm">{product.name}</h3>
                                 <p className="text-xs text-primary font-medium">{formatCurrency(product.sellingPrice)}</p>
-                            </div>
                             </CardContent>
-                        </Card>
+                          </Card>
                         ))}
-                    </div>
+                      </div>
                     </ScrollArea>
                 </CardContent>
                 </Card>
@@ -335,21 +325,11 @@ const KasirPage: FC = () => {
                   <Card
                     key={product.id}
                     onClick={() => addToCart(product)}
-                    className="cursor-pointer hover:shadow-lg transition-shadow group"
+                    className="cursor-pointer hover:shadow-lg transition-shadow group flex items-center justify-center p-4"
                   >
-                    <CardContent className="p-0">
-                      <Image
-                        src={`https://placehold.co/300x200.png`}
-                        data-ai-hint={`${product.category}`}
-                        alt={product.name}
-                        width={300}
-                        height={200}
-                        className="rounded-t-lg object-cover"
-                      />
-                      <div className="p-4">
-                        <h3 className="font-semibold text-sm truncate">{product.name}</h3>
+                    <CardContent className="p-0 text-center">
+                        <h3 className="font-semibold text-sm">{product.name}</h3>
                         <p className="text-xs text-primary font-medium">{formatCurrency(product.sellingPrice)}</p>
-                      </div>
                     </CardContent>
                   </Card>
                 ))}
