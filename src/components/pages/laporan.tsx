@@ -24,9 +24,6 @@ import {
   Legend,
   Line,
 } from 'recharts';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
@@ -54,12 +51,10 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     const [returns, setReturns] = useState<Return[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
-    const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
     const [date, setDate] = React.useState<DateRange | undefined>({
         from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
     });
-    const printRef = useRef<HTMLDivElement>(null);
 
 
     useEffect(() => {
@@ -182,7 +177,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         return new Map(sortedSales.map((sale, index) => [sale.id, sales.length - index]));
     }, [sales]);
 
-    const exportPreviewData = useMemo(() => {
+    const exportData = useMemo(() => {
         const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
 
         const salesWithDetails = filteredSales.map(sale => {
@@ -230,17 +225,88 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     }, [filteredData, salesMap]);
 
 
-    const handlePrint = () => {
-        const printContent = printRef.current;
-        if (printContent) {
-            const originalContents = document.body.innerHTML;
-            const printSection = printContent.innerHTML;
-            document.body.innerHTML = printSection;
-            window.print();
-            document.body.innerHTML = originalContents;
-            // We need to re-bind the event listeners after replacing body content
-            window.location.reload();
-        }
+    const handleExportCSV = () => {
+        const { salesWithDetails, filteredExpenses, filteredReturns, summary } = exportData;
+        const { from, to } = date || {};
+        const dateRangeStr = from && to ? `${format(from, 'dd-MM-yyyy')} - ${format(to, 'dd-MM-yyyy')}` : 'Semua Waktu';
+        
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += `Laporan Laba Rugi - Periode: ${dateRangeStr}\n\n`;
+
+        // Summary
+        csvContent += "Ringkasan Laporan\n";
+        csvContent += "Keterangan,Jumlah\n";
+        csvContent += `Penjualan Bersih (Setelah Retur & Diskon),${summary.penjualanBersih}\n`;
+        csvContent += `Total Pokok (HPP) Bersih,${summary.totalPokokBersih}\n`;
+        csvContent += `Laba Kotor,${summary.labaKotor}\n`;
+        csvContent += `Total Pengeluaran,-${summary.totalPengeluaran}\n`;
+        csvContent += `LABA BERSIH,${summary.labaBersih}\n\n`;
+
+        // Sales Details
+        csvContent += "Rincian Penjualan\n";
+        csvContent += "Tanggal,ID Transaksi,Item,Qty,Harga Satuan,Total,Diskon (%),Total Akhir,HPP,Laba Kotor\n";
+        salesWithDetails.forEach(sale => {
+            sale.items.forEach((item, index) => {
+                const row = [
+                    index === 0 ? format(sale.date, 'dd/MM/yyyy') : '',
+                    index === 0 ? `trx ${String(sale.displayId || sale.id).padStart(4, '0')}` : '',
+                    item.product.name,
+                    item.quantity,
+                    item.price,
+                    item.quantity * item.price,
+                    index === 0 ? sale.discount : '',
+                    index === 0 ? sale.finalTotal : '',
+                    item.costPriceAtSale * item.quantity,
+                    ''
+                ].join(',');
+                csvContent += row + '\n';
+            });
+            const summaryRow = [
+                '', '', '', '', '', 'Total Transaksi:', sale.subtotal, '', 'Total HPP:', sale.totalPokok, 'Laba Transaksi:', sale.labaKotor
+            ].join(',');
+            // csvContent += summaryRow + '\n';
+        });
+        csvContent += "\n";
+
+        // Returns Details
+        csvContent += "Rincian Retur\n";
+        csvContent += "Tanggal,ID Transaksi Asal,Item,Qty,Total Refund\n";
+        filteredReturns.forEach(ret => {
+            ret.items.forEach(item => {
+                const row = [
+                    format(ret.date, 'dd/MM/yyyy'),
+                    `trx ${salesMap.has(ret.saleId) ? String(salesMap.get(ret.saleId)).padStart(4, '0') : `...${ret.saleId.slice(-6)}`}`,
+                    item.productName,
+                    item.quantity,
+                    item.priceAtSale * item.quantity
+                ].join(',');
+                 csvContent += row + '\n';
+            });
+        });
+        csvContent += "\n";
+
+        // Expenses Details
+        csvContent += "Rincian Pengeluaran\n";
+        csvContent += "Tanggal,Kategori,Pengeluaran,Jumlah\n";
+        filteredExpenses.forEach(exp => {
+            const row = [
+                format(exp.date, 'dd/MM/yyyy'),
+                exp.category,
+                exp.name,
+                exp.amount
+            ].join(',');
+            csvContent += row + '\n';
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `laporan_arus_kas_${dateRangeStr.replace(/ /g, '_')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({ title: "Ekspor Berhasil", description: "Laporan CSV sedang diunduh."});
     };
     
 
@@ -298,66 +364,10 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
                     />
                     </PopoverContent>
                 </Popover>
-                 <Dialog open={isPrintPreviewOpen} onOpenChange={setIsPrintPreviewOpen}>
-                    <DialogTrigger asChild>
-                        <Button>
-                            <Printer className="mr-2 h-4 w-4" />
-                            Cetak Laporan
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl">
-                        <DialogHeader>
-                            <DialogTitle>Pratinjau Laporan</DialogTitle>
-                            <DialogDescription>
-                            Berikut adalah ringkasan dari data yang akan dicetak.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <ScrollArea className="max-h-[60vh]">
-                            <div className="space-y-6 p-1" ref={printRef}>
-                            <Card>
-                                <CardHeader>
-                                <CardTitle>Ringkasan Laba Rugi</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                <Table>
-                                    <TableBody>
-                                    <TableRow>
-                                        <TableCell>Penjualan Bersih (Setelah Retur & Diskon)</TableCell>
-                                        <TableCell className="text-right font-medium">{formatCurrency(exportPreviewData.summary.penjualanBersih)}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell>Total Pokok (HPP) Bersih</TableCell>
-                                        <TableCell className="text-right font-medium">{formatCurrency(exportPreviewData.summary.totalPokokBersih)}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="font-semibold">Laba Kotor</TableCell>
-                                        <TableCell className="text-right font-semibold">{formatCurrency(exportPreviewData.summary.labaKotor)}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell>Total Pengeluaran</TableCell>
-                                        <TableCell className="text-right font-medium text-destructive">-{formatCurrency(exportPreviewData.summary.totalPengeluaran)}</TableCell>
-                                    </TableRow>
-                                    <TableRow className="bg-muted/50">
-                                        <TableCell className="font-bold text-base">Laba Bersih (Setelah Semua Biaya)</TableCell>
-                                        <TableCell className={`text-right font-bold text-base ${exportPreviewData.summary.labaBersih >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                                            {formatCurrency(exportPreviewData.summary.labaBersih)}
-                                        </TableCell>
-                                    </TableRow>
-                                    </TableBody>
-                                </Table>
-                                </CardContent>
-                            </Card>
-                            </div>
-                        </ScrollArea>
-                        <DialogFooter>
-                            <Button variant="secondary" onClick={() => setIsPrintPreviewOpen(false)}>Batal</Button>
-                            <Button onClick={handlePrint}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            Cetak
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <Button onClick={handleExportCSV}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Ekspor CSV
+                </Button>
             </div>
         </div>
         
