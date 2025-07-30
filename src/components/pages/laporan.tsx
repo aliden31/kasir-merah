@@ -24,6 +24,9 @@ import {
   Legend,
   Line,
 } from 'recharts';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
@@ -51,6 +54,8 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     const [returns, setReturns] = useState<Return[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
+    const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
+    const [exportData, setExportData] = useState<string | null>(null);
     const [date, setDate] = React.useState<DateRange | undefined>({
         from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
@@ -170,8 +175,13 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
             netProfit 
         };
     }, [filteredData]);
+    
+    const salesMap = useMemo(() => {
+        const sortedSales = sales.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return new Map(sortedSales.map((sale, index) => [sale.id, sales.length - index]));
+    }, [sales]);
 
-    const handleExport = () => {
+    const exportPreviewData = useMemo(() => {
         const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
 
         const salesWithDetails = filteredSales.map(sale => {
@@ -179,26 +189,11 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
                 const costPrice = typeof item.costPriceAtSale === 'number' ? item.costPriceAtSale : 0;
                 return acc + (costPrice * item.quantity);
             }, 0);
-            const labaKotor = sale.subtotal - totalPokok;
-            return {
-                ...sale,
-                totalPokok,
-                labaKotor,
-            };
+            const labaKotor = sale.finalTotal - totalPokok;
+            return { ...sale, totalPokok, labaKotor };
         });
         
         const totalReturnsValue = filteredReturns.reduce((acc, ret) => acc + ret.totalRefund, 0);
-        
-        const summary = {
-            subTotal: salesWithDetails.reduce((acc, sale) => acc + sale.subtotal, 0),
-            totalPokok: salesWithDetails.reduce((acc, sale) => acc + sale.totalPokok, 0),
-            labaKotor: salesWithDetails.reduce((acc, sale) => acc + sale.labaKotor, 0),
-            potFaktur: salesWithDetails.reduce((acc, sale) => acc + (sale.subtotal * sale.discount / 100), 0),
-            totalPengeluaran: filteredExpenses.reduce((acc, exp) => acc + exp.amount, 0),
-            totalRetur: totalReturnsValue,
-            labaJualBersih: 0,
-        };
-        
         const totalCostOfReturnedGoods = filteredReturns.reduce((totalCost, ret) => {
             const returnCost = ret.items.reduce((itemCost, returnedItem) => {
                 const costPrice = returnedItem.costPriceAtSale || 0;
@@ -207,45 +202,64 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
             return totalCost + returnCost;
         }, 0);
 
-
-        const round = (num: number) => Math.round(num);
+        const totalSubTotal = salesWithDetails.reduce((acc, sale) => acc + sale.subtotal, 0);
+        const totalDiscount = salesWithDetails.reduce((acc, sale) => acc + (sale.subtotal * sale.discount / 100), 0);
+        const totalPokokBersih = salesWithDetails.reduce((acc, sale) => acc + sale.totalPokok, 0) - totalCostOfReturnedGoods;
+        const totalPengeluaran = filteredExpenses.reduce((acc, exp) => acc + exp.amount, 0);
         
-        const netSales = summary.subTotal - totalReturnsValue;
-        const netCOGS = summary.totalPokok - totalCostOfReturnedGoods;
-        const grossProfitAfterReturns = netSales - netCOGS;
-        summary.labaJualBersih = grossProfitAfterReturns - summary.potFaktur - summary.totalPengeluaran;
+        const penjualanBersih = totalSubTotal - totalDiscount - totalReturnsValue;
+        const labaKotor = penjualanBersih - totalPokokBersih;
+        const labaBersih = labaKotor - totalPengeluaran;
+        
+        return {
+            salesWithDetails,
+            filteredExpenses,
+            filteredReturns,
+            summary: {
+                totalSubTotal,
+                totalDiscount,
+                totalReturnsValue,
+                penjualanBersih,
+                totalPokokBersih,
+                labaKotor,
+                totalPengeluaran,
+                labaBersih
+            }
+        };
+    }, [filteredData, salesMap]);
 
+    const prepareExport = () => {
+        const { salesWithDetails, filteredExpenses, filteredReturns, summary } = exportPreviewData;
+        const round = (num: number) => Math.round(num);
 
         let csvContent = "data:text/csv;charset=utf-8,";
         csvContent += "LAPORAN LABA RUGI\n\n";
 
-        // Sales Section
         csvContent += "No Transaksi,Tanggal,Dept,Kode Pel,Nama Pelanggan,Sub Total,Total Pokok,Laba Kotor,Biaya Msk Total (+) Diskon,Biaya Lain,Laba Jual\n";
-        salesWithDetails.forEach((sale, index) => {
+        salesWithDetails.forEach(sale => {
             const row = [
-                `trx-${String(index + 1).padStart(4, '0')}`,
+                `trx-${String(salesMap.get(sale.id)).padStart(4, '0')}`,
                 format(sale.date, "yyyy-MM-dd"),
                 "UTM",
-                "PL0001", // Placeholder
-                "PELANGGAN", // Placeholder
+                "PL0001",
+                "PELANGGAN",
                 round(sale.subtotal),
                 round(sale.totalPokok),
                 round(sale.labaKotor),
                 round(sale.subtotal * sale.discount / 100),
-                0, // Biaya Lain Placeholder
+                0,
                 round(sale.finalTotal)
             ].join(",");
             csvContent += row + "\n";
         });
         csvContent += "\n";
         
-        // Returns Section
         csvContent += "DAFTAR RETUR\n";
         csvContent += "Tanggal Retur,ID Transaksi Asal,Alasan,Total Refund\n";
         filteredReturns.forEach(ret => {
             const row = [
                 format(ret.date, "yyyy-MM-dd"),
-                `trx...${ret.saleId.slice(-6)}`,
+                `trx-${salesMap.has(ret.saleId) ? String(salesMap.get(ret.saleId)).padStart(4, '0') : `...${ret.saleId.slice(-6)}`}`,
                 `"${ret.reason.replace(/"/g, '""')}"`,
                 round(ret.totalRefund)
             ].join(",");
@@ -253,7 +267,6 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         });
         csvContent += "\n";
 
-        // Expenses Section
         csvContent += "DAFTAR PENGELUARAN\n";
         csvContent += "Tanggal Pengeluaran,Kategori,Deskripsi,Jumlah\n";
         filteredExpenses.forEach(expense => {
@@ -267,22 +280,27 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         });
         csvContent += "\n";
 
-        // Summary Section
         csvContent += "TOTAL KESELURUHAN\n";
-        csvContent += `Penjualan Bersih (Setelah Retur):,${round(netSales)}\n`;
-        csvContent += `Total Pokok (HPP) Bersih:,${round(netCOGS)}\n`;
-        csvContent += `Laba Kotor (Setelah Retur & HPP):,${round(grossProfitAfterReturns)}\n`;
-        csvContent += `Potongan Diskon Total:,-${round(summary.potFaktur)}\n`;
-        csvContent += `Total Pengeluaran:,${round(summary.totalPengeluaran)}\n`;
-        csvContent += `Laba Bersih (Setelah Semua Biaya):,${round(summary.labaJualBersih)}\n`;
+        csvContent += `Penjualan Bersih (Setelah Retur & Diskon):,${round(summary.penjualanBersih)}\n`;
+        csvContent += `Total Pokok (HPP) Bersih:,${round(summary.totalPokokBersih)}\n`;
+        csvContent += `Laba Kotor (Setelah Retur & HPP):,${round(summary.labaKotor)}\n`;
+        csvContent += `Total Pengeluaran:,-${round(summary.totalPengeluaran)}\n`;
+        csvContent += `Laba Bersih (Setelah Semua Biaya):,${round(summary.labaBersih)}\n`;
 
-        const encodedUri = encodeURI(csvContent);
+        setExportData(csvContent);
+        setIsExportPreviewOpen(true);
+    };
+
+    const handleDownload = () => {
+        if (!exportData) return;
+        const encodedUri = encodeURI(exportData);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
         link.setAttribute("download", "laporan_laba_rugi.csv");
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        setIsExportPreviewOpen(false);
     };
 
     const kpiCards = [
@@ -339,12 +357,68 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
                     />
                     </PopoverContent>
                 </Popover>
-                <Button onClick={handleExport}>
+                <Button onClick={prepareExport}>
                     <Download className="mr-2 h-4 w-4" />
                     Ekspor
                 </Button>
             </div>
         </div>
+        
+      <Dialog open={isExportPreviewOpen} onOpenChange={setIsExportPreviewOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Pratinjau Ekspor Laporan</DialogTitle>
+            <DialogDescription>
+              Berikut adalah ringkasan dari data yang akan diekspor. Angka dalam file CSV tidak akan diformat.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            <div className="space-y-6 p-1">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Ringkasan Laba Rugi</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>Penjualan Bersih (Setelah Retur & Diskon)</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(exportPreviewData.summary.penjualanBersih)}</TableCell>
+                      </TableRow>
+                       <TableRow>
+                        <TableCell>Total Pokok (HPP) Bersih</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(exportPreviewData.summary.totalPokokBersih)}</TableCell>
+                      </TableRow>
+                       <TableRow>
+                        <TableCell className="font-semibold">Laba Kotor</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(exportPreviewData.summary.labaKotor)}</TableCell>
+                      </TableRow>
+                       <TableRow>
+                        <TableCell>Total Pengeluaran</TableCell>
+                        <TableCell className="text-right font-medium text-destructive">-{formatCurrency(exportPreviewData.summary.totalPengeluaran)}</TableCell>
+                      </TableRow>
+                       <TableRow className="bg-muted/50">
+                        <TableCell className="font-bold text-base">Laba Bersih (Setelah Semua Biaya)</TableCell>
+                        <TableCell className={`text-right font-bold text-base ${exportPreviewData.summary.labaBersih >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                            {formatCurrency(exportPreviewData.summary.labaBersih)}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setIsExportPreviewOpen(false)}>Batal</Button>
+            <Button onClick={handleDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              Unduh CSV
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {kpiCards.map(card => (
@@ -402,3 +476,5 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
 };
 
 export default LaporanPage;
+
+      
