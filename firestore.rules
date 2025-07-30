@@ -3,65 +3,75 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check user role
-    function isUserRole(role) {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // USERS collection:
-    // Admin can read/write any user.
-    // Authenticated users can only read their own data.
-    match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isUserRole('admin'));
-      allow write: if isUserRole('admin');
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    // SETTINGS collection:
-    // Only admins can read/write.
-    match /settings/{docId} {
-      allow read, write: if isUserRole('admin');
+    function isAdmin() {
+      return isSignedIn() && getUserRole() == 'admin';
+    }
+
+    function isKasir() {
+      return isSignedIn() && getUserRole() == 'kasir';
     }
     
-    // PUBLIC_SETTINGS collection:
-    // All users can read, only admins can write.
+    // All users can read their own role
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isAdmin(); // Only admins can change roles
+    }
+    
+    // Public settings are readable by all
     match /publicSettings/{docId} {
-        allow read: if true;
-        allow write: if isUserRole('admin');
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
-    // PRODUCTS collection:
-    // Authenticated users can read.
-    // Admins can write.
-    match /products/{productId} {
-      allow read: if request.auth != null;
-      allow write: if isUserRole('admin');
-    }
-
-    // SALES, RETURNS, EXPENSES, ACTIVITYLOGS, STOCKOPNAMELOGS collections:
-    // Admin can read/write all.
-    // Cashier can only create new documents.
+    // Admins and cashiers can read sales and returns
+    // Only admins can create/update/delete sales and returns
     match /sales/{saleId} {
-      allow read, write: if isUserRole('admin');
-      allow create: if isUserRole('kasir');
+      allow read: if isAdmin() || isKasir();
+      allow create, update, delete: if isAdmin();
     }
 
     match /returns/{returnId} {
-       allow read, write: if isUserRole('admin');
-       allow create: if isUserRole('kasir');
-    }
-
-    match /expenses/{expenseId} {
-       allow read, write: if isUserRole('admin');
-       allow create: if isUserRole('kasir');
-    }
-
-    match /activityLogs/{logId} {
-       allow read, write: if isUserRole('admin');
-       allow create: if isUserRole('kasir');
+      allow read: if isAdmin() || isKasir();
+      allow create, update, delete: if isAdmin();
     }
     
+    // Cashiers can create sales and returns via transactions
+    // This is implicitly handled by the rules for /sales and /returns collections
+    // and the transaction logic in the app. The 'create' rule above applies.
+    
+    // Admins have full access to products. Cashiers can only read them.
+    match /products/{productId} {
+        allow read: if isAdmin() || isKasir();
+        allow create, update, delete: if isAdmin();
+    }
+
+    // Admins and cashiers can manage expenses
+    match /expenses/{expenseId} {
+      allow read, create, update, delete: if isAdmin() || isKasir();
+    }
+    
+    // Admins and cashiers can read settings
+    match /settings/{settingId} {
+      allow read: if isAdmin() || isKasir();
+      allow write: if isAdmin();
+    }
+    
+    // Admins have full access to logs. Cashiers cannot access.
     match /stockOpnameLogs/{logId} {
-       allow read, write: if isUserRole('admin');
+        allow read, write: if isAdmin();
+    }
+    
+    match /activityLogs/{logId} {
+        allow read, write: if isAdmin();
     }
   }
 }

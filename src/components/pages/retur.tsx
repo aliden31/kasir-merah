@@ -243,10 +243,7 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
     const fetchData = async () => {
         setLoading(true);
         try {
-            const returnsPromise = getReturns();
-            const salesPromise = userRole === 'admin' ? getSales() : Promise.resolve([]);
-            
-            const [returnsData, salesData] = await Promise.all([returnsPromise, salesPromise]);
+            const [returnsData, salesData] = await Promise.all([getReturns(), getSales()]);
 
             setReturns(returnsData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
             setSales(salesData);

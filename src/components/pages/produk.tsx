@@ -161,11 +161,11 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
         setLoading(true);
         try {
             const productsDataPromise = getProducts();
-            const salesDataPromise = userRole === 'admin' ? getSales() : Promise.resolve([]);
+            const salesDataPromise = getSales();
 
             let [productsData, salesData] = await Promise.all([productsDataPromise, salesDataPromise]);
 
-            if (productsData.length === 0) {
+            if (productsData.length === 0 && userRole === 'admin') {
                 toast({ title: "Database produk kosong", description: "Menginisialisasi dengan data sampel..." });
                 await addPlaceholderProducts();
                 productsData = await getProducts();
@@ -183,15 +183,18 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
             });
 
             let duplicatesFound = false;
-            for (const products of productMap.values()) {
-                if (products.length > 1) {
-                    duplicatesFound = true;
-                    const productsToDelete = products.slice(1);
-                    for (const p of productsToDelete) {
-                        await deleteProduct(p.id, userRole);
+            if (userRole === 'admin') {
+                for (const products of productMap.values()) {
+                    if (products.length > 1) {
+                        duplicatesFound = true;
+                        const productsToDelete = products.slice(1);
+                        for (const p of productsToDelete) {
+                            await deleteProduct(p.id, userRole);
+                        }
                     }
                 }
             }
+
 
             if (duplicatesFound) {
                  toast({ title: "Produk Ganda Dihapus", description: "Beberapa produk ganda telah dihapus secara otomatis." });

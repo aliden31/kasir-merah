@@ -219,23 +219,10 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-        const expensesPromise = getExpenses();
-        const settingsPromise = userRole === 'admin' 
-            ? getSettings() 
-            : Promise.resolve({
-                storeName: 'Toko Cepat',
-                defaultDiscount: 0,
-                syncCostPrice: true,
-                theme: 'default',
-                expenseCategories: [
-                    { id: 'exp-cat-1', name: 'Operasional', subcategories: [] },
-                    { id: 'exp-cat-2', name: 'Gaji', subcategories: [] },
-                    { id: 'exp-cat-3', name: 'Pemasaran', subcategories: [] },
-                    { id: 'exp-cat-4', name: 'Lainnya', subcategories: [] },
-                ]
-            } as Settings);
-
-        const [expensesData, settingsData] = await Promise.all([expensesPromise, settingsPromise]);
+        const [expensesData, settingsData] = await Promise.all([
+          getExpenses(), 
+          getSettings()
+        ]);
         
         setExpenses(expensesData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         setSettings(settingsData);
