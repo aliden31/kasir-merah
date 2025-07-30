@@ -290,6 +290,10 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
         });
 
         const newReturnDoc = await getDoc(newReturnRef);
+        if (!newReturnDoc.exists()) {
+            throw new Error("Failed to create the return document.");
+        }
+
         const newReturnData = newReturnDoc.data();
         Object.keys(newReturnData!).forEach(key => {
             if (newReturnData![key] instanceof Timestamp) {
