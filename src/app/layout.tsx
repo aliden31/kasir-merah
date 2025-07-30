@@ -16,11 +16,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
     if (loading) return; 
 
     const isAuthRoute = pathname === '/login';
+    const isAppRoute = pathname.startsWith('/app');
+    const isRootRoute = pathname === '/';
 
-    if (!user && !isAuthRoute) {
+    if (!user && !isAuthRoute && !isRootRoute) {
       router.replace('/login');
     } else if (user && isAuthRoute) {
-      router.replace('/app');
+       router.replace('/app');
     }
   }, [user, loading, router, pathname]);
 
@@ -28,7 +30,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
     return <div className="flex h-screen items-center justify-center">Memuat aplikasi...</div>;
   }
   
-  if (!user && pathname !== '/login') {
+  if (!user && !pathname.startsWith('/login') && pathname !== '/') {
      return <div className="flex h-screen items-center justify-center">Mengarahkan ke halaman login...</div>;
   }
   
