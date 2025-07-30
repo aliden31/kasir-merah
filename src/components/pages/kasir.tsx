@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { SaleItem, Product } from '@/lib/types';
-import { PlusCircle, MinusCircle, Trash2, Search, Calendar as CalendarIcon, ArrowLeft, ArrowRight, ShoppingCart } from 'lucide-react';
+import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -24,9 +24,17 @@ import {
 import { getProducts, addSale } from '@/lib/data-service';
 import { Badge } from '@/components/ui/badge';
 
-const KasirPage: FC = () => {
+interface KasirPageProps {
+  cart: SaleItem[];
+  addToCart: (product: Product) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
+  clearCart: () => void;
+  cartItemCount: number;
+}
+
+
+const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearCart, cartItemCount }) => {
   const [products, setProducts] = useState<Product[]>([]);
-  const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [discount, setDiscount] = useState(0);
   const [transactionDate, setTransactionDate] = useState<Date>(new Date());
@@ -61,28 +69,6 @@ const KasirPage: FC = () => {
       setCurrentSlide(carouselApi.selectedScrollSnap())
     })
   }, [carouselApi])
-
-  const addToCart = (product: Product) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.product.id === product.id);
-      if (existingItem) {
-        return prevCart.map((item) =>
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      return [...prevCart, { product, quantity: 1, price: product.sellingPrice }];
-    });
-  };
-
-  const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      setCart((prevCart) => prevCart.filter((item) => item.product.id !== productId));
-    } else {
-      setCart((prevCart) =>
-        prevCart.map((item) => (item.product.id === productId ? { ...item, quantity } : item))
-      );
-    }
-  };
 
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -120,7 +106,7 @@ const KasirPage: FC = () => {
           title: "Pembayaran Berhasil",
           description: `Total pembayaran ${formatCurrency(total)} telah berhasil diproses.`,
         });
-        setCart([]);
+        clearCart();
         setDiscount(0);
         // re-fetch products to update stock
         const productsData = await getProducts();
@@ -307,12 +293,12 @@ const KasirPage: FC = () => {
           >
             <ShoppingCart className="h-6 w-6" />
             <span className="sr-only">Keranjang</span>
-            {cart.length > 0 && (
+            {cartItemCount > 0 && (
               <Badge
                 variant="destructive"
-                className="absolute -top-1 -right-1"
+                className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full p-1"
               >
-                {cart.length}
+                {cartItemCount}
               </Badge>
             )}
           </Button>

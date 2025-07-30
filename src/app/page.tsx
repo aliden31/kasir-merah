@@ -36,6 +36,7 @@ import PengeluaranPage from '@/components/pages/pengeluaran';
 import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
+import { SaleItem, Product } from '@/lib/types';
 
 type View =
   | 'kasir'
@@ -49,6 +50,33 @@ type View =
 
 export default function Home() {
   const [activeView, setActiveView] = useState<View>('kasir');
+  const [cart, setCart] = useState<SaleItem[]>([]);
+
+  const addToCart = (product: Product) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.product.id === product.id);
+      if (existingItem) {
+        return prevCart.map((item) =>
+          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [...prevCart, { product, quantity: 1, price: product.sellingPrice }];
+    });
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      setCart((prevCart) => prevCart.filter((item) => item.product.id !== productId));
+    } else {
+      setCart((prevCart) =>
+        prevCart.map((item) => (item.product.id === productId ? { ...item, quantity } : item))
+      );
+    }
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
 
   const menuItems = [
     { id: 'kasir', label: 'Kasir', icon: LayoutGrid },
@@ -66,7 +94,13 @@ export default function Home() {
   const renderView = () => {
     switch (activeView) {
       case 'kasir':
-        return <KasirPage />;
+        return <KasirPage 
+          cart={cart}
+          addToCart={addToCart}
+          updateQuantity={updateQuantity}
+          clearCart={clearCart}
+          cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+        />;
       case 'produk':
         return <ProdukPage />;
       case 'penjualan':
@@ -82,7 +116,13 @@ export default function Home() {
       case 'pengaturan':
         return <PengaturanPage />;
       default:
-        return <KasirPage />;
+        return <KasirPage 
+          cart={cart}
+          addToCart={addToCart}
+          updateQuantity={updateQuantity}
+          clearCart={clearCart}
+          cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+        />;
     }
   };
 
