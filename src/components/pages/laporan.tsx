@@ -10,11 +10,21 @@ import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
-import { format, isWithinInterval } from 'date-fns';
+import { format, isWithinInterval, startOfDay, eachDayOfInterval, endOfDay } from 'date-fns';
 import type { Sale, Expense, Product, Return } from '@/lib/types';
 import { getSales, getExpenses, getProducts, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 import { SaleItem } from '@/lib/types';
+import {
+  ResponsiveContainer,
+  LineChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  Line,
+} from 'recharts';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
@@ -67,9 +77,8 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     const filteredData = useMemo(() => {
         if (!date?.from || !date.to) return { filteredSales: [], filteredExpenses: [], filteredReturns: [] };
 
-        const toDate = new Date(date.to);
-        toDate.setHours(23, 59, 59, 999);
-        const interval = { start: date.from, end: toDate };
+        const toDate = endOfDay(date.to);
+        const interval = { start: startOfDay(date.from), end: toDate };
         
         const filteredSales = sales.filter(sale => isWithinInterval(sale.date, interval));
         const filteredExpenses = expenses.filter(expense => isWithinInterval(expense.date, interval));
@@ -78,6 +87,49 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         return { filteredSales, filteredExpenses, filteredReturns };
 
     }, [sales, expenses, returns, date]);
+    
+    const dailyChartData = useMemo(() => {
+        const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
+        if (!date?.from || !date.to) return [];
+
+        const days = eachDayOfInterval({
+          start: date.from,
+          end: date.to,
+        });
+
+        return days.map(day => {
+            const dayStart = startOfDay(day);
+            const dayEnd = endOfDay(day);
+
+            const daySales = filteredSales.filter(s => isWithinInterval(s.date, { start: dayStart, end: dayEnd }));
+            const dayExpenses = filteredExpenses.filter(e => isWithinInterval(e.date, { start: dayStart, end: dayEnd }));
+            const dayReturns = filteredReturns.filter(r => isWithinInterval(r.date, { start: dayStart, end: dayEnd }));
+
+            const totalSalesValue = daySales.reduce((sum, sale) => sum + sale.finalTotal, 0);
+            const totalReturnValue = dayReturns.reduce((sum, ret) => sum + ret.totalRefund, 0);
+            const totalExpensesValue = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+            const totalCostOfGoodsSold = daySales.reduce((totalCost, sale) => {
+                return totalCost + sale.items.reduce((itemCost, item: SaleItem) => itemCost + (item.costPriceAtSale * item.quantity), 0);
+            }, 0);
+            const totalCostOfReturnedGoods = dayReturns.reduce((totalCost, ret) => {
+                return totalCost + ret.items.reduce((itemCost, item: ReturnItem) => itemCost + (item.costPriceAtSale * item.quantity), 0);
+            }, 0);
+
+            const netSales = totalSalesValue - totalReturnValue;
+            const netCOGS = totalCostOfGoodsSold - totalCostOfReturnedGoods;
+            const grossProfit = netSales - netCOGS;
+            const netProfit = grossProfit - totalExpensesValue;
+            
+            return {
+                date: format(day, 'dd/MM'),
+                "Penjualan Bersih": netSales,
+                "Laba Bersih": netProfit,
+                "Pengeluaran": totalExpensesValue
+            };
+        });
+    }, [filteredData, date]);
+
 
     const financialSummary = useMemo(() => {
         const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
@@ -314,13 +366,35 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
       
       <Card>
         <CardHeader>
-            <CardTitle>Detail Arus Kas</CardTitle>
-            <CardDescription>Fitur detail arus kas sedang dalam pengembangan. Ini akan menampilkan grafik dan tabel terperinci.</CardDescription>
+            <CardTitle>Detail Arus Kas Harian</CardTitle>
+            <CardDescription>Visualisasi penjualan, laba, dan pengeluaran harian dalam rentang waktu yang dipilih.</CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="h-60 flex items-center justify-center bg-muted/50 rounded-md">
-                <p className="text-muted-foreground">Grafik akan ditampilkan di sini.</p>
-            </div>
+            {dailyChartData.length > 0 ? (
+                 <ResponsiveContainer width="100%" height={350}>
+                    <LineChart data={dailyChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rp${value/1000}k`} />
+                        <Tooltip
+                            contentStyle={{
+                                background: "hsl(var(--background))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: "var(--radius)",
+                            }}
+                            formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                        />
+                        <Legend />
+                        <Line type="monotone" dataKey="Penjualan Bersih" stroke="hsl(var(--chart-1))" strokeWidth={2} />
+                        <Line type="monotone" dataKey="Laba Bersih" stroke="hsl(var(--chart-2))" strokeWidth={2} />
+                        <Line type="monotone" dataKey="Pengeluaran" stroke="hsl(var(--chart-5))" strokeWidth={2} />
+                    </LineChart>
+                </ResponsiveContainer>
+            ) : (
+                <div className="h-60 flex items-center justify-center bg-muted/50 rounded-md">
+                    <p className="text-muted-foreground">Tidak ada data untuk ditampilkan pada rentang tanggal ini.</p>
+                </div>
+            )}
         </CardContent>
       </Card>
     </div>
@@ -328,3 +402,4 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
 };
 
 export default LaporanPage;
+
