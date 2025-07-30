@@ -60,7 +60,7 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
                 productName: saleItem.product.name,
                 quantity: 1,
                 priceAtSale: saleItem.price,
-                costPriceAtSale: saleItem.product.costPrice,
+                costPriceAtSale: saleItem.costPriceAtSale,
             }]);
         }
     };
@@ -116,7 +116,7 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
     ) || [];
     
     const sortedSales = useMemo(() => sales.sort((a,b) => b.date.getTime() - a.date.getTime()), [sales]);
-    const salesMap = useMemo(() => new Map(sales.map((sale, index) => [sale.id, sales.length - index])), [sales]);
+    const salesMap = useMemo(() => new Map(sortedSales.map((sale, index) => [sale.id, sortedSales.length - index])), [sortedSales]);
 
     return (
         <DialogContent className="max-w-2xl">
@@ -132,9 +132,9 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
                             <SelectValue placeholder="Pilih ID Transaksi..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {sortedSales.map((sale, index) => (
+                            {sortedSales.map((sale) => (
                                 <SelectItem key={sale.id} value={sale.id}>
-                                    trx {String(sales.length - index).padStart(4, '0')} - {sale.date.toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
+                                    trx {String(salesMap.get(sale.id)).padStart(4, '0')} - {sale.date.toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -285,9 +285,9 @@ const ReturPage: FC = () => {
             <CardDescription>Daftar semua pengembalian barang dari pelanggan.</CardDescription>
         </CardHeader>
         <CardContent>
-            <ScrollArea className="h-[calc(100vh-20rem)]">
+            <div className="overflow-x-auto">
                 <Table>
-                    <TableHeader className="sticky top-0 bg-background">
+                    <TableHeader>
                     <TableRow>
                         <TableHead className="w-[150px]">Tanggal</TableHead>
                         <TableHead>ID Transaksi Asal</TableHead>
@@ -324,7 +324,7 @@ const ReturPage: FC = () => {
                     )}
                     </TableBody>
                 </Table>
-            </ScrollArea>
+            </div>
         </CardContent>
       </Card>
     </div>
@@ -332,3 +332,5 @@ const ReturPage: FC = () => {
 };
 
 export default ReturPage;
+
+    

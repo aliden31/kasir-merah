@@ -17,7 +17,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
@@ -262,12 +261,12 @@ const ProdukPage: FC = () => {
             <ProductForm product={editingProduct} onSave={handleSaveProduct} onOpenChange={setFormOpen} />
        </Dialog>
 
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
             <h1 className="text-2xl font-bold">Manajemen Produk</h1>
             <p className="text-muted-foreground">Kelola daftar produk, stok, dan harga Anda.</p>
         </div>
-        <Button onClick={() => handleOpenForm()}>
+        <Button onClick={() => handleOpenForm()} className="w-full md:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Tambah Produk
         </Button>
@@ -275,13 +274,13 @@ const ProdukPage: FC = () => {
       
       <Card>
         <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                 <div>
                     <CardTitle>Daftar Produk</CardTitle>
                     <CardDescription>Total {products.length} produk ditemukan.</CardDescription>
                 </div>
                  <Select value={sortOrder} onValueChange={setSortOrder}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full md:w-[180px]">
                         <SelectValue placeholder="Urutkan berdasarkan" />
                     </SelectTrigger>
                     <SelectContent>
@@ -295,73 +294,75 @@ const ProdukPage: FC = () => {
             </div>
         </CardHeader>
         <CardContent>
-            <Table>
-                <TableHeader>
-                <TableRow>
-                    <TableHead>Nama Produk</TableHead>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead className="text-right">Harga Modal</TableHead>
-                    <TableHead className="text-right">Harga Jual</TableHead>
-                    <TableHead className="text-right">Stok</TableHead>
-                    <TableHead className="text-right">Terjual</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-                </TableHeader>
-                <TableBody>
-                {sortedProducts.map((product) => (
-                    <TableRow key={product.id}>
-                    <TableCell
-                        className="font-medium cursor-pointer hover:underline"
-                        onClick={() => handleOpenForm(product.id)}
-                    >
-                        {product.name}
-                    </TableCell>
-                    <TableCell>{product.category}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(product.costPrice)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(product.sellingPrice)}</TableCell>
-                    <TableCell className="text-right">{product.stock}</TableCell>
-                    <TableCell className="text-right font-medium">{(product as any).salesCount || 0}</TableCell>
-                    <TableCell className="text-right">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Buka menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => handleOpenForm(product.id)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    <span>Edit</span>
-                                </DropdownMenuItem>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                             <Trash2 className="mr-2 h-4 w-4" />
-                                             <span>Hapus</span>
-                                        </DropdownMenuItem>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                        <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Tindakan ini tidak dapat diurungkan. Ini akan menghapus produk <span className="font-semibold">{product.name}</span> secara permanen dari database.
-                                        </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className="bg-destructive hover:bg-destructive/90">Hapus</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
+            <div className="overflow-x-auto">
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead>Nama Produk</TableHead>
+                        <TableHead>Kategori</TableHead>
+                        <TableHead className="text-right">Harga Modal</TableHead>
+                        <TableHead className="text-right">Harga Jual</TableHead>
+                        <TableHead className="text-right">Stok</TableHead>
+                        <TableHead className="text-right">Terjual</TableHead>
+                        <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
-                ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                    {sortedProducts.map((product) => (
+                        <TableRow key={product.id}>
+                        <TableCell
+                            className="font-medium cursor-pointer hover:underline"
+                            onClick={() => handleOpenForm(product.id)}
+                        >
+                            {product.name}
+                        </TableCell>
+                        <TableCell>{product.category}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(product.costPrice)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(product.sellingPrice)}</TableCell>
+                        <TableCell className="text-right">{product.stock}</TableCell>
+                        <TableCell className="text-right font-medium">{(product as any).salesCount || 0}</TableCell>
+                        <TableCell className="text-right">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Buka menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => handleOpenForm(product.id)}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        <span>Edit</span>
+                                    </DropdownMenuItem>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                                 <Trash2 className="mr-2 h-4 w-4" />
+                                                 <span>Hapus</span>
+                                            </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                            <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Tindakan ini tidak dapat diurungkan. Ini akan menghapus produk <span className="font-semibold">{product.name}</span> secara permanen dari database.
+                                            </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className="bg-destructive hover:bg-destructive/90">Hapus</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                        </TableRow>
+                    ))}
+                    </TableBody>
+                </Table>
+            </div>
         </CardContent>
       </Card>
     </div>

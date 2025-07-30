@@ -197,16 +197,25 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
       </CardHeader>
       <CardContent className="flex-grow p-0">
         <ScrollArea className={isMobile ? "h-[calc(100vh-20rem)]" : "h-full lg:h-[calc(100vh-16rem)]"}>
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
             {filteredProducts.map((product) => {
               const flashPrice = getFlashSalePrice(product.id);
               return (
                 <Card
                   key={product.id}
                   onClick={() => addToCart(product, flashPrice)}
-                  className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col items-center justify-center p-4 text-center"
+                  className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col p-2"
                 >
-                  <CardContent className="p-0 flex-grow flex flex-col justify-center">
+                    <div className="aspect-square w-full relative mb-2">
+                       <Image
+                         src={`https://placehold.co/200x200.png`}
+                         data-ai-hint={`${product.category}`}
+                         alt={product.name}
+                         fill
+                         className="rounded-md object-cover"
+                       />
+                    </div>
+                  <div className="flex-grow flex flex-col text-center">
                     <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
                     {flashPrice !== undefined ? (
                       <div className="mt-1">
@@ -214,9 +223,9 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
                         <p className="text-sm text-destructive font-bold">{formatCurrency(flashPrice)}</p>
                       </div>
                     ) : (
-                      <p className="text-xs text-primary font-medium mt-1">{formatCurrency(product.sellingPrice)}</p>
+                      <p className="text-sm text-primary font-medium mt-1">{formatCurrency(product.sellingPrice)}</p>
                     )}
-                  </CardContent>
+                  </div>
                 </Card>
               )
             })}
@@ -226,135 +235,143 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
     </Card>
   );
 
+  const renderCartView = (isMobile = false) => (
+     <Card className={`h-full flex flex-col shadow-none border-0 ${isMobile ? '' : 'lg:col-span-1'}`}>
+        <CardHeader>
+            <div className="flex justify-between items-center">
+                {isMobile && (
+                    <Button variant="outline" size="sm" onClick={() => carouselApi?.scrollPrev()}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Produk
+                    </Button>
+                )}
+                <CardTitle>Keranjang</CardTitle>
+                <Badge variant="outline">{cartItemCount} Item</Badge>
+            </div>
+        </CardHeader>
+        <CardContent className="flex-grow">
+            <ScrollArea className={isMobile ? "h-[calc(100vh-24rem)]" : "h-full lg:h-[calc(100vh-25rem)]"}>
+            {cart.length === 0 ? (
+                <div className="text-center text-muted-foreground py-10 flex flex-col items-center justify-center h-full">
+                  <ShoppingCart className="h-10 w-10 mb-4 text-muted-foreground/50"/>
+                  <p>Keranjang masih kosong.</p>
+                  <p className="text-xs">Pilih produk untuk memulai transaksi.</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                {cart.map((item) => (
+                    <div key={item.product.id} className="flex items-center gap-4">
+                    <Image
+                        src={`https://placehold.co/100x100.png`}
+                        data-ai-hint={`${item.product.category}`}
+                        alt={item.product.name}
+                        width={64}
+                        height={64}
+                        className="rounded-md object-cover"
+                    />
+                    <div className="flex-grow">
+                        <p className="font-semibold text-sm">{item.product.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(item.price)}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                        >
+                            <MinusCircle className="h-4 w-4" />
+                        </Button>
+                        <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                        >
+                            <PlusCircle className="h-4 w-4" />
+                        </Button>
+                        </div>
+                    </div>
+                    <p className="font-semibold text-sm">{formatCurrency(item.price * item.quantity)}</p>
+                    </div>
+                ))}
+                </div>
+            )}
+            </ScrollArea>
+        </CardContent>
+        <Separator />
+        <CardFooter className="flex-col !p-4">
+            <div className="w-full space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                    <span>Tanggal Transaksi</span>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className="w-[160px] justify-start text-left font-normal text-xs h-8"
+                        >
+                            <CalendarIcon className="mr-2 h-3 w-3" />
+                            {format(transactionDate, "PPP", { locale: id })}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={transactionDate}
+                            onSelect={(date) => date && setTransactionDate(date)}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(subtotal)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span>Diskon (%)</span>
+                    <Input 
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                    className="w-20 h-8 text-sm"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    />
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                    <span>Potongan Diskon</span>
+                    <span>-{formatCurrency(discountAmount)}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between font-bold text-base">
+                    <span>Total</span>
+                    <span>{formatCurrency(total)}</span>
+                </div>
+            </div>
+            <Button className="w-full mt-4 bg-accent text-accent-foreground hover:bg-accent/90" onClick={handlePayment}>
+                Bayar
+            </Button>
+        </CardFooter>
+        </Card>
+  );
+
   if (loading) {
     return <div>Memuat...</div>
   }
 
   return (
     <>
+      {/* Mobile View */}
       <div className="lg:hidden">
-        <Carousel setApi={setCarouselApi} className="w-full">
+        <Carousel setApi={setCarouselApi} className="w-full" opts={{watchDrag: false}}>
           <CarouselContent>
             <CarouselItem>
               {renderProductGrid(true)}
             </CarouselItem>
             <CarouselItem>
-                <div className="lg:col-span-1">
-                    <Card className="h-full flex flex-col shadow-none border-0">
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <Button variant="outline" onClick={() => carouselApi?.scrollPrev()}>
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                Produk
-                            </Button>
-                            <CardTitle>Keranjang</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="flex-grow">
-                        <ScrollArea className="h-[calc(100vh-22rem)]">
-                        {cart.length === 0 ? (
-                            <div className="text-center text-muted-foreground py-10">
-                            <p>Keranjang masih kosong.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                            {cart.map((item) => (
-                                <div key={item.product.id} className="flex items-center gap-4">
-                                <Image
-                                    src={`https://placehold.co/100x100.png`}
-                                    data-ai-hint={`${item.product.category}`}
-                                    alt={item.product.name}
-                                    width={64}
-                                    height={64}
-                                    className="rounded-md object-cover"
-                                />
-                                <div className="flex-grow">
-                                    <p className="font-semibold text-sm">{item.product.name}</p>
-                                    <p className="text-xs text-muted-foreground">{formatCurrency(item.price)}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6"
-                                        onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                                    >
-                                        <MinusCircle className="h-4 w-4" />
-                                    </Button>
-                                    <span className="w-6 text-center">{item.quantity}</span>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6"
-                                        onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                                    >
-                                        <PlusCircle className="h-4 w-4" />
-                                    </Button>
-                                    </div>
-                                </div>
-                                <p className="font-semibold">{formatCurrency(item.price * item.quantity)}</p>
-                                </div>
-                            ))}
-                            </div>
-                        )}
-                        </ScrollArea>
-                    </CardContent>
-                    <Separator />
-                    <CardFooter className="flex-col !p-4">
-                        <div className="w-full space-y-2 text-sm">
-                            <div className="flex justify-between items-center">
-                                <span>Tanggal Transaksi</span>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <Button
-                                        variant={"outline"}
-                                        className="w-[180px] justify-start text-left font-normal"
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {format(transactionDate, "PPP", { locale: id })}
-                                    </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={transactionDate}
-                                        onSelect={(date) => date && setTransactionDate(date)}
-                                        initialFocus
-                                    />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Subtotal</span>
-                                <span>{formatCurrency(subtotal)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span>Diskon (%)</span>
-                                <Input 
-                                type="number"
-                                value={discount}
-                                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                                className="w-20 h-8"
-                                step="0.1"
-                                min="0"
-                                max="100"
-                                />
-                            </div>
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>Potongan Diskon</span>
-                                <span>-{formatCurrency(discountAmount)}</span>
-                            </div>
-                            <Separator />
-                            <div className="flex justify-between font-bold text-base">
-                                <span>Total</span>
-                                <span>{formatCurrency(total)}</span>
-                            </div>
-                        </div>
-                        <Button className="w-full mt-4 bg-accent text-accent-foreground hover:bg-accent/90" onClick={handlePayment}>
-                            Bayar
-                        </Button>
-                    </CardFooter>
-                    </Card>
-                </div>
+              {renderCartView(true)}
             </CarouselItem>
           </CarouselContent>
         </Carousel>
@@ -370,7 +387,7 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
             {cartItemCount > 0 && (
               <Badge
                 variant="destructive"
-                className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full p-1"
+                className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full p-2 text-xs"
               >
                 {cartItemCount}
               </Badge>
@@ -379,118 +396,10 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
         )}
       </div>
 
+      {/* Desktop View */}
       <div className="hidden lg:grid grid-cols-1 lg:grid-cols-3 gap-6 h-full lg:h-[calc(100vh-5rem)]">
         {renderProductGrid()}
-        <div className="lg:col-span-1">
-          <Card className="h-full flex flex-col">
-            <CardHeader>
-              <CardTitle>Keranjang</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-grow">
-              <ScrollArea className="h-full lg:h-[calc(100vh-25rem)]">
-                {cart.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-10">
-                    <p>Keranjang masih kosong.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {cart.map((item) => (
-                      <div key={item.product.id} className="flex items-center gap-4">
-                        <Image
-                          src={`https://placehold.co/100x100.png`}
-                          data-ai-hint={`${item.product.category}`}
-                          alt={item.product.name}
-                          width={64}
-                          height={64}
-                          className="rounded-md object-cover"
-                        />
-                        <div className="flex-grow">
-                          <p className="font-semibold text-sm">{item.product.name}</p>
-                          <p className="text-xs text-muted-foreground">{formatCurrency(item.price)}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                            >
-                              <MinusCircle className="h-4 w-4" />
-                            </Button>
-                            <span className="w-6 text-center">{item.quantity}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                            >
-                              <PlusCircle className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <p className="font-semibold">{formatCurrency(item.price * item.quantity)}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-            <Separator />
-            <CardFooter className="flex-col !p-4">
-              <div className="w-full space-y-2 text-sm">
-                  <div className="flex justify-between items-center mb-2">
-                      <span>Tanggal Transaksi</span>
-                      <Popover>
-                          <PopoverTrigger asChild>
-                          <Button
-                              variant={"outline"}
-                              className="w-[180px] justify-start text-left font-normal"
-                          >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {format(transactionDate, "PPP", { locale: id })}
-                          </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                          <Calendar
-                              mode="single"
-                              selected={transactionDate}
-                              onSelect={(date) => date && setTransactionDate(date)}
-                              initialFocus
-                          />
-                          </PopoverContent>
-                      </Popover>
-                  </div>
-                  <div className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span>{formatCurrency(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                      <span>Diskon (%)</span>
-                      <Input 
-                        type="number"
-                        value={discount}
-                        onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                        className="w-20 h-8"
-                        step="0.1"
-                        min="0"
-                        max="100"
-                      />
-                  </div>
-                  <div className="flex justify-between text-muted-foreground">
-                      <span>Potongan Diskon</span>
-                      <span>-{formatCurrency(discountAmount)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-bold text-base">
-                      <span>Total</span>
-                      <span>{formatCurrency(total)}</span>
-                  </div>
-              </div>
-              <Button className="w-full mt-4 bg-accent text-accent-foreground hover:bg-accent/90" onClick={handlePayment}>
-                  Bayar
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
+        {renderCartView()}
       </div>
     </>
   );
