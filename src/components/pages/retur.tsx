@@ -284,7 +284,7 @@ const ReturPage: FC = () => {
                     <TableHeader className="sticky top-0 bg-background">
                     <TableRow>
                         <TableHead className="w-[150px]">Tanggal</TableHead>
-                        <TableHead>ID Transaksi</TableHead>
+                        <TableHead>ID Retur</TableHead>
                         <TableHead>Item Diretur</TableHead>
                         <TableHead>Alasan</TableHead>
                         <TableHead className="text-right">Total Refund</TableHead>
@@ -294,7 +294,7 @@ const ReturPage: FC = () => {
                     {returns.length > 0 ? returns.map((item) => (
                         <TableRow key={item.id}>
                         <TableCell>{item.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
-                        <TableCell className="font-mono text-muted-foreground">trx...{item.saleId.slice(-6)}</TableCell>
+                        <TableCell className="font-mono text-muted-foreground">retur...{item.id.slice(-6)}</TableCell>
                         <TableCell>
                             <ul className="list-disc pl-4 text-sm">
                                 {item.items.map((product, index) => (
