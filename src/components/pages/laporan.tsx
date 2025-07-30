@@ -239,10 +239,10 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     const handleExportCSV = () => {
         const { salesWithDetails, filteredExpenses, filteredReturns, summary } = exportData;
         const { from, to } = date || {};
-        const dateRangeStr = from && to ? `${format(from, 'dd-MM-yyyy')} - ${format(to, 'dd-MM-yyyy')}` : 'Semua Waktu';
+        const dateRangeStr = from && to ? `${format(from, 'dd-MM-yyyy')}_-_${format(to, 'dd-MM-yyyy')}` : 'semua_waktu';
         
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += `Laporan Laba Rugi - Periode: ${dateRangeStr}\n\n`;
+        csvContent += `Laporan Laba Rugi - Periode: ${dateRangeStr.replace(/_/g, ' ')}\n\n`;
 
         // Summary
         csvContent += "Ringkasan Laporan\n";
@@ -272,9 +272,10 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
                 ].join(',');
                 csvContent += row + '\n';
             });
-            const summaryRow = [
+             const summaryRow = [
                 '', '', '', '', '', 'Total Transaksi:', sale.subtotal, '', 'Total HPP:', sale.totalPokok, 'Laba Transaksi:', sale.labaKotor
             ].join(',');
+            csvContent += summaryRow + '\n';
         });
         csvContent += "\n";
 
@@ -311,7 +312,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `laporan_arus_kas_${dateRangeStr.replace(/ /g, '_')}.csv`);
+        link.setAttribute("download", `laporan_arus_kas_${dateRangeStr}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -326,7 +327,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         { title: 'Total Pengeluaran', value: formatCurrency(financialSummary.totalExpenses), icon: Wallet, color: 'text-orange-500', view: 'pengeluaran' as View | undefined },
         { title: 'Total Retur', value: formatCurrency(financialSummary.totalReturns), icon: Undo2, color: 'text-yellow-500', view: 'retur' as View | undefined },
         { title: 'Laba Kotor', value: formatCurrency(financialSummary.grossProfit), icon: DollarSign, color: 'text-primary', view: undefined },
-        { title: 'Laba Bersih', value: formatCurrency(financialSummary.netProfit), icon: financialSummary.netProfit >= 0 ? TrendingUp : TrendingDown, color: financialSummary.netProfit >= 0 ? 'text-green-600' : 'text-red-500', view: undefined },
+        { title: 'Laba Bersih', value: formatCurrency(financialSummary.netProfit), icon: financialSummary.netProfit >= 0 ? TrendingUp : TrendingDown, color: financialSummary.netProfit >= 0 ? 'text-green-600' : 'text-destructive', view: undefined },
     ];
 
   if (loading) {
@@ -484,5 +485,3 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
 };
 
 export default LaporanPage;
-
-    
