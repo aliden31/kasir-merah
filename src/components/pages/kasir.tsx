@@ -200,15 +200,15 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
 }
 
 // ExpenseForm Component (copied from pengeluaran.tsx)
-const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
+const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => Promise<void>, onOpenChange: (open: boolean) => void, settings: Settings }) => {
     const [name, setName] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
-    const [category, setCategory] = useState<'Operasional' | 'Gaji' | 'Pemasaran' | 'Lainnya'>('Lainnya');
+    const [category, setCategory] = useState('');
     const [date, setDate] = useState<Date>(new Date());
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSubmit = async () => {
-        if (!name || amount === '' || amount <= 0) {
+        if (!name || amount === '' || amount <= 0 || !category) {
             return;
         }
         setIsSaving(true);
@@ -218,7 +218,7 @@ const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense,
         // Reset form
         setName('');
         setAmount('');
-        setCategory('Lainnya');
+        setCategory('');
         setDate(new Date());
         setIsSaving(false);
     }
@@ -235,15 +235,14 @@ const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense,
                 </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="category" className="text-right">Kategori</Label>
-                    <Select onValueChange={(value) => setCategory(value as any)} defaultValue={category}>
+                    <Select onValueChange={(value) => setCategory(value as any)} value={category}>
                         <SelectTrigger className="col-span-3">
                             <SelectValue placeholder="Pilih kategori" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="Operasional">Operasional</SelectItem>
-                            <SelectItem value="Gaji">Gaji</SelectItem>
-                            <SelectItem value="Pemasaran">Pemasaran</SelectItem>
-                            <SelectItem value="Lainnya">Lainnya</SelectItem>
+                            {(settings.expenseCategories || []).map(cat => (
+                                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -270,7 +269,7 @@ const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense,
                  <DialogClose asChild>
                     <Button type="button" variant="secondary" disabled={isSaving}>Batal</Button>
                 </DialogClose>
-                <Button onClick={handleSubmit} disabled={isSaving || !name || amount === '' || amount <= 0}>
+                <Button onClick={handleSubmit} disabled={isSaving || !name || amount === '' || amount <= 0 || !category}>
                     {isSaving ? 'Menyimpan...' : 'Simpan'}
                 </Button>
             </DialogFooter>
@@ -529,7 +528,7 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
                             <Wallet className="mr-2 h-4 w-4" /> Pengeluaran
                         </Button>
                     </DialogTrigger>
-                    <ExpenseForm onSave={handleSaveExpense} onOpenChange={setExpenseFormOpen}/>
+                    <ExpenseForm onSave={handleSaveExpense} onOpenChange={setExpenseFormOpen} settings={settings}/>
                 </Dialog>
             </div>
         </CardHeader>

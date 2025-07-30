@@ -41,7 +41,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts, getProductById, getSales, getSettings } from '@/lib/data-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const ProductForm = ({ product, onSave, onOpenChange, settings }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => void, onOpenChange: (open: boolean) => void, settings: Settings }) => {
+const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState(product?.name || '');
     const [costPrice, setCostPrice] = useState(product?.costPrice || 0);
     const [sellingPrice, setSellingPrice] = useState(product?.sellingPrice || 0);
@@ -50,10 +50,6 @@ const ProductForm = ({ product, onSave, onOpenChange, settings }: { product?: Pr
     const [subcategory, setSubcategory] = useState(product?.subcategory || '');
     const [isSaving, setIsSaving] = useState(false);
 
-    const availableSubcategories = useMemo(() => {
-        const selectedCategory = settings.categories?.find(c => c.name === category);
-        return selectedCategory?.subcategories || [];
-    }, [category, settings.categories]);
 
     useEffect(() => {
         if (product) {
@@ -74,12 +70,6 @@ const ProductForm = ({ product, onSave, onOpenChange, settings }: { product?: Pr
         }
     }, [product]);
     
-    useEffect(() => {
-        // Reset subcategory if it's not in the new list of available subcategories
-        if (!availableSubcategories.includes(subcategory)) {
-            setSubcategory('');
-        }
-    }, [availableSubcategories, subcategory]);
 
     const handleSubmit = async () => {
         if (!name || !category) {
@@ -122,32 +112,12 @@ const ProductForm = ({ product, onSave, onOpenChange, settings }: { product?: Pr
                 </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="category" className="text-right">Kategori</Label>
-                    <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Pilih Kategori" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {settings.categories?.map(c => (
-                                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="col-span-3" />
                 </div>
-                {availableSubcategories.length > 0 && (
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="subcategory" className="text-right">Sub-Kategori</Label>
-                        <Select value={subcategory} onValueChange={setSubcategory}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Pilih Sub-Kategori" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableSubcategories.map(s => (
-                                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                )}
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="subcategory" className="text-right">Sub-Kategori</Label>
+                    <Input id="subcategory" value={subcategory} onChange={(e) => setSubcategory(e.target.value)} className="col-span-3" />
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="costPrice" className="text-right">Harga Modal</Label>
                     <Input id="costPrice" type="number" value={costPrice} onChange={(e) => setCostPrice(Number(e.target.value))} className="col-span-3" />
@@ -176,7 +146,6 @@ const ProductForm = ({ product, onSave, onOpenChange, settings }: { product?: Pr
 const ProdukPage: FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
-  const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
@@ -186,7 +155,7 @@ const ProdukPage: FC = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
         try {
-            let [productsData, salesData, settingsData] = await Promise.all([getProducts(), getSales(), getSettings()]);
+            let [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
 
             if (productsData.length === 0) {
                 toast({ title: "Database produk kosong", description: "Menginisialisasi dengan data sampel..." });
@@ -207,7 +176,6 @@ const ProdukPage: FC = () => {
 
             setProducts(uniqueProducts);
             setSales(salesData);
-            setSettings(settingsData);
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
             console.error(error);
@@ -299,14 +267,14 @@ const ProdukPage: FC = () => {
       setFormOpen(true);
   }
 
-  if (loading || !settings) {
+  if (loading) {
     return <div>Memuat data produk...</div>
   }
 
   return (
     <div className="space-y-6">
        <Dialog open={isFormOpen} onOpenChange={(isOpen) => { setFormOpen(isOpen); if (!isOpen) setEditingProduct(undefined); }}>
-            <ProductForm product={editingProduct} onSave={handleSaveProduct} onOpenChange={setFormOpen} settings={settings} />
+            <ProductForm product={editingProduct} onSave={handleSaveProduct} onOpenChange={setFormOpen} />
        </Dialog>
 
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">

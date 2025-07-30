@@ -154,7 +154,8 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
 
 // Expense-specific functions
 export async function getExpenses(): Promise<Expense[]> {
-    return getCollection<Expense>('expenses');
+    const expenses = await getCollection<Expense>('expenses');
+    return expenses.map(e => ({...e, date: new Date(e.date) }));
 }
 
 export const addExpense = (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
@@ -236,19 +237,17 @@ export const getSettings = async (): Promise<Settings> => {
         defaultDiscount: 0, 
         syncCostPrice: true, 
         theme: 'default',
-        categories: [
-            { id: 'cat-1', name: 'Eceran', subcategories: [] },
-            { id: 'cat-2', name: 'Glaswool', subcategories: ['Kuning', 'Putih'] },
-            { id: 'cat-3', name: 'Lainnya', subcategories: [] },
-            { id: 'cat-4', name: 'Putih', subcategories: [] },
-            { id: 'cat-5', name: 'Rambut Nenek', subcategories: [] },
-            { id: 'cat-6', name: 'Kuning', subcategories: [] },
+        expenseCategories: [
+            { id: 'exp-cat-1', name: 'Operasional' },
+            { id: 'exp-cat-2', name: 'Gaji' },
+            { id: 'exp-cat-3', name: 'Pemasaran' },
+            { id: 'exp-cat-4', name: 'Lainnya' },
         ]
     };
 
     if (docSnap.exists()) {
         const data = docSnap.data();
-        // Merge with defaults to ensure new settings are present, especially categories
+        // Merge with defaults to ensure new settings are present
         return { ...defaultSettings, ...data } as Settings;
     } else {
         // Create the default settings document in Firestore if it doesn't exist

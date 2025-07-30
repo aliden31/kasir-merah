@@ -27,10 +27,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Expense } from '@/lib/types';
+import type { Expense, Settings } from '@/lib/types';
 import { PlusCircle, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getExpenses, addExpense } from '@/lib/data-service';
+import { getExpenses, addExpense, getSettings } from '@/lib/data-service';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -77,14 +77,14 @@ const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
     );
 };
 
-const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => void, onOpenChange: (open: boolean) => void }) => {
+const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => void, onOpenChange: (open: boolean) => void, settings: Settings }) => {
     const [name, setName] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
-    const [category, setCategory] = useState<'Operasional' | 'Gaji' | 'Pemasaran' | 'Lainnya'>('Lainnya');
+    const [category, setCategory] = useState('');
     const [date, setDate] = useState<Date>(new Date());
 
     const handleSubmit = () => {
-        if (!name || amount === '' || amount <= 0) {
+        if (!name || amount === '' || amount <= 0 || !category) {
              // Optional: Add toast notification for validation
             return;
         }
@@ -110,15 +110,14 @@ const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense,
                 </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="category" className="text-right">Kategori</Label>
-                    <Select onValueChange={(value) => setCategory(value as any)} defaultValue={category}>
+                    <Select onValueChange={(value) => setCategory(value)} value={category}>
                         <SelectTrigger className="col-span-3">
                             <SelectValue placeholder="Pilih kategori" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="Operasional">Operasional</SelectItem>
-                            <SelectItem value="Gaji">Gaji</SelectItem>
-                            <SelectItem value="Pemasaran">Pemasaran</SelectItem>
-                            <SelectItem value="Lainnya">Lainnya</SelectItem>
+                            {(settings.expenseCategories || []).map(cat => (
+                                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -160,7 +159,7 @@ const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense,
                  <DialogClose asChild>
                     <Button type="button" variant="secondary">Batal</Button>
                 </DialogClose>
-                <Button onClick={handleSubmit} disabled={!name || amount === '' || amount <= 0}>Simpan</Button>
+                <Button onClick={handleSubmit} disabled={!name || amount === '' || amount <= 0 || !category}>Simpan</Button>
             </DialogFooter>
         </DialogContent>
     )
@@ -168,6 +167,7 @@ const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense,
 
 const PengeluaranPage: FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const { toast } = useToast();
@@ -175,10 +175,11 @@ const PengeluaranPage: FC = () => {
   useEffect(() => {
     const fetchExpenses = async () => {
         try {
-            const expensesData = await getExpenses();
+            const [expensesData, settingsData] = await Promise.all([getExpenses(), getSettings()]);
             setExpenses(expensesData.sort((a,b) => b.date.getTime() - a.date.getTime()));
+            setSettings(settingsData);
         } catch (error) {
-            toast({ title: "Error", description: "Gagal memuat data pengeluaran.", variant: "destructive"});
+            toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive"});
             console.error(error);
         } finally {
             setLoading(false);
@@ -206,7 +207,7 @@ const PengeluaranPage: FC = () => {
     }
   }
 
-  if (loading) {
+  if (loading || !settings) {
     return <div>Memuat data pengeluaran...</div>;
   }
     
@@ -221,7 +222,7 @@ const PengeluaranPage: FC = () => {
                     Catat Pengeluaran
                 </Button>
             </DialogTrigger>
-            <ExpenseForm onSave={handleSaveExpense} onOpenChange={setFormOpen}/>
+            <ExpenseForm onSave={handleSaveExpense} onOpenChange={setFormOpen} settings={settings} />
         </Dialog>
       </div>
 

@@ -21,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, Category } from '@/lib/types';
+import { Settings, ExpenseCategory } from '@/lib/types';
 import { saveSettings } from '@/lib/data-service';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -35,7 +35,6 @@ interface PengaturanPageProps {
 const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange }) => {
     const [localSettings, setLocalSettings] = useState<Settings>(settings);
     const [newCategoryName, setNewCategoryName] = useState("");
-    const [newSubcategory, setNewSubcategory] = useState<{ [key: string]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const { toast } = useToast();
@@ -65,54 +64,25 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
         }
     }
 
-    const handleAddCategory = () => {
+    const handleAddExpenseCategory = () => {
         if (!newCategoryName.trim()) return;
-        const newCategory: Category = {
-            id: `cat-${Date.now()}`,
+        const newCategory: ExpenseCategory = {
+            id: `exp-cat-${Date.now()}`,
             name: newCategoryName.trim(),
-            subcategories: []
         };
-        const updatedCategories = [...(localSettings.categories || []), newCategory];
-        const updatedSettings = { ...localSettings, categories: updatedCategories };
+        const updatedCategories = [...(localSettings.expenseCategories || []), newCategory];
+        const updatedSettings = { ...localSettings, expenseCategories: updatedCategories };
         setLocalSettings(updatedSettings);
         handleSaveSettings(updatedSettings);
         setNewCategoryName("");
     }
     
-    const handleDeleteCategory = (categoryId: string) => {
-        const updatedCategories = (localSettings.categories || []).filter(c => c.id !== categoryId);
-        const updatedSettings = { ...localSettings, categories: updatedCategories };
+    const handleDeleteExpenseCategory = (categoryId: string) => {
+        const updatedCategories = (localSettings.expenseCategories || []).filter(c => c.id !== categoryId);
+        const updatedSettings = { ...localSettings, expenseCategories: updatedCategories };
         setLocalSettings(updatedSettings);
         handleSaveSettings(updatedSettings);
     }
-
-    const handleAddSubcategory = (categoryId: string) => {
-        const subcategoryName = newSubcategory[categoryId]?.trim();
-        if (!subcategoryName) return;
-        const updatedCategories = (localSettings.categories || []).map(c => {
-            if (c.id === categoryId) {
-                return { ...c, subcategories: [...c.subcategories, subcategoryName] };
-            }
-            return c;
-        });
-        const updatedSettings = { ...localSettings, categories: updatedCategories };
-        setLocalSettings(updatedSettings);
-        handleSaveSettings(updatedSettings);
-        setNewSubcategory({ ...newSubcategory, [categoryId]: "" });
-    }
-
-    const handleDeleteSubcategory = (categoryId: string, subcategoryName: string) => {
-        const updatedCategories = (localSettings.categories || []).map(c => {
-            if (c.id === categoryId) {
-                return { ...c, subcategories: c.subcategories.filter(s => s !== subcategoryName) };
-            }
-            return c;
-        });
-        const updatedSettings = { ...localSettings, categories: updatedCategories };
-        setLocalSettings(updatedSettings);
-        handleSaveSettings(updatedSettings);
-    }
-
 
     const handleDeleteDatabase = () => {
         setIsDeleting(true);
@@ -229,8 +199,8 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
       <Separator />
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-1">
-            <h2 className="text-lg font-semibold">Kategori Produk</h2>
-            <p className="text-sm text-muted-foreground">Kelola kategori dan sub-kategori untuk produk Anda.</p>
+            <h2 className="text-lg font-semibold">Kategori Pengeluaran</h2>
+            <p className="text-sm text-muted-foreground">Kelola kategori untuk pengeluaran Anda.</p>
         </div>
         <div className="md:col-span-2">
             <Card>
@@ -238,59 +208,25 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
                     <CardTitle>Daftar Kategori</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                        <Accordion type="multiple" className="w-full">
-                            {(localSettings.categories || []).map((cat) => (
-                                <AccordionItem value={cat.id} key={cat.id}>
-                                    <AccordionTrigger>
-                                        <div className="flex items-center justify-between w-full">
-                                            <span>{cat.name}</span>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                        <div className="pl-4 space-y-2">
-                                            <Label className="text-xs text-muted-foreground">Sub-kategori</Label>
-                                            {cat.subcategories.length > 0 ? (
-                                                <ul className="list-disc pl-5 space-y-1">
-                                                    {cat.subcategories.map((sub, index) => (
-                                                        <li key={index} className="flex items-center justify-between">
-                                                            <span>{sub}</span>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive/70 hover:bg-destructive/10" onClick={() => handleDeleteSubcategory(cat.id, sub)}>
-                                                                <Trash2 className="h-3 w-3" />
-                                                            </Button>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            ) : (
-                                                <p className="text-xs text-muted-foreground">Belum ada sub-kategori.</p>
-                                            )}
-                                            <div className="flex items-center gap-2 pt-2">
-                                                <Input 
-                                                    placeholder="Nama sub-kategori baru" 
-                                                    className="h-8" 
-                                                    value={newSubcategory[cat.id] || ""}
-                                                    onChange={e => setNewSubcategory({ ...newSubcategory, [cat.id]: e.target.value })}
-                                                />
-                                                <Button size="sm" onClick={() => handleAddSubcategory(cat.id)}>Tambah</Button>
-                                            </div>
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
-                        <div className="flex items-center gap-2 pt-4">
-                            <Input 
-                                placeholder="Nama kategori baru"
-                                value={newCategoryName}
-                                onChange={e => setNewCategoryName(e.target.value)}
-                            />
-                            <Button onClick={handleAddCategory}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Tambah Kategori
-                            </Button>
-                        </div>
+                    <div className="space-y-2">
+                        {(localSettings.expenseCategories || []).map((cat) => (
+                           <div key={cat.id} className="flex items-center justify-between rounded-md border p-3">
+                                <span>{cat.name}</span>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDeleteExpenseCategory(cat.id); }}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                           </div>
+                        ))}
+                    </div>
+                     <div className="flex items-center gap-2 pt-4 mt-4 border-t">
+                        <Input 
+                            placeholder="Nama kategori baru"
+                            value={newCategoryName}
+                            onChange={e => setNewCategoryName(e.target.value)}
+                        />
+                        <Button onClick={handleAddExpenseCategory}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Tambah Kategori
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

@@ -5,6 +5,11 @@ export interface Category {
   subcategories: string[];
 }
 
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -52,7 +57,7 @@ export interface Expense {
   id: string;
   name: string;
   amount: number;
-  category: 'Operasional' | 'Gaji' | 'Pemasaran' | 'Lainnya';
+  category: string;
   date: Date;
 }
 
@@ -73,7 +78,7 @@ export interface Settings {
   defaultDiscount: number;
   syncCostPrice: boolean;
   theme: 'default' | 'colorful';
-  categories?: Category[];
+  expenseCategories?: ExpenseCategory[];
 }
 
 export type UserRole = 'admin' | 'kasir';
