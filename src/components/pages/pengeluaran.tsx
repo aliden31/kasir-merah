@@ -3,7 +3,7 @@
 import type { FC } from 'react';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -45,29 +45,30 @@ const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
 
     const chartData = Object.entries(expensesByCategory).map(([name, value]) => ({ name, value }));
 
+    if (chartData.length === 0) {
+        return (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                Tidak ada data untuk ditampilkan.
+            </div>
+        )
+    }
+
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Diagram Pengeluaran per Kategori</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                        <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                            {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip contentStyle={{
-                            background: "hsl(var(--background))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "var(--radius)",
-                        }} formatter={(value: number) => formatCurrency(value)} />
-                        <Legend />
-                    </PieChart>
-                </ResponsiveContainer>
-            </CardContent>
-        </Card>
+        <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+                <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                    {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                </Pie>
+                <Tooltip contentStyle={{
+                    background: "hsl(var(--background))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "var(--radius)",
+                }} formatter={(value: number) => formatCurrency(value)} />
+                <Legend />
+            </PieChart>
+        </ResponsiveContainer>
     );
 };
 
@@ -150,7 +151,7 @@ const PengeluaranPage: FC = () => {
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id'>) => {
     try {
         const newExpense = await addExpense(expenseData);
-        setExpenses(prev => [...prev, newExpense]);
+        setExpenses(prev => [...prev, newExpense].sort((a,b) => b.date.getTime() - a.date.getTime()));
         toast({
             title: "Pengeluaran Disimpan",
             description: `Pengeluaran "${newExpense.name}" telah berhasil disimpan.`,
@@ -181,34 +182,56 @@ const PengeluaranPage: FC = () => {
       </div>
 
       <Tabs defaultValue="riwayat">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="riwayat">Riwayat Pengeluaran</TabsTrigger>
-          <TabsTrigger value="diagram">Diagram Pengeluaran</TabsTrigger>
+          <TabsTrigger value="diagram">Diagram</TabsTrigger>
         </TabsList>
         <TabsContent value="riwayat" className="mt-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Nama Pengeluaran</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead className="text-right">Jumlah</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {expenses.map((expense) => (
-                <TableRow key={expense.id}>
-                  <TableCell>{expense.date.toLocaleDateString('id-ID')}</TableCell>
-                  <TableCell className="font-medium">{expense.name}</TableCell>
-                  <TableCell>{expense.category}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Riwayat Pengeluaran</CardTitle>
+                    <CardDescription>Daftar semua pengeluaran yang telah dicatat.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead>Tanggal</TableHead>
+                            <TableHead>Nama Pengeluaran</TableHead>
+                            <TableHead>Kategori</TableHead>
+                            <TableHead className="text-right">Jumlah</TableHead>
+                        </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                        {expenses.length > 0 ? expenses.map((expense) => (
+                            <TableRow key={expense.id}>
+                            <TableCell>{expense.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
+                            <TableCell className="font-medium">{expense.name}</TableCell>
+                            <TableCell>{expense.category}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">
+                                    Belum ada data pengeluaran.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
         </TabsContent>
         <TabsContent value="diagram" className="mt-4">
-            <ExpenseChart expenses={expenses} />
+            <Card>
+                <CardHeader>
+                    <CardTitle>Diagram Pengeluaran</CardTitle>
+                    <CardDescription>Visualisasi pengeluaran berdasarkan kategori.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ExpenseChart expenses={expenses} />
+                </CardContent>
+            </Card>
         </TabsContent>
       </Tabs>
     </div>

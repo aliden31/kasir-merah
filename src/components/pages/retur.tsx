@@ -27,6 +27,8 @@ import type { Return } from '@/lib/types';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getReturns, addReturn } from '@/lib/data-service';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
 
 const ReturnForm = ({ onSave, onOpenChange }: { onSave: (item: Omit<Return, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
     const [saleId, setSaleId] = useState('');
@@ -35,6 +37,10 @@ const ReturnForm = ({ onSave, onOpenChange }: { onSave: (item: Omit<Return, 'id'
     const [reason, setReason] = useState('');
     
     const handleSubmit = () => {
+        if (!saleId || !productName) {
+            alert('ID Transaksi dan Nama Produk harus diisi!');
+            return;
+        }
         const newReturn: Omit<Return, 'id'> = {
             saleId,
             productName,
@@ -54,19 +60,19 @@ const ReturnForm = ({ onSave, onOpenChange }: { onSave: (item: Omit<Return, 'id'
             <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="saleId" className="text-right">ID Transaksi</Label>
-                    <Input id="saleId" value={saleId} onChange={(e) => setSaleId(e.target.value)} className="col-span-3" />
+                    <Input id="saleId" value={saleId} onChange={(e) => setSaleId(e.target.value)} className="col-span-3" placeholder="Contoh: trx-12345" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="productName" className="text-right">Nama Produk</Label>
-                    <Input id="productName" value={productName} onChange={(e) => setProductName(e.target.value)} className="col-span-3" />
+                    <Input id="productName" value={productName} onChange={(e) => setProductName(e.target.value)} className="col-span-3" placeholder="Nama produk yang diretur" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="quantity" className="text-right">Jumlah</Label>
-                    <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="col-span-3" />
+                    <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="col-span-3" min="1" />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="reason" className="text-right">Alasan</Label>
-                    <Textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} className="col-span-3" />
+                <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="reason" className="text-right pt-2">Alasan</Label>
+                    <Textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} className="col-span-3" placeholder="Alasan pengembalian barang..." />
                 </div>
             </div>
             <DialogFooter>
@@ -89,7 +95,7 @@ const ReturPage: FC = () => {
     const fetchReturns = async () => {
         try {
             const returnsData = await getReturns();
-            setReturns(returnsData);
+            setReturns(returnsData.sort((a,b) => b.date.getTime() - a.date.getTime()));
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data retur.", variant: "destructive" });
             console.error(error);
@@ -103,7 +109,7 @@ const ReturPage: FC = () => {
   const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
     try {
         const newReturn = await addReturn(itemData);
-        setReturns(prev => [...prev, newReturn]);
+        setReturns(prev => [newReturn, ...prev]);
         toast({
             title: "Retur Disimpan",
             description: "Data retur baru telah berhasil disimpan.",
@@ -133,28 +139,42 @@ const ReturPage: FC = () => {
         </Dialog>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Tanggal</TableHead>
-            <TableHead>ID Transaksi</TableHead>
-            <TableHead>Nama Produk</TableHead>
-            <TableHead className="text-right">Jumlah</TableHead>
-            <TableHead>Alasan</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {returns.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>{item.date.toLocaleDateString('id-ID')}</TableCell>
-              <TableCell>{item.saleId}</TableCell>
-              <TableCell className="font-medium">{item.productName}</TableCell>
-              <TableCell className="text-right">{item.quantity}</TableCell>
-              <TableCell>{item.reason}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <CardHeader>
+            <CardTitle>Riwayat Retur</CardTitle>
+            <CardDescription>Daftar semua pengembalian barang dari pelanggan.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Table>
+                <TableHeader>
+                <TableRow>
+                    <TableHead className="w-[150px]">Tanggal</TableHead>
+                    <TableHead>ID Transaksi</TableHead>
+                    <TableHead>Nama Produk</TableHead>
+                    <TableHead>Alasan</TableHead>
+                    <TableHead className="text-right">Jumlah</TableHead>
+                </TableRow>
+                </TableHeader>
+                <TableBody>
+                {returns.length > 0 ? returns.map((item) => (
+                    <TableRow key={item.id}>
+                    <TableCell>{item.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
+                    <TableCell className="font-mono text-muted-foreground">{item.saleId}</TableCell>
+                    <TableCell className="font-medium">{item.productName}</TableCell>
+                    <TableCell className="text-muted-foreground">{item.reason}</TableCell>
+                    <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                    </TableRow>
+                )) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                            Belum ada data retur.
+                        </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };

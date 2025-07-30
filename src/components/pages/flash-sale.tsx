@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { FC } from 'react';
@@ -28,6 +29,7 @@ import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { getFlashSales, addFlashSale, getProducts } from '@/lib/data-service';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -144,9 +146,9 @@ const FlashSalePage: FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Manajemen Flash Sale</h1>
-        <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
+       <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Manajemen Flash Sale</h1>
+          <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
             <DialogTrigger asChild>
                 <Button>
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -154,31 +156,43 @@ const FlashSalePage: FC = () => {
                 </Button>
             </DialogTrigger>
             <FlashSaleForm products={products} onSave={handleSaveSale} onOpenChange={setFormOpen}/>
-        </Dialog>
-      </div>
+          </Dialog>
+        </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nama Produk</TableHead>
-            <TableHead className="text-right">Harga Diskon</TableHead>
-            <TableHead>Waktu Mulai</TableHead>
-            <TableHead>Waktu Selesai</TableHead>
-            <TableHead className="text-center">Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {flashSales.map((sale) => (
-            <TableRow key={sale.id}>
-              <TableCell className="font-medium">{sale.productName}</TableCell>
-              <TableCell className="text-right">{formatCurrency(sale.discountPrice)}</TableCell>
-              <TableCell>{sale.startTime.toLocaleString('id-ID')}</TableCell>
-              <TableCell>{sale.endTime.toLocaleString('id-ID')}</TableCell>
-              <TableCell className="text-center">{getStatus(sale)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <CardHeader>
+            <CardTitle>Daftar Flash Sale</CardTitle>
+            <CardDescription>Kelola flash sale yang sedang berlangsung, akan datang, dan yang sudah selesai.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nama Produk</TableHead>
+                <TableHead className="text-right">Harga Diskon</TableHead>
+                <TableHead>Waktu Mulai</TableHead>
+                <TableHead>Waktu Selesai</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {flashSales.length > 0 ? flashSales.map((sale) => (
+                <TableRow key={sale.id}>
+                  <TableCell className="font-medium">{sale.productName}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(sale.discountPrice)}</TableCell>
+                  <TableCell>{sale.startTime.toLocaleString('id-ID')}</TableCell>
+                  <TableCell>{sale.endTime.toLocaleString('id-ID')}</TableCell>
+                  <TableCell className="text-center">{getStatus(sale)}</TableCell>
+                </TableRow>
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center h-24">Belum ada flash sale.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };

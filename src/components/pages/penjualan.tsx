@@ -3,7 +3,7 @@
 
 import type { FC } from 'react';
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/accordion";
 import { getSales, getProducts } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -45,7 +46,7 @@ const SalesChart = ({ sales, products }: { sales: Sale[], products: Product[] })
 
         return Object.values(itemMap)
             .sort((a, b) => b.quantity - a.quantity)
-            .slice(0, 5);
+            .slice(0, 10);
 
     }, [sales, products]);
 
@@ -53,22 +54,24 @@ const SalesChart = ({ sales, products }: { sales: Sale[], products: Product[] })
     return (
         <Card>
             <CardHeader>
-                <CardTitle>5 Item Terlaris</CardTitle>
+                <CardTitle>10 Item Terlaris</CardTitle>
+                <CardDescription>Grafik penjualan produk terbanyak.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={salesByItem}>
-                        <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={salesByItem} layout="vertical">
+                        <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                        <YAxis type="category" dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={120} />
                         <Tooltip
+                            cursor={{ fill: 'hsl(var(--muted))' }}
                             contentStyle={{
                                 background: "hsl(var(--background))",
                                 border: "1px solid hsl(var(--border))",
                                 borderRadius: "var(--radius)",
                             }}
+                            formatter={(value: number) => [value, "Jumlah Terjual"]}
                         />
-                        <Legend />
-                        <Bar dataKey="quantity" fill="hsl(var(--primary))" name="Jumlah Terjual" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="quantity" fill="hsl(var(--primary))" name="Jumlah Terjual" radius={[0, 4, 4, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </CardContent>
@@ -91,10 +94,10 @@ const PenjualanPage: FC = () => {
                     .map(sale => ({
                         ...sale,
                         items: sale.items.map((item: any) => {
-                            const productDetail = productsData.find(p => p.id === item.product);
+                            const productDetail = productsData.find(p => p.id === (item.product.id || item.product));
                             return {
                                 ...item,
-                                product: productDetail || { id: item.product, name: 'Produk Tidak Ditemukan' }
+                                product: productDetail || { id: item.product, name: 'Produk Tidak Ditemukan', category: '' }
                             };
                         })
                     }));
@@ -118,53 +121,55 @@ const PenjualanPage: FC = () => {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Riwayat Penjualan</h1>
       <Tabs defaultValue="riwayat">
-        <TabsList>
-          <TabsTrigger value="riwayat">Riwayat Penjualan</TabsTrigger>
-          <TabsTrigger value="diagram">Diagram Item Terjual</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="riwayat">Riwayat Transaksi</TabsTrigger>
+          <TabsTrigger value="diagram">Diagram Penjualan</TabsTrigger>
         </TabsList>
         <TabsContent value="riwayat" className="mt-4">
-             <Accordion type="single" collapsible className="w-full">
-                {sales.map((sale: Sale, index) => (
-                    <AccordionItem value={sale.id} key={sale.id}>
-                        <AccordionTrigger>
-                            <div className="flex justify-between w-full pr-4">
-                                <span>ID Transaksi: trx {String(sales.length - index).padStart(3, '0')}</span>
-                                <span className="text-muted-foreground">{sale.date.toLocaleDateString('id-ID')}</span>
-                                <span className="font-semibold">{formatCurrency(sale.finalTotal)}</span>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Daftar Transaksi</CardTitle>
+                    <CardDescription>Berikut adalah daftar semua transaksi penjualan yang tercatat.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
+                        {sales.length > 0 ? sales.map((sale: Sale, index) => (
+                            <AccordionItem value={sale.id} key={sale.id}>
+                                <AccordionTrigger>
+                                    <div className="flex justify-between items-center w-full pr-4 text-sm">
+                                        <span className="font-semibold text-primary">ID: trx {String(sales.length - index).padStart(4, '0')}</span>
+                                        <Badge variant="outline">{sale.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</Badge>
+                                        <span className="font-bold text-base">{formatCurrency(sale.finalTotal)}</span>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                <div className="p-4 bg-muted/50 rounded-md">
+                                    <div className="flow-root">
+                                        <dl className="-my-3 divide-y divide-border text-sm">
+                                        {sale.items.map((item, itemIndex) => (
+                                            <div key={itemIndex} className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-3 sm:gap-4">
+                                                <dt className="font-medium text-foreground">{item.product.name}</dt>
+                                                <dd className="text-muted-foreground sm:col-span-2 sm:text-right">{item.quantity} x {formatCurrency(item.price)} = <span className="font-medium text-foreground">{formatCurrency(item.price * item.quantity)}</span></dd>
+                                            </div>
+                                        ))}
+                                        </dl>
+                                    </div>
+                                    <div className="mt-4 text-right space-y-1 text-sm pr-4">
+                                        <p>Subtotal: <span className="font-medium">{formatCurrency(sale.subtotal)}</span></p>
+                                        <p>Diskon: <span className="font-medium">{sale.discount}% (-{formatCurrency(sale.subtotal * sale.discount / 100)})</span></p>
+                                        <p className="font-bold text-base border-t pt-2 mt-2">Total Akhir: <span className="text-primary">{formatCurrency(sale.finalTotal)}</span></p>
+                                    </div>
+                                </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        )) : (
+                            <div className="text-center text-muted-foreground py-10">
+                                <p>Belum ada riwayat penjualan.</p>
                             </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                           <div className="p-4 bg-muted/50 rounded-md">
-                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Produk</TableHead>
-                                        <TableHead className="text-right">Jumlah</TableHead>
-                                        <TableHead className="text-right">Harga Satuan</TableHead>
-                                        <TableHead className="text-right">Total</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {sale.items.map((item, itemIndex) => (
-                                        <TableRow key={itemIndex}>
-                                            <TableCell>{item.product.name}</TableCell>
-                                            <TableCell className="text-right">{item.quantity}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(item.price * item.quantity)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                             </Table>
-                             <div className="mt-4 text-right space-y-1 text-sm pr-4">
-                                <p>Subtotal: {formatCurrency(sale.subtotal)}</p>
-                                <p>Diskon: {sale.discount}%</p>
-                                <p className="font-bold">Total Akhir: {formatCurrency(sale.finalTotal)}</p>
-                             </div>
-                           </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                ))}
-             </Accordion>
+                        )}
+                    </Accordion>
+                </CardContent>
+             </Card>
         </TabsContent>
         <TabsContent value="diagram" className="mt-4">
             <SalesChart sales={sales} products={products} />

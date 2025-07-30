@@ -22,6 +22,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Settings } from '@/lib/types';
 import { saveSettings } from '@/lib/data-service';
+import { Loader2 } from 'lucide-react';
 
 interface PengaturanPageProps {
   settings: Settings;
@@ -31,6 +32,8 @@ interface PengaturanPageProps {
 const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange }) => {
     const [storeName, setStoreName] = useState(settings.storeName);
     const [defaultDiscount, setDefaultDiscount] = useState(settings.defaultDiscount);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -39,6 +42,7 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
     }, [settings]);
     
     const handleSaveSettings = async () => {
+        setIsSaving(true);
         try {
             const newSettings = { storeName, defaultDiscount };
             await saveSettings(newSettings);
@@ -53,82 +57,115 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
                 description: "Terjadi kesalahan saat menyimpan pengaturan.",
                 variant: "destructive"
             });
+        } finally {
+            setIsSaving(false);
         }
     }
 
     const handleDeleteDatabase = () => {
-        toast({
-            variant: "destructive",
-            title: "Database Dihapus",
-            description: "Semua data telah berhasil dihapus secara permanen.",
-        })
+        setIsDeleting(true);
+        // Simulate a database deletion
+        setTimeout(() => {
+            toast({
+                variant: "destructive",
+                title: "Database Dihapus",
+                description: "Semua data telah berhasil dihapus secara permanen.",
+            });
+            setIsDeleting(false);
+        }, 2000);
     }
     
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold">Pengaturan</h1>
-      
-      <Card>
-        <CardHeader>
-            <CardTitle>Informasi Toko</CardTitle>
-            <CardDescription>Ubah nama toko dan pengaturan dasar lainnya.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div>
-                <Label htmlFor="storeName">Nama Toko</Label>
-                <Input id="storeName" value={storeName} onChange={e => setStoreName(e.target.value)} />
-            </div>
-            <div>
-                <Label htmlFor="defaultDiscount">Diskon Bawaan (%)</Label>
-                <Input id="defaultDiscount" type="number" step="0.1" value={defaultDiscount} onChange={e => setDefaultDiscount(Number(e.target.value))} />
-                <p className="text-xs text-muted-foreground mt-1">Atur diskon default yang diterapkan pada setiap transaksi. Bisa desimal.</p>
-            </div>
-        </CardContent>
-        <CardFooter className="border-t px-6 py-4">
-             <Button onClick={handleSaveSettings}>Simpan Perubahan</Button>
-        </CardFooter>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-            <CardTitle>Tema & Tampilan</CardTitle>
-            <CardDescription>Sesuaikan tampilan aplikasi kasir Anda.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <div className="flex items-center space-x-2">
-                <Switch id="dark-mode" />
-                <Label htmlFor="dark-mode">Mode Gelap (Dark Mode)</Label>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">Fitur ganti tema sedang dalam pengembangan.</p>
-        </CardContent>
-      </Card>
-
-      <Card className="border-destructive">
-        <CardHeader>
-            <CardTitle className="text-destructive">Zona Berbahaya</CardTitle>
-            <CardDescription>Tindakan di bawah ini tidak dapat diurungkan. Harap berhati-hati.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="destructive">Hapus Seluruh Database</Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>Apakah Anda benar-benar yakin?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Tindakan ini tidak dapat diurungkan. Ini akan menghapus semua data produk, penjualan, pengeluaran, dan retur Anda secara permanen.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteDatabase} className="bg-destructive hover:bg-destructive/90">Ya, Hapus Semuanya</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </CardContent>
-      </Card>
-
+    <div className="space-y-6">
+      <div className="space-y-0.5">
+        <h1 className="text-2xl font-bold">Pengaturan</h1>
+        <p className="text-muted-foreground">
+          Kelola pengaturan toko dan preferensi aplikasi Anda.
+        </p>
+      </div>
+      <Separator />
+      <div className="grid md:grid-cols-3 gap-6">
+        <div className="md:col-span-1">
+          <h2 className="text-lg font-semibold">Informasi Toko</h2>
+          <p className="text-sm text-muted-foreground">Ubah nama toko dan pengaturan dasar lainnya.</p>
+        </div>
+        <div className="md:col-span-2">
+           <Card>
+            <CardContent className="pt-6 space-y-4">
+                <div>
+                    <Label htmlFor="storeName">Nama Toko</Label>
+                    <Input id="storeName" value={storeName} onChange={e => setStoreName(e.target.value)} />
+                </div>
+                <div>
+                    <Label htmlFor="defaultDiscount">Diskon Bawaan (%)</Label>
+                    <Input id="defaultDiscount" type="number" step="0.1" value={defaultDiscount} onChange={e => setDefaultDiscount(Number(e.target.value))} />
+                    <p className="text-xs text-muted-foreground mt-1">Atur diskon default yang diterapkan pada setiap transaksi.</p>
+                </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4">
+                 <Button onClick={handleSaveSettings} disabled={isSaving}>
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Simpan Perubahan
+                </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+      <Separator />
+       <div className="grid md:grid-cols-3 gap-6">
+        <div className="md:col-span-1">
+          <h2 className="text-lg font-semibold">Tampilan</h2>
+          <p className="text-sm text-muted-foreground">Sesuaikan tampilan aplikasi kasir Anda.</p>
+        </div>
+        <div className="md:col-span-2">
+           <Card>
+            <CardContent className="pt-6">
+                 <div className="flex items-center space-x-2">
+                    <Switch id="dark-mode" disabled />
+                    <Label htmlFor="dark-mode">Mode Gelap (Dark Mode)</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Fitur ganti tema sedang dalam pengembangan.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+       <Separator />
+      <div className="grid md:grid-cols-3 gap-6">
+        <div className="md:col-span-1">
+          <h2 className="text-lg font-semibold text-destructive">Zona Berbahaya</h2>
+          <p className="text-sm text-muted-foreground">Tindakan di bawah ini tidak dapat diurungkan. Harap berhati-hati.</p>
+        </div>
+        <div className="md:col-span-2">
+            <Card className="border-destructive">
+                <CardHeader>
+                    <CardTitle>Hapus Data</CardTitle>
+                    <CardDescription>Tindakan ini akan menghapus semua data Anda secara permanen. Harap berhati-hati karena tindakan ini tidak dapat dibatalkan.</CardDescription>
+                </CardHeader>
+                <CardFooter className="flex justify-start">
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive">Hapus Seluruh Database</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Apakah Anda benar-benar yakin?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tindakan ini tidak dapat diurungkan. Ini akan menghapus semua data produk, penjualan, pengeluaran, dan retur Anda secara permanen.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteDatabase} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Ya, Hapus Semuanya
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </CardFooter>
+            </Card>
+        </div>
+      </div>
     </div>
   );
 };

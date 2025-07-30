@@ -2,7 +2,7 @@
 
 import type { FC } from 'react';
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Wallet, Download } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -168,7 +168,7 @@ const LaporanPage: FC = () => {
         { title: 'Total Modal (HPP)', value: formatCurrency(financialSummary.totalCostOfGoods), icon: ShoppingCart, color: 'text-blue-500' },
         { title: 'Total Pengeluaran', value: formatCurrency(financialSummary.totalExpenses), icon: Wallet, color: 'text-orange-500' },
         { title: 'Laba Kotor', value: formatCurrency(financialSummary.grossProfit), icon: DollarSign, color: 'text-primary' },
-        { title: 'Laba Bersih', value: formatCurrency(financialSummary.netProfit), icon: financialSummary.netProfit > 0 ? TrendingUp : TrendingDown, color: financialSummary.netProfit > 0 ? 'text-green-600' : 'text-red-500' },
+        { title: 'Laba Bersih', value: formatCurrency(financialSummary.netProfit), icon: financialSummary.netProfit >= 0 ? TrendingUp : TrendingDown, color: financialSummary.netProfit >= 0 ? 'text-green-600' : 'text-red-500' },
     ];
 
   if (loading) {
@@ -177,8 +177,11 @@ const LaporanPage: FC = () => {
 
   return (
     <div className="space-y-6">
-        <div className="flex justify-between items-center gap-4 flex-wrap">
-            <h1 className="text-2xl font-bold">Laporan Arus Kas</h1>
+        <div className="flex justify-between items-start gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Laporan Arus Kas</h1>
+              <p className="text-muted-foreground">Analisis pendapatan dan pengeluaran Anda dalam rentang waktu tertentu.</p>
+            </div>
             <div className="flex items-center gap-2">
                 <Popover>
                     <PopoverTrigger asChild>
@@ -213,9 +216,9 @@ const LaporanPage: FC = () => {
                     />
                     </PopoverContent>
                 </Popover>
-                <Button variant="outline" onClick={handleExport}>
+                <Button onClick={handleExport}>
                     <Download className="mr-2 h-4 w-4" />
-                    Ekspor Laporan
+                    Ekspor
                 </Button>
             </div>
         </div>
@@ -237,11 +240,12 @@ const LaporanPage: FC = () => {
       <Card>
         <CardHeader>
             <CardTitle>Detail Arus Kas</CardTitle>
+            <CardDescription>Fitur detail arus kas sedang dalam pengembangan. Ini akan menampilkan grafik dan tabel terperinci.</CardDescription>
         </CardHeader>
         <CardContent>
-            <p className="text-muted-foreground">
-                Fitur detail arus kas sedang dalam pengembangan. Ini akan menampilkan grafik dan tabel terperinci dari pendapatan dan pengeluaran dari waktu ke waktu.
-            </p>
+            <div className="h-60 flex items-center justify-center bg-muted/50 rounded-md">
+                <p className="text-muted-foreground">Grafik akan ditampilkan di sini.</p>
+            </div>
         </CardContent>
       </Card>
     </div>

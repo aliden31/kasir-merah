@@ -23,7 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Product } from '@/lib/types';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -36,8 +36,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts } from '@/lib/data-service';
-
 
 const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState(product?.name || '');
@@ -45,8 +46,10 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
     const [sellingPrice, setSellingPrice] = useState(product?.sellingPrice || 0);
     const [stock, setStock] = useState(product?.stock || 0);
     const [category, setCategory] = useState(product?.category || '');
+    const [isSaving, setIsSaving] = useState(false);
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
+        setIsSaving(true);
         const productData = {
             name,
             costPrice,
@@ -55,17 +58,20 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
             category,
         };
 
-        if (product?.id) {
-            onSave({ id: product.id, ...productData });
-        } else {
-            onSave(productData);
+        try {
+            if (product?.id) {
+                await onSave({ id: product.id, ...productData });
+            } else {
+                await onSave(productData);
+            }
+            onOpenChange(false);
+        } finally {
+            setIsSaving(false);
         }
-        
-        onOpenChange(false);
     };
     
     return (
-        <DialogContent>
+        <DialogContent className="sm:max-w-[480px]">
             <DialogHeader>
                 <DialogTitle>{product ? 'Edit Produk' : 'Tambah Produk Baru'}</DialogTitle>
             </DialogHeader>
@@ -93,9 +99,11 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
             </div>
             <DialogFooter>
                 <DialogClose asChild>
-                    <Button type="button" variant="secondary">Batal</Button>
+                    <Button type="button" variant="secondary" disabled={isSaving}>Batal</Button>
                 </DialogClose>
-                <Button onClick={handleSubmit}>Simpan</Button>
+                <Button onClick={handleSubmit} disabled={isSaving}>
+                    {isSaving ? 'Menyimpan...' : 'Simpan'}
+                </Button>
             </DialogFooter>
         </DialogContent>
     );
@@ -105,6 +113,7 @@ const ProdukPage: FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -114,10 +123,10 @@ const ProdukPage: FC = () => {
             if (productsData.length === 0) {
                 toast({ title: "Database produk kosong", description: "Menginisialisasi dengan data sampel..." });
                 await addPlaceholderProducts();
-                productsData = await getProducts(); // Refetch after adding placeholders
+                productsData = await getProducts();
                 toast({ title: "Inisialisasi berhasil", description: "Data produk sampel telah ditambahkan." });
             }
-            setProducts(productsData);
+            setProducts(productsData.sort((a,b) => a.name.localeCompare(b.name)));
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data produk.", variant: "destructive" });
             console.error(error);
@@ -136,11 +145,11 @@ const ProdukPage: FC = () => {
     try {
         if ('id' in productData) {
             await updateProduct(productData.id, productData);
-            setProducts(prev => prev.map(p => p.id === productData.id ? {...p, ...productData} : p));
+            setProducts(prev => prev.map(p => p.id === productData.id ? {...p, ...productData} : p).sort((a,b) => a.name.localeCompare(b.name)));
             toast({ title: "Produk diperbarui", description: `${productData.name} telah berhasil diperbarui.` });
         } else {
             const newProduct = await addProduct(productData);
-            setProducts(prev => [...prev, newProduct]);
+            setProducts(prev => [...prev, newProduct].sort((a,b) => a.name.localeCompare(b.name)));
             toast({ title: "Produk ditambahkan", description: `${newProduct.name} telah berhasil ditambahkan.` });
         }
     } catch (error) {
@@ -156,12 +165,16 @@ const ProdukPage: FC = () => {
         toast({
             title: "Produk Dihapus",
             description: "Produk telah berhasil dihapus dari daftar.",
-            variant: "destructive"
         });
     } catch (error) {
         toast({ title: "Error", description: "Gagal menghapus produk.", variant: "destructive" });
         console.error(error);
     }
+  }
+
+  const handleOpenForm = (product?: Product) => {
+      setEditingProduct(product);
+      setFormOpen(true);
   }
 
   if (loading) {
@@ -170,71 +183,89 @@ const ProdukPage: FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Manajemen Produk</h1>
-        <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-            <DialogTrigger asChild>
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Tambah Produk
-                </Button>
-            </DialogTrigger>
-            <ProductForm onSave={handleSaveProduct} onOpenChange={setFormOpen} />
-        </Dialog>
-      </div>
+       <Dialog open={isFormOpen} onOpenChange={(isOpen) => { setFormOpen(isOpen); if (!isOpen) setEditingProduct(undefined); }}>
+            <ProductForm product={editingProduct} onSave={handleSaveProduct} onOpenChange={setFormOpen} />
+       </Dialog>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nama Produk</TableHead>
-            <TableHead>Kategori</TableHead>
-            <TableHead className="text-right">Harga Modal</TableHead>
-            <TableHead className="text-right">Harga Jual</TableHead>
-            <TableHead className="text-right">Stok</TableHead>
-            <TableHead className="text-center">Aksi</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {products.map((product) => (
-            <TableRow key={product.id}>
-              <TableCell className="font-medium">{product.name}</TableCell>
-              <TableCell>{product.category}</TableCell>
-              <TableCell className="text-right">{formatCurrency(product.costPrice)}</TableCell>
-              <TableCell className="text-right">{formatCurrency(product.sellingPrice)}</TableCell>
-              <TableCell className="text-right">{product.stock}</TableCell>
-              <TableCell className="text-center">
-                  <div className="flex justify-center gap-2">
-                    <Dialog>
-                        <DialogTrigger asChild>
-                             <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
-                        </DialogTrigger>
-                        <ProductForm product={product} onSave={handleSaveProduct} onOpenChange={()=>{}} />
-                    </Dialog>
-                     <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Tindakan ini tidak dapat diurungkan. Ini akan menghapus produk secara permanen dari database.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Batal</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className="bg-destructive hover:bg-destructive/90">Hapus</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <div className="flex justify-between items-start">
+        <div>
+            <h1 className="text-2xl font-bold">Manajemen Produk</h1>
+            <p className="text-muted-foreground">Kelola daftar produk, stok, dan harga Anda.</p>
+        </div>
+        <Button onClick={() => handleOpenForm()}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Tambah Produk
+        </Button>
+      </div>
+      
+      <Card>
+        <CardHeader>
+            <CardTitle>Daftar Produk</CardTitle>
+            <CardDescription>Total {products.length} produk ditemukan.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Table>
+                <TableHeader>
+                <TableRow>
+                    <TableHead>Nama Produk</TableHead>
+                    <TableHead>Kategori</TableHead>
+                    <TableHead className="text-right">Harga Modal</TableHead>
+                    <TableHead className="text-right">Harga Jual</TableHead>
+                    <TableHead className="text-right">Stok</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+                </TableHeader>
+                <TableBody>
+                {products.map((product) => (
+                    <TableRow key={product.id}>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell>{product.category}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(product.costPrice)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(product.sellingPrice)}</TableCell>
+                    <TableCell className="text-right">{product.stock}</TableCell>
+                    <TableCell className="text-right">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Buka menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handleOpenForm(product)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    <span>Edit</span>
+                                </DropdownMenuItem>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                             <Trash2 className="mr-2 h-4 w-4" />
+                                             <span>Hapus</span>
+                                        </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Tindakan ini tidak dapat diurungkan. Ini akan menghapus produk <span className="font-semibold">{product.name}</span> secara permanen dari database.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className="bg-destructive hover:bg-destructive/90">Hapus</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                    </TableRow>
+                ))}
+                </TableBody>
+            </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };
