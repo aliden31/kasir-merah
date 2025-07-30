@@ -271,14 +271,14 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
                     <Accordion type="multiple" className="w-full">
                       {(localSettings.expenseCategories || []).map((cat) => (
                         <AccordionItem value={cat.id} key={cat.id}>
-                          <AccordionTrigger className="hover:no-underline">
                             <div className="flex items-center justify-between w-full">
-                                <span>{cat.name}</span>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0" onClick={(e) => { e.stopPropagation(); handleDeleteExpenseCategory(cat.id); }}>
+                                <AccordionTrigger className="flex-grow hover:no-underline pr-2">
+                                    <span>{cat.name}</span>
+                                </AccordionTrigger>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleDeleteExpenseCategory(cat.id)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
-                          </AccordionTrigger>
                           <AccordionContent>
                             <div className="pl-4 space-y-2">
                                {cat.subcategories.map(sub => (
@@ -381,5 +381,3 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
 };
 
 export default PengaturanPage;
-
-    
