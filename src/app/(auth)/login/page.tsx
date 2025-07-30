@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -22,7 +23,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      // Pengalihan sekarang ditangani oleh AuthProvider dan RootPage
+      // Pengalihan sekarang ditangani oleh AuthProvider dan RootLayout
       toast({
         title: 'Login Berhasil',
         description: 'Selamat datang kembali!',
@@ -81,3 +82,4 @@ export default function LoginPage() {
     </Card>
   );
 }
+

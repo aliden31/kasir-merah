@@ -1,12 +1,46 @@
-import type { Metadata } from 'next';
+
+'use client';
+
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import AuthProvider from '@/components/auth-provider';
+import AuthProvider, { useAuth } from '@/components/auth-provider';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import LoginPage from './(auth)/login/page';
+import AppPage from './app/page';
 
-export const metadata: Metadata = {
-  title: 'Toko Cepat',
-  description: 'Aplikasi Kasir Toko Cepat',
-};
+function AppContent({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (loading) return; // Wait for auth state to be determined
+
+    const isAuthRoute = pathname === '/login';
+
+    if (!user && !isAuthRoute) {
+      router.replace('/login');
+    } else if (user && isAuthRoute) {
+      router.replace('/app');
+    }
+  }, [user, loading, router, pathname]);
+
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center">Memuat aplikasi...</div>;
+  }
+  
+  if (!user && pathname !== '/login') {
+     return <div className="flex h-screen items-center justify-center">Mengarahkan ke halaman login...</div>;
+  }
+  
+  if (user && pathname === '/login') {
+      return <div className="flex h-screen items-center justify-center">Mengarahkan ke aplikasi...</div>;
+  }
+
+  return <>{children}</>;
+}
+
 
 export default function RootLayout({
   children,
@@ -16,6 +50,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <head>
+        <title>Toko Cepat</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -25,8 +60,10 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
-          {children}
-          <Toaster />
+           <AppContent>
+              {children}
+           </AppContent>
+           <Toaster />
         </AuthProvider>
       </body>
     </html>
