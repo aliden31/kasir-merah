@@ -45,8 +45,6 @@ import PengaturanPage from '@/components/pages/pengaturan';
 import ActivityLogPage from '@/components/pages/activity-log';
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts } from '@/lib/data-service';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -113,18 +111,6 @@ export default function Home() {
   useEffect(() => {
     document.documentElement.className = settings.theme || 'default';
   }, [settings.theme]);
-
-  const handleRoleChange = (isAdmin: boolean) => {
-    const newRole = isAdmin ? 'admin' : 'kasir';
-    setUserRole(newRole);
-    if (newRole === 'kasir' && !['dashboard', 'kasir', 'pengeluaran', 'retur'].includes(activeView)) {
-        setActiveView('kasir');
-    }
-    toast({
-        title: "Peran Diubah",
-        description: `Anda sekarang masuk sebagai ${newRole}.`,
-    });
-  };
 
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, roles: ['admin', 'kasir'] },
@@ -230,10 +216,6 @@ export default function Home() {
                     <p className="text-sm font-semibold">{userRole === 'admin' ? 'Admin' : 'Kasir'}</p>
                     <p className="text-xs text-muted-foreground">{userRole}@tokocepat.com</p>
                   </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Switch id="role-switch" checked={userRole === 'admin'} onCheckedChange={handleRoleChange} />
-                    <Label htmlFor="role-switch">Mode Admin</Label>
                 </div>
             </div>
           </SidebarFooter>
