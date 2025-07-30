@@ -63,7 +63,6 @@ export interface Return {
 
 export interface Expense {
   id: string;
-  name: string;
   amount: number;
   category: string;
   subcategory?: string;
@@ -91,6 +90,14 @@ export interface Settings {
   expenseCategories?: ExpenseCategory[];
 }
 
-export type UserRole = 'admin' | 'kasir';
+export interface StockOpnameLog {
+    id: string;
+    date: Date;
+    productId: string;
+    productName: string;
+    previousStock: number;
+    newStock: number;
+    notes: string;
+}
 
-    
+export type UserRole = 'admin' | 'kasir';

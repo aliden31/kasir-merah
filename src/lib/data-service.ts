@@ -15,7 +15,7 @@ import {
   setDoc,
   runTransaction,
 } from 'firebase/firestore';
-import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory } from './types';
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog } from './types';
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -201,10 +201,7 @@ export async function getExpenses(): Promise<Expense[]> {
 }
 
 export const addExpense = (expense: Omit<Expense, 'id'>) => {
-    const newExpense = {
-        ...expense,
-    }
-    return addDocument<Expense>('expenses', newExpense);
+    return addDocument<Expense>('expenses', expense);
 };
 
 // Return-specific functions
@@ -320,6 +317,27 @@ export const saveSettings = async (settings: Partial<Settings>): Promise<void> =
     await setDoc(docRef, settings, { merge: true });
 };
 
+
+// Stock Opname specific functions
+export const getStockOpnameLogs = () => getCollection<StockOpnameLog>('stockOpnameLogs');
+
+export const addStockOpnameLog = async (
+    product: Product,
+    newStock: number,
+    notes: string,
+): Promise<void> => {
+    const logData: Omit<StockOpnameLog, 'id'> = {
+        productId: product.id,
+        productName: product.name,
+        previousStock: product.stock,
+        newStock: newStock,
+        date: new Date(),
+        notes,
+    };
+    await addDocument<StockOpnameLog>('stockOpnameLogs', logData);
+};
+
+
 // Danger Zone functions
 type DataType = 'products' | 'sales' | 'returns' | 'expenses';
 
@@ -343,5 +361,3 @@ export const clearData = async (dataToClear: Record<DataType, boolean>): Promise
 
     await batch.commit();
 };
-
-    
