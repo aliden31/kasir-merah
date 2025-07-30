@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { FC } from 'react';
@@ -156,7 +157,7 @@ const ProdukPage: FC<ProdukPageProps> = ({ onDataChange }) => {
   const { toast } = useToast();
   const [sortOrder, setSortOrder] = useState('terlaris');
 
-  const fetchInitialData = async () => {
+    const fetchInitialData = async () => {
         setLoading(true);
         try {
             let [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
@@ -167,6 +168,34 @@ const ProdukPage: FC<ProdukPageProps> = ({ onDataChange }) => {
                 productsData = await getProducts();
                 toast({ title: "Inisialisasi berhasil", description: "Data produk sampel telah ditambahkan." });
                 onDataChange();
+            }
+
+            // Find and delete duplicates
+            const productMap = new Map<string, Product[]>();
+            productsData.forEach(p => {
+                const key = p.name.toLowerCase().trim();
+                if (!productMap.has(key)) {
+                    productMap.set(key, []);
+                }
+                productMap.get(key)!.push(p);
+            });
+
+            let duplicatesFound = false;
+            for (const [name, products] of productMap.entries()) {
+                if (products.length > 1) {
+                    duplicatesFound = true;
+                    // Keep the first one, delete the rest
+                    const productsToDelete = products.slice(1);
+                    for (const p of productsToDelete) {
+                        await deleteProduct(p.id);
+                    }
+                }
+            }
+
+            if (duplicatesFound) {
+                 toast({ title: "Produk Ganda Dihapus", description: "Beberapa produk ganda telah dihapus secara otomatis." });
+                 // Refetch after deleting
+                 productsData = await getProducts();
             }
             
             setProducts(productsData);
