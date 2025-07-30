@@ -1,4 +1,5 @@
 
+
 import { db } from './firebase';
 import {
   collection,
@@ -100,7 +101,7 @@ export const addPlaceholderProducts = async () => {
 
 
 // Sale-specific functions
-export async function getSales(): Promise<Sale[]> {
+export const getSales = async (): Promise<Sale[]> => {
     const salesData = await getCollection<any>('sales');
     return salesData.map(sale => ({
         ...sale,
@@ -112,46 +113,84 @@ export async function getSales(): Promise<Sale[]> {
     }));
 }
 
+export const getSaleById = (id: string) => getDocumentById<Sale>('sales', id);
+
 export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promise<Sale> => {
-    const itemsForFirestore = sale.items.map(item => {
-        // Ensure the full product data is embedded, not just a reference
-        const fullProduct: Product = {
-            id: item.product.id,
-            name: item.product.name,
-            costPrice: item.product.costPrice,
-            sellingPrice: item.product.sellingPrice,
-            stock: item.product.stock,
-            category: item.product.category,
-            subcategory: item.product.subcategory,
+    return runTransaction(db, async (transaction) => {
+        const saleDataForFirestore = {
+            ...sale,
+            items: sale.items.map(item => ({
+                product: item.product,
+                quantity: item.quantity,
+                price: item.price,
+                costPriceAtSale: item.product.costPrice,
+            })),
+            date: Timestamp.fromDate(sale.date)
         };
+        
+        // Remove displayId before saving
+        if ('displayId' in saleDataForFirestore) {
+            delete (saleDataForFirestore as Partial<Sale>).displayId;
+        }
 
-        const saleItem: SaleItem = {
-            product: fullProduct, // Store the entire product object snapshot
-            quantity: item.quantity,
-            price: item.price, // This is the selling price before discount
-            costPriceAtSale: item.product.costPrice, // Always record cost price for historical profit calculation
-        };
-        return saleItem;
+        const saleRef = doc(collection(db, "sales"));
+        transaction.set(saleRef, saleDataForFirestore);
+
+        for (const item of sale.items) {
+            const productRef = doc(db, "products", item.product.id);
+            const productDoc = await transaction.get(productRef);
+            if (!productDoc.exists()) {
+                throw new Error(`Product with ID ${item.product.id} not found.`);
+            }
+            const newStock = productDoc.data().stock - item.quantity;
+            transaction.update(productRef, { stock: newStock });
+        }
+        
+        return { ...sale, id: saleRef.id };
     });
+}
 
-    const saleDataForFirestore = {
-        ...sale,
-        items: itemsForFirestore,
-        date: Timestamp.fromDate(sale.date)
-    };
+export const updateSale = async (originalSale: Sale, updatedSale: Sale): Promise<void> => {
+    return runTransaction(db, async (transaction) => {
+        const saleRef = doc(db, "sales", originalSale.id);
 
-    const docRef = await addDoc(collection(db, "sales"), saleDataForFirestore);
+        // 1. Calculate stock differences
+        const stockChanges: Record<string, number> = {};
 
-    const batch = writeBatch(db);
-    sale.items.forEach(item => {
-        const productRef = doc(db, "products", item.product.id);
-        const newStock = item.product.stock - item.quantity;
-        batch.update(productRef, { stock: newStock });
+        // Original items
+        originalSale.items.forEach(item => {
+            stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) + item.quantity;
+        });
+
+        // Updated items
+        updatedSale.items.forEach(item => {
+            stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) - item.quantity;
+        });
+
+        // 2. Update product stocks
+        for (const productId in stockChanges) {
+            const change = stockChanges[productId];
+            if (change !== 0) {
+                const productRef = doc(db, "products", productId);
+                const productDoc = await transaction.get(productRef);
+                if (!productDoc.exists()) {
+                    // This could happen if a product was deleted after the sale
+                    console.warn(`Product with ID ${productId} not found during sale update. Stock not updated.`);
+                    continue;
+                }
+                const newStock = productDoc.data().stock + change;
+                transaction.update(productRef, { stock: newStock });
+            }
+        }
+        
+        // 3. Update the sale document
+        const { id, displayId, ...saleDataToUpdate } = updatedSale;
+        
+        transaction.update(saleRef, {
+            ...saleDataToUpdate,
+            date: Timestamp.fromDate(updatedSale.date)
+        });
     });
-    await batch.commit();
-    
-    const newSale = await getDocumentById<Sale>("sales", docRef.id);
-    return newSale!;
 }
 
 
@@ -161,10 +200,9 @@ export async function getExpenses(): Promise<Expense[]> {
     return expenses.map(e => ({...e, date: new Date(e.date) }));
 }
 
-export const addExpense = (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
+export const addExpense = (expense: Omit<Expense, 'id'>) => {
     const newExpense = {
         ...expense,
-        date: expense.date || new Date(),
     }
     return addDocument<Expense>('expenses', newExpense);
 };

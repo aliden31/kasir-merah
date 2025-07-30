@@ -36,6 +36,7 @@ export interface SaleItem {
 
 export interface Sale {
   id: string;
+  displayId?: number; // Optional display-only ID
   items: SaleItem[];
   subtotal: number;
   discount: number; // percentage
@@ -62,6 +63,7 @@ export interface Return {
 
 export interface Expense {
   id: string;
+  name: string;
   amount: number;
   category: string;
   subcategory?: string;
@@ -90,3 +92,5 @@ export interface Settings {
 }
 
 export type UserRole = 'admin' | 'kasir';
+
+    
