@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { FC } from 'react';
@@ -64,7 +63,7 @@ const StokOpnamePage: FC<StokOpnamePageProps> = React.memo(({ onDataChange, user
 
     useEffect(() => {
         fetchInitialData();
-    }, [toast]);
+    }, []);
 
     const handleStockChange = (productId: string, value: string) => {
         setPhysicalStock(prev => ({ ...prev, [productId]: value }));
@@ -345,3 +344,5 @@ const StokOpnamePage: FC<StokOpnamePageProps> = React.memo(({ onDataChange, user
 
 StokOpnamePage.displayName = 'StokOpnamePage';
 export default StokOpnamePage;
+
+    

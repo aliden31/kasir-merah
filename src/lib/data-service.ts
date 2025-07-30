@@ -180,8 +180,10 @@ export const addSale = async (sale: Omit<Sale, 'id'>, user: UserRole): Promise<S
             }
         }
 
+        // Create a clean object for Firestore without displayId
+        const { displayId, ...saleForDb } = sale;
         const saleDataForFirestore = {
-            ...sale,
+            ...saleForDb,
             items: sale.items.map(item => ({
                 product: {
                     id: item.product.id,
@@ -196,9 +198,6 @@ export const addSale = async (sale: Omit<Sale, 'id'>, user: UserRole): Promise<S
             date: Timestamp.fromDate(sale.date)
         };
         
-        if ('displayId' in saleDataForFirestore) {
-            delete (saleDataForFirestore as Partial<Sale>).displayId;
-        }
 
         const saleRef = doc(collection(db, "sales"));
         newSaleId = saleRef.id;
