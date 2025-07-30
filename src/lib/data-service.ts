@@ -14,14 +14,25 @@ import {
   setDoc,
   runTransaction,
 } from 'firebase/firestore';
-import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem } from './types';
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category } from './types';
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
 async function getCollection<T>(collectionName: string): Promise<T[]> {
   const q = query(collection(db, collectionName));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
+  const results: T[] = [];
+    querySnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        // Convert Firestore Timestamps to JS Dates
+        Object.keys(data).forEach(key => {
+            if (data[key] instanceof Timestamp) {
+                data[key] = (data[key] as Timestamp).toDate();
+            }
+        });
+        results.push({ id: doc.id, ...data } as T);
+    });
+    return results;
 }
 
 async function getDocumentById<T>(collectionName: string, id: string): Promise<T | undefined> {
@@ -50,7 +61,8 @@ async function addDocument<T>(collectionName: string, data: Omit<T, 'id'>): Prom
     });
 
   const docRef = await addDoc(collection(db, collectionName), dataWithTimestamp);
-  return { id: docRef.id, ...data } as T;
+  const newDoc = await getDocumentById<T>(collectionName, docRef.id);
+  return newDoc!;
 }
 
 async function updateDocument<T>(collectionName: string, id: string, data: Partial<T>): Promise<void> {
@@ -89,10 +101,9 @@ export async function getSales(): Promise<Sale[]> {
     const salesData = await getCollection<any>('sales');
     return salesData.map(sale => ({
         ...sale,
-        date: (sale.date as Timestamp).toDate(),
+        date: sale.date,
         items: sale.items.map((item: any) => ({
              ...item,
-             // Ensure product is a proper object, not a reference
              product: item.product || { id: 'unknown', name: 'Produk Dihapus', costPrice: 0, sellingPrice: 0, stock: 0, category: 'Lainnya' }
         }))
     }));
@@ -108,9 +119,10 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
             sellingPrice: item.product.sellingPrice,
             stock: item.product.stock,
             category: item.product.category,
+            subcategory: item.product.subcategory,
         };
 
-        const saleItem: Omit<SaleItem, 'product'> & { product: Product } = {
+        const saleItem: SaleItem = {
             product: fullProduct, // Store the entire product object snapshot
             quantity: item.quantity,
             price: item.price, // This is the selling price before discount
@@ -135,24 +147,14 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
     });
     await batch.commit();
     
-    // Construct the full Sale object to return
-    const newSale: Sale = { 
-        id: docRef.id, 
-        ...sale,
-        // The items in the returned object should match what was saved
-        items: itemsForFirestore as SaleItem[] 
-    };
-    return newSale;
+    const newSale = await getDocumentById<Sale>("sales", docRef.id);
+    return newSale!;
 }
 
 
 // Expense-specific functions
 export async function getExpenses(): Promise<Expense[]> {
-    const expensesData = await getCollection<any>('expenses');
-    return expensesData.map(expense => ({
-        ...expense,
-        date: (expense.date as Timestamp).toDate(),
-    }));
+    return getCollection<Expense>('expenses');
 }
 
 export const addExpense = (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
@@ -165,11 +167,7 @@ export const addExpense = (expense: Omit<Expense, 'id' | 'date'> & { date?: Date
 
 // Return-specific functions
 export async function getReturns(): Promise<Return[]> {
-    const returnsData = await getCollection<any>('returns');
-    return returnsData.map(r => ({
-        ...r,
-        date: (r.date as Timestamp).toDate(),
-    }));
+    return getCollection<Return>('returns');
 }
 
 export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return> => {
@@ -186,7 +184,6 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
                     const newStock = currentStock + item.quantity;
                     transaction.update(productRef, { stock: newStock });
                 } else {
-                    // This case should ideally not happen if products are not hard-deleted
                     console.warn(`Product with ID ${item.productId} not found during return. Stock not updated.`);
                 }
             }
@@ -198,8 +195,8 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
             });
         });
 
-        const newReturnWithId: Return = { ...returnData, id: newReturnRef.id };
-        return newReturnWithId;
+        const newReturn = await getDocumentById<Return>(newReturnRef.path, newReturnRef.id);
+        return newReturn!;
 
     } catch (e) {
         console.error("Return transaction failed: ", e);
@@ -234,14 +231,27 @@ export const saveFlashSaleSettings = async (settings: FlashSale): Promise<void> 
 export const getSettings = async (): Promise<Settings> => {
     const docRef = doc(db, 'settings', 'main');
     const docSnap = await getDoc(docRef);
-    const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0, syncCostPrice: true, theme: 'default' };
+    const defaultSettings: Settings = { 
+        storeName: 'Toko Cepat', 
+        defaultDiscount: 0, 
+        syncCostPrice: true, 
+        theme: 'default',
+        categories: [
+            { id: 'cat-1', name: 'Eceran', subcategories: [] },
+            { id: 'cat-2', name: 'Glaswool', subcategories: ['Kuning', 'Putih'] },
+            { id: 'cat-3', name: 'Lainnya', subcategories: [] },
+            { id: 'cat-4', name: 'Putih', subcategories: [] },
+            { id: 'cat-5', name: 'Rambut Nenek', subcategories: [] },
+            { id: 'cat-6', name: 'Kuning', subcategories: [] },
+        ]
+    };
 
     if (docSnap.exists()) {
-        // Merge with defaults to ensure new settings are present
-        return { ...defaultSettings, ...docSnap.data() } as Settings;
+        const data = docSnap.data();
+        // Merge with defaults to ensure new settings are present, especially categories
+        return { ...defaultSettings, ...data } as Settings;
     } else {
-        // Return default settings if not found
-        // Optionally, create the default settings document in Firestore
+        // Create the default settings document in Firestore if it doesn't exist
         await setDoc(docRef, defaultSettings);
         return defaultSettings;
     }

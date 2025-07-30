@@ -1,4 +1,10 @@
 
+export interface Category {
+  id: string;
+  name: string;
+  subcategories: string[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -6,6 +12,7 @@ export interface Product {
   sellingPrice: number;
   stock: number;
   category: string;
+  subcategory?: string;
 }
 
 export interface SaleItem {
@@ -29,7 +36,7 @@ export interface ReturnItem {
   productName: string;
   quantity: number;
   priceAtSale: number; // Selling price at the time of sale, before discount
-  costPriceAtSale: number; // Cost price at the time of sale for accurate profit adjustment
+  costPriceAtSale: number;
 }
 
 export interface Return {
@@ -66,8 +73,7 @@ export interface Settings {
   defaultDiscount: number;
   syncCostPrice: boolean;
   theme: 'default' | 'colorful';
+  categories?: Category[];
 }
 
 export type UserRole = 'admin' | 'kasir';
-
-    

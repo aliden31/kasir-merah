@@ -38,7 +38,7 @@ import PengeluaranPage from '@/components/pages/pengeluaran';
 import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
-import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale } from '@/lib/types';
+import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category } from '@/lib/types';
 import { getSettings, getFlashSaleSettings } from '@/lib/data-service';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -55,7 +55,13 @@ type View =
   | 'flash-sale'
   | 'pengaturan';
 
-const defaultSettings: AppSettings = { storeName: 'Memuat...', defaultDiscount: 0, syncCostPrice: true, theme: 'default' };
+const defaultSettings: AppSettings = { 
+  storeName: 'Memuat...', 
+  defaultDiscount: 0, 
+  syncCostPrice: true, 
+  theme: 'default',
+  categories: [],
+};
 const defaultFlashSale: FlashSale = { id: 'main', title: '', isActive: false, products: [] };
 
 export default function Home() {
@@ -71,10 +77,14 @@ export default function Home() {
     setFlashSale(flashSaleSettings);
   };
 
+  const refreshSettings = async () => {
+    const appSettings = await getSettings();
+    setSettings(appSettings);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
-      const appSettings = await getSettings();
-      setSettings(appSettings);
+      await refreshSettings();
       await refreshFlashSale();
     };
     fetchData();
@@ -93,7 +103,7 @@ export default function Home() {
           item.product.id === product.id ? { ...item, quantity: item.quantity + 1, price: price } : item
         );
       }
-      return [...prevCart, { product, quantity: 1, price: price }];
+      return [...prevCart, { product, quantity: 1, price: price, costPriceAtSale: product.costPrice }];
     });
   };
 
@@ -164,7 +174,7 @@ export default function Home() {
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshFlashSale} />;
       case 'pengaturan':
-        return <PengaturanPage settings={settings} onSettingsChange={setSettings} />;
+        return <PengaturanPage settings={settings} onSettingsChange={refreshSettings} />;
       default:
         return <KasirPage 
           cart={cart}
@@ -239,5 +249,3 @@ export default function Home() {
     </SidebarProvider>
   );
 }
-
-    

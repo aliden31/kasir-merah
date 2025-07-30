@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Product, Sale } from '@/lib/types';
+import type { Product, Sale, Settings } from '@/lib/types';
 import { PlusCircle, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -38,16 +38,22 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts, getProductById, getSales } from '@/lib/data-service';
+import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts, getProductById, getSales, getSettings } from '@/lib/data-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
+const ProductForm = ({ product, onSave, onOpenChange, settings }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => void, onOpenChange: (open: boolean) => void, settings: Settings }) => {
     const [name, setName] = useState(product?.name || '');
     const [costPrice, setCostPrice] = useState(product?.costPrice || 0);
     const [sellingPrice, setSellingPrice] = useState(product?.sellingPrice || 0);
     const [stock, setStock] = useState(product?.stock || 0);
     const [category, setCategory] = useState(product?.category || '');
+    const [subcategory, setSubcategory] = useState(product?.subcategory || '');
     const [isSaving, setIsSaving] = useState(false);
+
+    const availableSubcategories = useMemo(() => {
+        const selectedCategory = settings.categories?.find(c => c.name === category);
+        return selectedCategory?.subcategories || [];
+    }, [category, settings.categories]);
 
     useEffect(() => {
         if (product) {
@@ -56,6 +62,7 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
             setSellingPrice(product.sellingPrice);
             setStock(product.stock);
             setCategory(product.category);
+            setSubcategory(product.subcategory || '');
         } else {
             // Reset form when there's no product (for 'Add New')
             setName('');
@@ -63,10 +70,22 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
             setSellingPrice(0);
             setStock(0);
             setCategory('');
+            setSubcategory('');
         }
     }, [product]);
+    
+    useEffect(() => {
+        // Reset subcategory if it's not in the new list of available subcategories
+        if (!availableSubcategories.includes(subcategory)) {
+            setSubcategory('');
+        }
+    }, [availableSubcategories, subcategory]);
 
     const handleSubmit = async () => {
+        if (!name || !category) {
+            toast({ title: "Error", description: "Nama produk dan kategori wajib diisi.", variant: "destructive"});
+            return;
+        }
         setIsSaving(true);
         const productData = {
             name,
@@ -74,6 +93,7 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
             sellingPrice,
             stock,
             category,
+            subcategory,
         };
 
         try {
@@ -88,6 +108,8 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
         }
     };
     
+    const { toast } = useToast();
+
     return (
         <DialogContent className="sm:max-w-[480px]">
             <DialogHeader>
@@ -100,8 +122,32 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
                 </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="category" className="text-right">Kategori</Label>
-                    <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="col-span-3" />
+                    <Select value={category} onValueChange={setCategory}>
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Pilih Kategori" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {settings.categories?.map(c => (
+                                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
+                {availableSubcategories.length > 0 && (
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="subcategory" className="text-right">Sub-Kategori</Label>
+                        <Select value={subcategory} onValueChange={setSubcategory}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Pilih Sub-Kategori" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableSubcategories.map(s => (
+                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="costPrice" className="text-right">Harga Modal</Label>
                     <Input id="costPrice" type="number" value={costPrice} onChange={(e) => setCostPrice(Number(e.target.value))} className="col-span-3" />
@@ -130,6 +176,7 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
 const ProdukPage: FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
@@ -137,9 +184,9 @@ const ProdukPage: FC = () => {
   const [sortOrder, setSortOrder] = useState('terlaris');
 
   useEffect(() => {
-    const fetchProductsAndSales = async () => {
+    const fetchInitialData = async () => {
         try {
-            let [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
+            let [productsData, salesData, settingsData] = await Promise.all([getProducts(), getSales(), getSettings()]);
 
             if (productsData.length === 0) {
                 toast({ title: "Database produk kosong", description: "Menginisialisasi dengan data sampel..." });
@@ -160,14 +207,15 @@ const ProdukPage: FC = () => {
 
             setProducts(uniqueProducts);
             setSales(salesData);
+            setSettings(settingsData);
         } catch (error) {
-            toast({ title: "Error", description: "Gagal memuat data produk.", variant: "destructive" });
+            toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
             console.error(error);
         } finally {
             setLoading(false);
         }
     }
-    fetchProductsAndSales();
+    fetchInitialData();
   }, [toast]);
   
   const sortedProducts = useMemo(() => {
@@ -204,7 +252,7 @@ const ProdukPage: FC = () => {
     try {
         if ('id' in productData) {
             await updateProduct(productData.id, productData);
-            setProducts(prev => prev.map(p => p.id === productData.id ? {...p, ...productData} : p));
+            setProducts(prev => prev.map(p => p.id === productData.id ? {...p, ...productData} as Product : p));
             toast({ title: "Produk diperbarui", description: `${productData.name} telah berhasil diperbarui.` });
         } else {
             const newProduct = await addProduct(productData);
@@ -251,14 +299,14 @@ const ProdukPage: FC = () => {
       setFormOpen(true);
   }
 
-  if (loading) {
+  if (loading || !settings) {
     return <div>Memuat data produk...</div>
   }
 
   return (
     <div className="space-y-6">
        <Dialog open={isFormOpen} onOpenChange={(isOpen) => { setFormOpen(isOpen); if (!isOpen) setEditingProduct(undefined); }}>
-            <ProductForm product={editingProduct} onSave={handleSaveProduct} onOpenChange={setFormOpen} />
+            <ProductForm product={editingProduct} onSave={handleSaveProduct} onOpenChange={setFormOpen} settings={settings} />
        </Dialog>
 
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
@@ -316,7 +364,10 @@ const ProdukPage: FC = () => {
                         >
                             {product.name}
                         </TableCell>
-                        <TableCell>{product.category}</TableCell>
+                        <TableCell>
+                            {product.category}
+                            {product.subcategory && <span className="text-muted-foreground text-xs"> / {product.subcategory}</span>}
+                        </TableCell>
                         <TableCell className="text-right">{formatCurrency(product.costPrice)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(product.sellingPrice)}</TableCell>
                         <TableCell className="text-right">{product.stock}</TableCell>
@@ -370,5 +421,3 @@ const ProdukPage: FC = () => {
 };
 
 export default ProdukPage;
-
-    
