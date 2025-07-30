@@ -41,6 +41,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts, getProductById, getSales, getSettings } from '@/lib/data-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+interface ProdukPageProps {
+    onDataChange: () => void;
+}
+
 const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState(product?.name || '');
     const [costPrice, setCostPrice] = useState(product?.costPrice ?? '');
@@ -143,7 +147,7 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
     );
 }
 
-const ProdukPage: FC = () => {
+const ProdukPage: FC<ProdukPageProps> = ({ onDataChange }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,6 +166,7 @@ const ProdukPage: FC = () => {
                 await addPlaceholderProducts();
                 productsData = await getProducts();
                 toast({ title: "Inisialisasi berhasil", description: "Data produk sampel telah ditambahkan." });
+                onDataChange();
             }
             
             setProducts(productsData);
@@ -205,21 +210,20 @@ const ProdukPage: FC = () => {
   }, [products, sales, sortOrder]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
   };
   
   const handleSaveProduct = async (productData: Product | Omit<Product, 'id'>) => {
     try {
         if ('id' in productData) {
             await updateProduct(productData.id, productData as Product);
-            setProducts(prev => prev.map(p => p.id === productData.id ? {...p, ...productData} as Product : p));
             toast({ title: "Produk diperbarui", description: `${productData.name} telah berhasil diperbarui.` });
         } else {
             const newProduct = await addProduct(productData);
-            setProducts(prev => [...prev, newProduct]);
             toast({ title: "Produk ditambahkan", description: `${newProduct.name} telah berhasil ditambahkan.` });
         }
-        await fetchInitialData(); // Refresh data
+        await fetchInitialData();
+        onDataChange();
     } catch (error) {
         toast({ title: "Error", description: "Gagal menyimpan produk.", variant: "destructive" });
         console.error(error);
@@ -234,6 +238,7 @@ const ProdukPage: FC = () => {
             title: "Produk Dihapus",
             description: "Produk telah berhasil dihapus dari daftar.",
         });
+        onDataChange();
     } catch (error) {
         toast({ title: "Error", description: "Gagal menghapus produk.", variant: "destructive" });
         console.error(error);

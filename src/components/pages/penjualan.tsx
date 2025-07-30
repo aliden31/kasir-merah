@@ -224,7 +224,12 @@ const SalesChart = ({ sales, products }: { sales: Sale[], products: Product[] })
     );
 };
 
-const PenjualanPage: FC = () => {
+interface PenjualanPageProps {
+    onDataChange: () => void;
+}
+
+
+const PenjualanPage: FC<PenjualanPageProps> = ({ onDataChange }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
@@ -232,6 +237,7 @@ const PenjualanPage: FC = () => {
     const { toast } = useToast();
 
     const fetchSalesData = async () => {
+        setLoading(true);
         try {
             const [salesData, productsData] = await Promise.all([getSales(), getProducts()]);
             const salesWithDisplayId = salesData
@@ -267,7 +273,8 @@ const PenjualanPage: FC = () => {
     };
     
     const handleSave = () => {
-        fetchSalesData(); // Refresh all sales data
+        fetchSalesData();
+        onDataChange();
     };
 
     if (loading) {

@@ -42,7 +42,7 @@ import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category } from '@/lib/types';
-import { getSettings, getFlashSaleSettings } from '@/lib/data-service';
+import { getSettings, getFlashSaleSettings, getProducts } from '@/lib/data-service';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
@@ -74,35 +74,41 @@ export default function Home() {
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [flashSale, setFlashSale] = useState<FlashSale>(defaultFlashSale);
+  const [products, setProducts] = useState<Product[]>([]);
   const [userRole, setUserRole] = useState<UserRole>('admin');
-  const [kasirDataVersion, setKasirDataVersion] = useState(0);
+  const [dataVersion, setDataVersion] = useState(0);
   const { toast } = useToast();
 
-  const refreshFlashSale = async () => {
-    const flashSaleSettings = await getFlashSaleSettings();
-    setFlashSale(flashSaleSettings);
+  const refreshAllData = async () => {
+    try {
+      const [appSettings, flashSaleSettings, productsData] = await Promise.all([
+        getSettings(),
+        getFlashSaleSettings(),
+        getProducts(),
+      ]);
+      setSettings(appSettings);
+      setFlashSale(flashSaleSettings);
+      setProducts(productsData);
+    } catch (error) {
+      toast({
+        title: "Gagal memuat data",
+        description: "Terjadi kesalahan saat memuat data aplikasi.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const refreshSettings = async () => {
-    const appSettings = await getSettings();
-    setSettings(appSettings);
-  };
-  
   const refreshKasirData = () => {
-    setKasirDataVersion(prev => prev + 1);
+    setDataVersion(prev => prev + 1);
   };
-  
-  const handleFlashSaleSave = async () => {
-    await refreshFlashSale();
+
+  const handleSettingsSave = async () => {
+    await refreshAllData();
     refreshKasirData();
   }
 
   useEffect(() => {
-    const fetchData = async () => {
-      await refreshSettings();
-      await refreshFlashSale();
-    };
-    fetchData();
+    refreshAllData();
   }, []);
   
   useEffect(() => {
@@ -145,27 +151,28 @@ export default function Home() {
         return <DashboardPage onNavigate={setActiveView} />;
       case 'kasir':
         return <KasirPage 
-          key={kasirDataVersion} // Re-mount component when data needs refresh
+          key={dataVersion} // Re-mount component when data needs refresh
           settings={settings}
           flashSale={flashSale}
-          onDataNeedsRefresh={refreshKasirData}
+          products={products}
+          onDataNeedsRefresh={handleSettingsSave}
         />;
       case 'produk':
-        return <ProdukPage />;
+        return <ProdukPage onDataChange={handleSettingsSave} />;
       case 'stok-opname':
-        return <StokOpnamePage />;
+        return <StokOpnamePage onDataChange={handleSettingsSave} />;
       case 'penjualan':
-        return <PenjualanPage />;
+        return <PenjualanPage onDataChange={handleSettingsSave} />;
       case 'retur':
-        return <ReturPage />;
+        return <ReturPage onDataChange={handleSettingsSave} />;
       case 'pengeluaran':
         return <PengeluaranPage />;
       case 'laporan':
         return <LaporanPage onNavigate={setActiveView} />;
       case 'flash-sale':
-        return <FlashSalePage onSettingsSave={handleFlashSaleSave} />;
+        return <FlashSalePage onSettingsSave={handleSettingsSave} />;
       case 'pengaturan':
-        return <PengaturanPage settings={settings} onSettingsChange={refreshSettings} />;
+        return <PengaturanPage settings={settings} onSettingsChange={handleSettingsSave} />;
       default:
         return <DashboardPage onNavigate={setActiveView} />;
     }

@@ -28,9 +28,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '../ui/skeleton';
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
 // ReturnForm Component (copied from retur.tsx)
@@ -319,11 +320,12 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
 interface KasirPageProps {
   settings: Settings;
   flashSale: FlashSale;
+  products: Product[];
   onDataNeedsRefresh: () => void;
 }
 
-const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, onDataNeedsRefresh }) => {
-  const [products, setProducts] = useState<Product[]>([]);
+const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products: initialProducts, onDataNeedsRefresh }) => {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [sales, setSales] = useState<Sale[]>([]);
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -341,16 +343,19 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, onDataNeedsRefresh
   const fetchData = async () => {
     setLoading(true);
     try {
-        const [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
-        setProducts(productsData);
+        const salesData = await getSales();
         setSales(salesData);
     } catch (error) {
-        toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
+        toast({ title: "Error", description: "Gagal memuat data penjualan.", variant: "destructive" });
     } finally {
         setLoading(false);
     }
   };
 
+  useEffect(() => {
+    setProducts(initialProducts);
+  }, [initialProducts]);
+  
   useEffect(() => {
     setDiscount(settings.defaultDiscount);
   }, [settings.defaultDiscount]);
@@ -419,7 +424,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, onDataNeedsRefresh
         );
       }
       return [...prevCart, { 
-          product: { id: product.id, name: product.name, category: product.category, subcategory: product.subcategory }, 
+          product: { id: product.id, name: product.name, category: product.category, subcategory: product.subcategory, costPrice: product.costPrice }, 
           quantity: 1, 
           price: price, 
           costPriceAtSale: product.costPrice 
@@ -473,8 +478,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, onDataNeedsRefresh
         });
         clearCart();
         setDiscount(settings.defaultDiscount);
-        // re-fetch products to update stock and sales for sorting
-        await fetchData();
+        onDataNeedsRefresh();
     } catch (error) {
         toast({ title: "Error", description: "Gagal menyimpan transaksi.", variant: "destructive" });
         console.error(error);
@@ -485,8 +489,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, onDataNeedsRefresh
     try {
         await addReturn(itemData);
         toast({ title: "Retur Disimpan", description: "Data retur baru telah berhasil disimpan." });
-        // Refetch products to show updated stock
-        await fetchData();
+        onDataNeedsRefresh();
     } catch(error) {
         const errorMessage = error instanceof Error ? error.message : "Gagal menyimpan data retur.";
         toast({ title: "Error", description: errorMessage, variant: "destructive" });
@@ -703,7 +706,50 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, onDataNeedsRefresh
   );
 
   if (loading) {
-    return <div>Memuat...</div>
+    return (
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full lg:h-[calc(100vh-5rem)]">
+        <Card className="h-full flex flex-col shadow-none border-0 lg:col-span-2">
+            <CardHeader>
+                <Skeleton className="h-8 w-48" />
+                <div className="flex gap-2 mt-2">
+                    <Skeleton className="h-10 flex-grow" />
+                    <Skeleton className="h-10 w-48" />
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                    {Array.from({ length: 12 }).map((_, i) => (
+                        <Skeleton key={i} className="h-24" />
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+        <Card className="h-full flex flex-col shadow-none border-0 lg:col-span-1">
+            <CardHeader>
+                <div className="flex justify-between items-center mb-2">
+                     <Skeleton className="h-8 w-32" />
+                     <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+                <div className="flex gap-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+            </CardHeader>
+            <CardContent className="flex-grow flex items-center justify-center">
+                <div className="text-center text-muted-foreground py-10 flex flex-col items-center justify-center h-full">
+                    <ShoppingCart className="h-10 w-10 mb-4 text-muted-foreground/50"/>
+                    <p>Keranjang masih kosong.</p>
+                    <p className="text-xs">Pilih produk untuk memulai transaksi.</p>
+                </div>
+            </CardContent>
+             <Separator />
+             <CardFooter className="flex-col !p-4 space-y-2">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-10 w-full" />
+             </CardFooter>
+        </Card>
+       </div>
+    );
   }
 
   return (

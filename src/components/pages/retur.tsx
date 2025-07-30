@@ -34,7 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
 
@@ -219,7 +219,11 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
     )
 }
 
-const ReturPage: FC = () => {
+interface ReturPageProps {
+    onDataChange: () => void;
+}
+
+const ReturPage: FC<ReturPageProps> = ({ onDataChange }) => {
   const [returns, setReturns] = useState<Return[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -256,9 +260,7 @@ const ReturPage: FC = () => {
             title: "Retur Disimpan",
             description: "Data retur baru telah berhasil disimpan.",
         });
-        // Refetch sales data to ensure consistency, though stock is updated via transaction
-        const salesData = await getSales();
-        setSales(salesData);
+        onDataChange();
     } catch(error) {
         const errorMessage = error instanceof Error ? error.message : "Gagal menyimpan data retur.";
         toast({ title: "Error", description: errorMessage, variant: "destructive" });

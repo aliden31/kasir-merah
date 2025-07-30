@@ -33,6 +33,7 @@ export interface SaleItem {
     name: string;
     category: string;
     subcategory?: string;
+    costPrice: number;
   };
   quantity: number;
   price: number; // This is the selling price before discount

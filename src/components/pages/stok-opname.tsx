@@ -33,8 +33,11 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
+interface StokOpnamePageProps {
+    onDataChange: () => void;
+}
 
-const StokOpnamePage: FC = () => {
+const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange }) => {
     const [products, setProducts] = useState<Product[]>([]);
     const [logs, setLogs] = useState<StockOpnameLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -85,10 +88,9 @@ const StokOpnamePage: FC = () => {
 
             toast({ title: "Stok Diperbarui", description: `Stok untuk ${product.name} telah disesuaikan.` });
             
-            // Refetch all data to ensure consistency
             await fetchInitialData();
+            onDataChange();
             
-            // Clear input field for the updated product
             setPhysicalStock(prev => {
                 const updated = { ...prev };
                 delete updated[product.id];
@@ -135,6 +137,7 @@ const StokOpnamePage: FC = () => {
             await batchUpdateStockToZero(productsToUpdate);
             toast({ title: "Sukses", description: `${productsToUpdate.length} produk berhasil diatur stoknya menjadi 0.`});
             await fetchInitialData();
+            onDataChange();
             setSelectedProducts({});
         } catch (error) {
             toast({ title: "Error", description: "Gagal memperbarui stok secara massal.", variant: "destructive" });
