@@ -123,11 +123,12 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
     const productDocs = await Promise.all(productRefs.map(ref => getDoc(ref)));
 
     const productsData: Record<string, Product> = {};
-    for (const doc of productDocs) {
-        if (doc.exists()) {
-            productsData[doc.id] = { id: doc.id, ...doc.data() } as Product;
+    for (const docSnap of productDocs) {
+        if (docSnap.exists()) {
+            productsData[docSnap.id] = { id: docSnap.id, ...docSnap.data() } as Product;
         } else {
-            throw new Error(`Product with ID ${doc.id} not found.`);
+            // This check ensures we don't proceed with a sale for a non-existent product.
+            throw new Error(`Product with ID ${docSnap.id} not found.`);
         }
     }
 
@@ -155,9 +156,7 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
         for (const item of sale.items) {
             const productRef = doc(db, "products", item.product.id);
             const productData = productsData[item.product.id];
-            if (!productData) {
-                 throw new Error(`Product with ID ${item.product.id} not found during transaction.`);
-            }
+            // No need to check for existence here again as we did it before the transaction
             const newStock = productData.stock - item.quantity;
             transaction.update(productRef, { stock: newStock });
         }
@@ -200,20 +199,22 @@ export const updateSale = async (originalSale: Sale, updatedSale: Sale): Promise
         // Update product stocks
         for (const productId in stockChanges) {
             const change = stockChanges[productId];
-            if (change !== 0) {
-                const productRef = doc(db, "products", productId);
-                const productData = existingProducts[productId];
+            if (change === 0) continue; // No change, no need to update
 
-                if (!productData) {
-                    console.warn(`Product with ID ${productId} not found during sale update. Stock not updated.`);
-                    continue;
-                }
-                const newStock = productData.stock + change;
-                transaction.update(productRef, { stock: newStock });
+            const productData = existingProducts[productId];
+            // If product doesn't exist, we can't update its stock. Log a warning and continue.
+            // This prevents the transaction from failing if a product was deleted.
+            if (!productData) {
+                console.warn(`Product with ID ${productId} not found during sale update. Stock not updated.`);
+                continue;
             }
+
+            const productRef = doc(db, "products", productId);
+            const newStock = productData.stock + change;
+            transaction.update(productRef, { stock: newStock });
         }
         
-        // Update the sale document
+        // Update the sale document itself
         const { id, displayId, ...saleDataToUpdate } = updatedSale;
         
         transaction.update(saleRef, {
@@ -231,7 +232,11 @@ export async function getExpenses(): Promise<Expense[]> {
 }
 
 export const addExpense = (expense: Omit<Expense, 'id'>) => {
-    return addDocument<Expense>('expenses', expense);
+    const newExpense = {
+        ...expense,
+        name: `${expense.category}${expense.subcategory ? ` - ${expense.subcategory}` : ''}`
+    }
+    return addDocument<Expense>('expenses', newExpense);
 };
 
 // Return-specific functions
@@ -368,27 +373,25 @@ export const addStockOpnameLog = async (
 };
 
 export const batchUpdateStockToZero = async (products: Product[]): Promise<void> => {
-    const batch = writeBatch(db);
-
+  return runTransaction(db, async (transaction) => {
     for (const product of products) {
-        // Update product stock
-        const productRef = doc(db, "products", product.id);
-        batch.update(productRef, { stock: 0 });
+      // Update product stock
+      const productRef = doc(db, "products", product.id);
+      transaction.update(productRef, { stock: 0 });
 
-        // Create log entry
-        const logData: Omit<StockOpnameLog, 'id'> = {
-            productId: product.id,
-            productName: product.name,
-            previousStock: product.stock,
-            newStock: 0,
-            date: new Date(),
-            notes: "Diatur ke 0 secara massal",
-        };
-        const logRef = doc(collection(db, 'stockOpnameLogs'));
-        batch.set(logRef, { ...logData, date: Timestamp.fromDate(logData.date) });
+      // Create log entry
+      const logData: Omit<StockOpnameLog, 'id'> = {
+        productId: product.id,
+        productName: product.name,
+        previousStock: product.stock,
+        newStock: 0,
+        date: new Date(),
+        notes: "Diatur ke 0 secara massal",
+      };
+      const logRef = doc(collection(db, 'stockOpnameLogs'));
+      transaction.set(logRef, { ...logData, date: Timestamp.fromDate(logData.date) });
     }
-    
-    await batch.commit();
+  });
 }
 
 
@@ -415,6 +418,3 @@ export const clearData = async (dataToClear: Record<DataType, boolean>): Promise
 
     await batch.commit();
 };
-
-
-    
