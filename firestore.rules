@@ -1,68 +1,19 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to get user's role from the 'users' collection
-    function getUserRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.role;
-    }
-
-    // Helper function to check if a user has a specific role
-    function isUserRole(role) {
-      let userRole = getUserRole(request.auth.uid);
-      return request.auth != null && userRole == role;
-    }
-    
-    // Users collection: only admins can manage users, but users can see their own data
-    match /users/{userId} {
-      allow read: if request.auth.uid == userId || isUserRole('admin');
-      allow write: if isUserRole('admin');
-    }
-
-    // Products: Admins can manage, anyone authenticated can read
-    match /products/{productId} {
-      allow read: if request.auth != null;
-      allow write: if isUserRole('admin');
-    }
-
-    // Sales: Admin can read/update, Kasir can only create
-    match /sales/{saleId} {
-      allow read, update: if isUserRole('admin');
-      allow create: if isUserRole('admin') || isUserRole('kasir');
-      // Delete is disallowed to maintain history
-      allow delete: if false;
-    }
-
-    // Returns: Admin can read, Kasir can only create
-    match /returns/{returnId} {
-      allow read: if isUserRole('admin');
-      allow create: if isUserRole('admin') || isUserRole('kasir');
-      allow update, delete: if false; // Returns should be immutable
-    }
-
-    // Expenses: Admin can read, Kasir can only create
-    match /expenses/{expenseId} {
-        allow read: if isUserRole('admin');
-        allow create: if isUserRole('admin') || isUserRole('kasir');
-        allow update, delete: if false; // Expenses should be immutable
-    }
-
-    // Settings: Only admins can read/write
-    match /settings/{settingId} {
-        allow read, write: if isUserRole('admin');
-    }
-
-    // Stock Opname Logs: Only admins can read/write
-    match /stockOpnameLogs/{logId} {
-        allow read, write: if isUserRole('admin');
-    }
-    
-    // Activity Logs: Admins can read/delete, any authenticated user can create them
-    match /activityLogs/{logId} {
-        allow read, delete: if isUserRole('admin');
-        allow create: if request.auth != null;
+    // This rule allows anyone with your Firestore database reference to view, edit,
+    // and delete all data in your Firestore database. It is useful for getting
+    // started, but it is configured to expire after 30 days because it
+    // leaves your app open to attackers. At that time, all client
+    // requests to your Firestore database will be denied.
+    //
+    // Make sure to write security rules for your app before that time, or else
+    // all client requests to your Firestore database will be denied until you Update
+    // your rules
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2025, 8, 29);
     }
   }
 }
