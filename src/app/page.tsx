@@ -143,7 +143,7 @@ export default function Home() {
       case 'pengeluaran':
         return <PengeluaranPage />;
       case 'laporan':
-        return <LaporanPage />;
+        return <LaporanPage onNavigate={setActiveView} />;
       case 'flash-sale':
         return <FlashSalePage />;
       case 'pengaturan':
@@ -221,4 +221,3 @@ export default function Home() {
     </SidebarProvider>
   );
 }
-

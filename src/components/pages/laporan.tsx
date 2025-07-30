@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { FC } from 'react';
@@ -10,15 +11,30 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, isWithinInterval } from 'date-fns';
-import type { Sale, Expense, Product } from '@/lib/types';
+import type { Sale, Expense, Product, UserRole } from '@/lib/types';
 import { getSales, getExpenses, getProducts } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
-const LaporanPage: FC = () => {
+type View =
+  | 'kasir'
+  | 'produk'
+  | 'penjualan'
+  | 'retur'
+  | 'pengeluaran'
+  | 'laporan'
+  | 'flash-sale'
+  | 'pengaturan';
+
+interface LaporanPageProps {
+  onNavigate: (view: View) => void;
+}
+
+
+const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
@@ -105,6 +121,7 @@ const LaporanPage: FC = () => {
             labaJualBersih: salesWithDetails.reduce((acc, sale) => acc + sale.labaKotor, 0) - filteredExpenses.reduce((acc, exp) => acc + exp.amount, 0) - salesWithDetails.reduce((acc, sale) => acc + (sale.subtotal * sale.discount / 100), 0),
         };
 
+        const round = (num: number) => Math.round(num);
 
         let csvContent = "data:text/csv;charset=utf-8,";
         csvContent += "LAPORAN LABA RUGI\n\n";
@@ -118,12 +135,12 @@ const LaporanPage: FC = () => {
                 "UTM",
                 "PL0001", // Placeholder
                 "SHOPEE", // Placeholder
-                sale.subtotal,
-                sale.totalPokok,
-                sale.labaKotor,
-                sale.subtotal * sale.discount / 100,
+                round(sale.subtotal),
+                round(sale.totalPokok),
+                round(sale.labaKotor),
+                round(sale.subtotal * sale.discount / 100),
                 0, // Biaya Lain Placeholder
-                sale.finalTotal
+                round(sale.finalTotal)
             ].join(",");
             csvContent += row + "\n";
         });
@@ -137,7 +154,7 @@ const LaporanPage: FC = () => {
                 format(expense.date, "yyyy-MM-dd"),
                 expense.category,
                 expense.name,
-                expense.amount
+                round(expense.amount)
             ].join(",");
             csvContent += row + "\n";
         });
@@ -145,14 +162,14 @@ const LaporanPage: FC = () => {
 
         // Summary Section
         csvContent += "TOTAL KESELURUHAN\n";
-        csvContent += `Sub Total:,${summary.subTotal}\n`;
-        csvContent += `Total Pokok:,${summary.totalPokok}\n`;
-        csvContent += `Laba Kotor:,${summary.labaKotor}\n`;
+        csvContent += `Sub Total:,${round(summary.subTotal)}\n`;
+        csvContent += `Total Pokok:,${round(summary.totalPokok)}\n`;
+        csvContent += `Laba Kotor:,${round(summary.labaKotor)}\n`;
         csvContent += `Biaya Msk Total:,0\n`;
-        csvContent += `Pot. Faktur:,${summary.potFaktur}\n`;
-        csvContent += `Total Pengeluaran:,${summary.totalPengeluaran}\n`;
+        csvContent += `Pot. Faktur:,${round(summary.potFaktur)}\n`;
+        csvContent += `Total Pengeluaran:,${round(summary.totalPengeluaran)}\n`;
         csvContent += `Biaya Lain:,0\n`;
-        csvContent += `Laba Jual (Bersih):,${summary.labaJualBersih}\n`;
+        csvContent += `Laba Jual (Bersih):,${round(summary.labaJualBersih)}\n`;
 
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -164,11 +181,11 @@ const LaporanPage: FC = () => {
     };
 
     const kpiCards = [
-        { title: 'Total Penjualan', value: formatCurrency(financialSummary.totalSales), icon: TrendingUp, color: 'text-green-500' },
-        { title: 'Total Modal (HPP)', value: formatCurrency(financialSummary.totalCostOfGoods), icon: ShoppingCart, color: 'text-blue-500' },
-        { title: 'Total Pengeluaran', value: formatCurrency(financialSummary.totalExpenses), icon: Wallet, color: 'text-orange-500' },
-        { title: 'Laba Kotor', value: formatCurrency(financialSummary.grossProfit), icon: DollarSign, color: 'text-primary' },
-        { title: 'Laba Bersih', value: formatCurrency(financialSummary.netProfit), icon: financialSummary.netProfit >= 0 ? TrendingUp : TrendingDown, color: financialSummary.netProfit >= 0 ? 'text-green-600' : 'text-red-500' },
+        { title: 'Total Penjualan', value: formatCurrency(financialSummary.totalSales), icon: TrendingUp, color: 'text-green-500', view: 'penjualan' as View | undefined },
+        { title: 'Total Modal (HPP)', value: formatCurrency(financialSummary.totalCostOfGoods), icon: ShoppingCart, color: 'text-blue-500', view: undefined },
+        { title: 'Total Pengeluaran', value: formatCurrency(financialSummary.totalExpenses), icon: Wallet, color: 'text-orange-500', view: 'pengeluaran' as View | undefined },
+        { title: 'Laba Kotor', value: formatCurrency(financialSummary.grossProfit), icon: DollarSign, color: 'text-primary', view: undefined },
+        { title: 'Laba Bersih', value: formatCurrency(financialSummary.netProfit), icon: financialSummary.netProfit >= 0 ? TrendingUp : TrendingDown, color: financialSummary.netProfit >= 0 ? 'text-green-600' : 'text-red-500', view: undefined },
     ];
 
   if (loading) {
@@ -225,7 +242,11 @@ const LaporanPage: FC = () => {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {kpiCards.map(card => (
-            <Card key={card.title}>
+            <Card 
+                key={card.title} 
+                onClick={() => card.view && onNavigate(card.view)}
+                className={card.view ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}
+            >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
                     <card.icon className={`h-4 w-4 text-muted-foreground ${card.color}`} />
