@@ -90,6 +90,10 @@ export interface FlashSale {
     products: FlashSaleProduct[];
 }
 
+export interface PublicSettings {
+    defaultDiscount: number;
+}
+
 export interface Settings {
   id?: string; // id is 'main'
   storeName: string;

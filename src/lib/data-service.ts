@@ -17,7 +17,7 @@ import {
   DocumentReference,
   DocumentData,
 } from 'firebase/firestore';
-import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog } from './types';
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog, PublicSettings } from './types';
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -28,11 +28,14 @@ async function getCollection<T>(collectionName: string): Promise<T[]> {
     querySnapshot.docs.forEach(doc => {
         const data = doc.data();
         // Convert Firestore Timestamps to JS Dates
-        Object.keys(data).forEach(key => {
-            if (data[key] instanceof Timestamp) {
-                data[key] = (data[key] as Timestamp).toDate();
+        for (const key in data) {
+          if (Object.prototype.hasOwnProperty.call(data, key)) {
+            const value = data[key];
+            if (value instanceof Timestamp) {
+              data[key] = value.toDate();
             }
-        });
+          }
+        }
         results.push({ id: doc.id, ...data } as T);
     });
     return results;
@@ -361,6 +364,18 @@ export const saveFlashSaleSettings = async (settings: FlashSale, user: UserRole)
 };
 
 // Settings-specific functions
+export const getPublicSettings = async (): Promise<PublicSettings> => {
+    const docRef = doc(db, 'publicSettings', 'main');
+    const docSnap = await getDoc(docRef);
+     if (docSnap.exists()) {
+        return docSnap.data() as PublicSettings;
+    } else {
+        const defaultSettings: PublicSettings = { defaultDiscount: 0 };
+        await setDoc(docRef, defaultSettings);
+        return defaultSettings;
+    }
+};
+
 export const getSettings = async (): Promise<Settings> => {
     const docRef = doc(db, 'settings', 'main');
     const docSnap = await getDoc(docRef);
@@ -398,9 +413,21 @@ export const getSettings = async (): Promise<Settings> => {
 };
 
 export const saveSettings = async (settings: Partial<Settings>, user: UserRole): Promise<void> => {
-    const docRef = doc(db, 'settings', 'main');
-    await setDoc(docRef, settings, { merge: true });
-     await addActivityLog(user, `memperbarui pengaturan umum toko.`);
+    const { defaultDiscount, ...otherSettings } = settings;
+    
+    // Save public settings separately
+    if (defaultDiscount !== undefined) {
+        const publicSettingsRef = doc(db, 'publicSettings', 'main');
+        await setDoc(publicSettingsRef, { defaultDiscount }, { merge: true });
+    }
+    
+    // Save other settings
+    if (Object.keys(otherSettings).length > 0) {
+        const mainSettingsRef = doc(db, 'settings', 'main');
+        await setDoc(mainSettingsRef, otherSettings, { merge: true });
+    }
+    
+    await addActivityLog(user, `memperbarui pengaturan umum toko.`);
 };
 
 

@@ -44,8 +44,8 @@ import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
 import ActivityLogPage from '@/components/pages/activity-log';
-import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category } from '@/lib/types';
-import { getSettings, getFlashSaleSettings, getProducts } from '@/lib/data-service';
+import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings } from '@/lib/types';
+import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -90,23 +90,27 @@ export default function AppPage() {
     if (!userRole) return;
     setIsLoading(true);
     try {
+      const publicSettingsPromise = getPublicSettings();
+      
       // Admins fetch everything.
       if (userRole === 'admin') {
-        const [appSettings, flashSaleSettings, productsData] = await Promise.all([
+        const [publicSettings, appSettings, flashSaleSettings, productsData] = await Promise.all([
+          publicSettingsPromise,
           getSettings(),
           getFlashSaleSettings(),
           getProducts(),
         ]);
-        setSettings(appSettings);
+        setSettings({ ...appSettings, defaultDiscount: publicSettings.defaultDiscount });
         setFlashSale(flashSaleSettings);
         setProducts(productsData);
       } else { // Cashiers only fetch what they are allowed to read.
-        const [flashSaleSettings, productsData] = await Promise.all([
+        const [publicSettings, flashSaleSettings, productsData] = await Promise.all([
+          publicSettingsPromise,
           getFlashSaleSettings(),
           getProducts(),
         ]);
-        // For cashiers, we use default settings to avoid permission errors
-        setSettings({ ...defaultSettings, storeName: 'Kasir' }); 
+        // For cashiers, we use default settings to avoid permission errors but merge public settings
+        setSettings({ ...defaultSettings, storeName: 'Kasir', defaultDiscount: publicSettings.defaultDiscount }); 
         setFlashSale(flashSaleSettings);
         setProducts(productsData);
       }
