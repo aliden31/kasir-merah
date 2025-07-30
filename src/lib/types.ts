@@ -10,7 +10,7 @@ export interface Product {
 export interface SaleItem {
   product: Product; // On client side, this is a full object.
   quantity: number;
-  price: number;
+  price: number; // This is the selling price before discount
   costPriceAtSale?: number; // Cost price at the time of sale
 }
 
@@ -27,8 +27,7 @@ export interface ReturnItem {
   productId: string;
   productName: string;
   quantity: number;
-  priceAtSale: number;
-  costPriceAtSale?: number;
+  priceAtSale: number; // Selling price at the time of sale, before discount
 }
 
 export interface Return {

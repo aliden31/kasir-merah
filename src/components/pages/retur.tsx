@@ -44,6 +44,11 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
     
     const selectedSale = useMemo(() => salesWithDetails.find(s => s.id === selectedSaleId), [selectedSaleId, salesWithDetails]);
 
+    useEffect(() => {
+        // Reset items when a new sale is selected
+        setItemsToReturn([]);
+    }, [selectedSaleId]);
+
     const handleAddProductToReturn = (productId: string) => {
         const productInSale = selectedSale?.items.find(item => item.product.id === productId);
         if (productInSale && !itemsToReturn.find(item => item.productId === productId)) {
@@ -51,8 +56,7 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
                 productId: productInSale.product.id,
                 productName: productInSale.product.name,
                 quantity: 1,
-                priceAtSale: productInSale.price,
-                costPriceAtSale: productInSale.costPriceAtSale
+                priceAtSale: productInSale.price
             }]);
         }
     };
@@ -111,9 +115,9 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
                             <SelectValue placeholder="Pilih ID Transaksi..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {salesWithDetails.map(sale => (
+                            {salesWithDetails.map((sale, index) => (
                                 <SelectItem key={sale.id} value={sale.id}>
-                                    trx {sale.id.substring(0, 8)}... - {sale.date.toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
+                                    trx {String(salesWithDetails.length - index).padStart(4, '0')} - {sale.date.toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -125,7 +129,7 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
                          <div className="grid grid-cols-4 items-center gap-4">
                             <Label className="text-right">Tambah Produk</Label>
                             <div className="col-span-3">
-                                <Select onValueChange={handleAddProductToReturn} disabled={availableProductsForReturn.length === 0}>
+                                <Select onValueChange={handleAddProductToReturn} disabled={availableProductsForReturn.length === 0} value="">
                                     <SelectTrigger>
                                         <SelectValue placeholder="Pilih produk untuk diretur..." />
                                     </SelectTrigger>
@@ -292,8 +296,8 @@ const ReturPage: FC = () => {
                         <TableCell className="font-mono text-muted-foreground">trx...{item.saleId.slice(-6)}</TableCell>
                         <TableCell>
                             <ul className="list-disc pl-4 text-sm">
-                                {item.items.map(product => (
-                                    <li key={product.productId}>
+                                {item.items.map((product, index) => (
+                                    <li key={`${product.productId}-${index}`}>
                                         <span className="font-medium">{product.productName}</span> x {product.quantity}
                                     </li>
                                 ))}

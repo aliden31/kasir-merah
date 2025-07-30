@@ -67,7 +67,11 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     const filteredData = useMemo(() => {
         if (!date?.from || !date.to) return { filteredSales: [], filteredExpenses: [], filteredReturns: [] };
 
-        const interval = { start: date.from, end: date.to };
+        // Set time to end of day for 'to' date to include all of the last day.
+        const toDate = new Date(date.to);
+        toDate.setHours(23, 59, 59, 999);
+
+        const interval = { start: date.from, end: toDate };
         
         const filteredSales = sales.filter(sale => isWithinInterval(sale.date, interval));
         const filteredExpenses = expenses.filter(expense => isWithinInterval(expense.date, interval));
@@ -84,7 +88,8 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         
         const totalCostOfGoodsValue = filteredSales.reduce((totalCost, sale) => {
             const saleCost = sale.items.reduce((itemCost, item: SaleItem) => {
-                const costPrice = item.costPriceAtSale ?? (item.product ? item.product.costPrice : 0);
+                // Ensure costPriceAtSale is a number, default to 0 if not present
+                const costPrice = typeof item.costPriceAtSale === 'number' ? item.costPriceAtSale : (item.product?.costPrice || 0);
                 return itemCost + (costPrice * item.quantity);
             }, 0);
             return totalCost + saleCost;
@@ -92,11 +97,18 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         
         const totalReturnValue = filteredReturns.reduce((sum, ret) => sum + ret.totalRefund, 0);
 
-        const totalCostOfReturnedGoods = filteredReturns.reduce((sum, ret) => {
-            const returnCost = ret.items.reduce((itemCost, item) => {
-                 return itemCost + ((item.costPriceAtSale ?? 0) * item.quantity);
+        // Find the cost of goods for the returned items
+        const totalCostOfReturnedGoods = filteredReturns.reduce((totalCost, ret) => {
+            const originalSale = sales.find(s => s.id === ret.saleId);
+            if (!originalSale) return totalCost;
+
+            const returnCost = ret.items.reduce((itemCost, returnedItem) => {
+                const originalSaleItem = originalSale.items.find(i => i.product.id === returnedItem.productId);
+                const costPrice = originalSaleItem?.costPriceAtSale ?? (originalSaleItem?.product?.costPrice || 0);
+                return itemCost + (costPrice * returnedItem.quantity);
             }, 0);
-            return sum + returnCost;
+            
+            return totalCost + returnCost;
         }, 0);
 
         const totalExpensesValue = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -115,14 +127,14 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
             grossProfit, 
             netProfit 
         };
-    }, [filteredData, products]);
+    }, [filteredData, products, sales]);
 
     const handleExport = () => {
-        const { filteredSales, filteredExpenses } = filteredData;
+        const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
 
         const salesWithDetails = filteredSales.map(sale => {
             const totalPokok = sale.items.reduce((acc, item: SaleItem) => {
-                const costPrice = item.costPriceAtSale ?? (item.product ? item.product.costPrice : 0);
+                const costPrice = typeof item.costPriceAtSale === 'number' ? item.costPriceAtSale : (item.product?.costPrice || 0);
                 return acc + (costPrice * item.quantity);
             }, 0);
             const labaKotor = sale.subtotal - totalPokok;
@@ -133,14 +145,21 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
             };
         });
         
+        const totalReturnsValue = filteredReturns.reduce((acc, ret) => acc + ret.totalRefund, 0);
+        
         const summary = {
             subTotal: salesWithDetails.reduce((acc, sale) => acc + sale.subtotal, 0),
             totalPokok: salesWithDetails.reduce((acc, sale) => acc + sale.totalPokok, 0),
             labaKotor: salesWithDetails.reduce((acc, sale) => acc + sale.labaKotor, 0),
             potFaktur: salesWithDetails.reduce((acc, sale) => acc + (sale.subtotal * sale.discount / 100), 0),
             totalPengeluaran: filteredExpenses.reduce((acc, exp) => acc + exp.amount, 0),
-            labaJualBersih: salesWithDetails.reduce((acc, sale) => acc + sale.labaKotor, 0) - filteredExpenses.reduce((acc, exp) => acc + exp.amount, 0) - salesWithDetails.reduce((acc, sale) => acc + (sale.subtotal * sale.discount / 100), 0),
+            totalRetur: totalReturnsValue,
+            labaJualBersih: 0,
         };
+
+        const labaSetelahDiskonDanRetur = summary.labaKotor - summary.potFaktur - summary.totalRetur;
+        summary.labaJualBersih = labaSetelahDiskonDanRetur - summary.totalPengeluaran;
+
 
         const round = (num: number) => Math.round(num);
 
@@ -155,13 +174,27 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
                 format(sale.date, "yyyy-MM-dd"),
                 "UTM",
                 "PL0001", // Placeholder
-                "SHOPEE", // Placeholder
+                "PELANGGAN", // Placeholder
                 round(sale.subtotal),
                 round(sale.totalPokok),
                 round(sale.labaKotor),
                 round(sale.subtotal * sale.discount / 100),
                 0, // Biaya Lain Placeholder
                 round(sale.finalTotal)
+            ].join(",");
+            csvContent += row + "\n";
+        });
+        csvContent += "\n";
+        
+        // Returns Section
+        csvContent += "DAFTAR RETUR\n";
+        csvContent += "Tanggal Retur,ID Transaksi Asal,Alasan,Total Refund\n";
+        filteredReturns.forEach(ret => {
+            const row = [
+                format(ret.date, "yyyy-MM-dd"),
+                `trx...${ret.saleId.slice(-6)}`,
+                `"${ret.reason.replace(/"/g, '""')}"`,
+                round(ret.totalRefund)
             ].join(",");
             csvContent += row + "\n";
         });
@@ -174,7 +207,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
             const row = [
                 format(expense.date, "yyyy-MM-dd"),
                 expense.category,
-                expense.name,
+                `"${expense.name.replace(/"/g, '""')}"`,
                 round(expense.amount)
             ].join(",");
             csvContent += row + "\n";
@@ -183,14 +216,14 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
 
         // Summary Section
         csvContent += "TOTAL KESELURUHAN\n";
-        csvContent += `Sub Total:,${round(summary.subTotal)}\n`;
-        csvContent += `Total Pokok:,${round(summary.totalPokok)}\n`;
-        csvContent += `Laba Kotor:,${round(summary.labaKotor)}\n`;
-        csvContent += `Biaya Msk Total:,0\n`;
-        csvContent += `Pot. Faktur:,${round(summary.potFaktur)}\n`;
+        csvContent += `Sub Total Penjualan:,${round(summary.subTotal)}\n`;
+        csvContent += `Total Pokok (HPP):,${round(summary.totalPokok)}\n`;
+        csvContent += `Laba Kotor Awal:,${round(summary.labaKotor)}\n`;
+        csvContent += `Potongan Diskon Total:,-${round(summary.potFaktur)}\n`;
+        csvContent += `Total Retur:,-${round(summary.totalRetur)}\n`;
+        csvContent += `Laba Kotor Disesuaikan:,${round(labaSetelahDiskonDanRetur)}\n`;
         csvContent += `Total Pengeluaran:,${round(summary.totalPengeluaran)}\n`;
-        csvContent += `Biaya Lain:,0\n`;
-        csvContent += `Laba Jual (Bersih):,${round(summary.labaJualBersih)}\n`;
+        csvContent += `Laba Bersih (Setelah Pengeluaran):,${round(summary.labaJualBersih)}\n`;
 
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");

@@ -85,8 +85,8 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
         const saleItem: any = {
             product: item.product, // Store the entire product object
             quantity: item.quantity,
-            price: item.price,
-            // Always store cost price at sale for historical accuracy
+            price: item.price, // This is the selling price before discount
+            // costPriceAtSale is only stored if syncCostPrice is true, for historical accuracy
             costPriceAtSale: item.product.costPrice,
         };
         return saleItem;
@@ -110,7 +110,8 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
     });
     await batch.commit();
     
-    return { ...sale, id: docRef.id };
+    const newSale: Sale = { ...sale, id: docRef.id };
+    return newSale;
 }
 
 
