@@ -86,7 +86,7 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
             product: item.product, // Store the entire product object
             quantity: item.quantity,
             price: item.price, // This is the selling price before discount
-            // costPriceAtSale is only stored if syncCostPrice is true, for historical accuracy
+            // costPriceAtSale is crucial for historical profit calculation
             costPriceAtSale: item.product.costPrice,
         };
         return saleItem;
@@ -183,7 +183,9 @@ export const getFlashSaleSettings = async (): Promise<FlashSale> => {
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-        return { id: 'main', ...docSnap.data() } as FlashSale;
+        const data = docSnap.data();
+        // Ensure products is always an array
+        return { id: 'main', ...data, products: data.products || [] } as FlashSale;
     } else {
         const defaultSettings: FlashSale = { id: 'main', title: 'Flash Sale', isActive: false, products: [] };
         await setDoc(docRef, defaultSettings);
@@ -201,14 +203,13 @@ export const saveFlashSaleSettings = async (settings: FlashSale): Promise<void> 
 export const getSettings = async (): Promise<Settings> => {
     const docRef = doc(db, 'settings', 'main');
     const docSnap = await getDoc(docRef);
+    const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0, syncCostPrice: true, theme: 'default' };
 
     if (docSnap.exists()) {
         // Merge with defaults to ensure new settings are present
-        const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0, syncCostPrice: true, theme: 'default' };
         return { ...defaultSettings, ...docSnap.data() } as Settings;
     } else {
         // Return default settings if not found
-        const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0, syncCostPrice: true, theme: 'default' };
         // Optionally, create the default settings document in Firestore
         await setDoc(docRef, defaultSettings);
         return defaultSettings;

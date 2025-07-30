@@ -10,10 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
-import { addDays, format, isWithinInterval } from 'date-fns';
-import type { Sale, Expense, Product, UserRole, SaleItem, Return } from '@/lib/types';
+import { format, isWithinInterval } from 'date-fns';
+import type { Sale, Expense, Product, Return } from '@/lib/types';
 import { getSales, getExpenses, getProducts, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
+import { SaleItem } from '@/lib/types';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
@@ -88,8 +89,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         
         const totalCostOfGoodsValue = filteredSales.reduce((totalCost, sale) => {
             const saleCost = sale.items.reduce((itemCost, item: SaleItem) => {
-                // Ensure costPriceAtSale is a number, default to 0 if not present
-                const costPrice = typeof item.costPriceAtSale === 'number' ? item.costPriceAtSale : (item.product?.costPrice || 0);
+                const costPrice = typeof item.costPriceAtSale === 'number' ? item.costPriceAtSale : 0;
                 return itemCost + (costPrice * item.quantity);
             }, 0);
             return totalCost + saleCost;
@@ -97,14 +97,13 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         
         const totalReturnValue = filteredReturns.reduce((sum, ret) => sum + ret.totalRefund, 0);
 
-        // Find the cost of goods for the returned items
         const totalCostOfReturnedGoods = filteredReturns.reduce((totalCost, ret) => {
             const originalSale = sales.find(s => s.id === ret.saleId);
             if (!originalSale) return totalCost;
 
             const returnCost = ret.items.reduce((itemCost, returnedItem) => {
                 const originalSaleItem = originalSale.items.find(i => i.product.id === returnedItem.productId);
-                const costPrice = originalSaleItem?.costPriceAtSale ?? (originalSaleItem?.product?.costPrice || 0);
+                const costPrice = originalSaleItem?.costPriceAtSale ?? 0;
                 return itemCost + (costPrice * returnedItem.quantity);
             }, 0);
             
@@ -112,29 +111,29 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         }, 0);
 
         const totalExpensesValue = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+        
+        const netSales = totalSalesValue - totalReturnValue;
+        const netCOGS = totalCostOfGoodsValue - totalCostOfReturnedGoods;
 
-        const adjustedSales = totalSalesValue - totalReturnValue;
-        const adjustedCOGS = totalCostOfGoodsValue - totalCostOfReturnedGoods;
-
-        const grossProfit = adjustedSales - adjustedCOGS;
+        const grossProfit = netSales - netCOGS;
         const netProfit = grossProfit - totalExpensesValue;
         
         return { 
-            totalSales: adjustedSales, 
-            totalCostOfGoods: adjustedCOGS, 
+            totalSales: netSales,
+            totalCostOfGoods: netCOGS,
             totalExpenses: totalExpensesValue,
             totalReturns: totalReturnValue,
             grossProfit, 
             netProfit 
         };
-    }, [filteredData, products, sales]);
+    }, [filteredData, sales]);
 
     const handleExport = () => {
         const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
 
         const salesWithDetails = filteredSales.map(sale => {
             const totalPokok = sale.items.reduce((acc, item: SaleItem) => {
-                const costPrice = typeof item.costPriceAtSale === 'number' ? item.costPriceAtSale : (item.product?.costPrice || 0);
+                const costPrice = typeof item.costPriceAtSale === 'number' ? item.costPriceAtSale : 0;
                 return acc + (costPrice * item.quantity);
             }, 0);
             const labaKotor = sale.subtotal - totalPokok;
@@ -156,12 +155,28 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
             totalRetur: totalReturnsValue,
             labaJualBersih: 0,
         };
+        
+        const totalCostOfReturnedGoods = filteredReturns.reduce((totalCost, ret) => {
+            const originalSale = sales.find(s => s.id === ret.saleId);
+            if (!originalSale) return totalCost;
 
-        const labaSetelahDiskonDanRetur = summary.labaKotor - summary.potFaktur - summary.totalRetur;
-        summary.labaJualBersih = labaSetelahDiskonDanRetur - summary.totalPengeluaran;
+            const returnCost = ret.items.reduce((itemCost, returnedItem) => {
+                const originalSaleItem = originalSale.items.find(i => i.product.id === returnedItem.productId);
+                const costPrice = originalSaleItem?.costPriceAtSale ?? 0;
+                return itemCost + (costPrice * returnedItem.quantity);
+            }, 0);
+            
+            return totalCost + returnCost;
+        }, 0);
 
 
         const round = (num: number) => Math.round(num);
+        
+        const netSales = summary.subTotal - totalReturnsValue;
+        const netCOGS = summary.totalPokok - totalCostOfReturnedGoods;
+        const grossProfitAfterReturns = netSales - netCOGS;
+        summary.labaJualBersih = grossProfitAfterReturns - summary.potFaktur - summary.totalPengeluaran;
+
 
         let csvContent = "data:text/csv;charset=utf-8,";
         csvContent += "LAPORAN LABA RUGI\n\n";
@@ -216,14 +231,12 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
 
         // Summary Section
         csvContent += "TOTAL KESELURUHAN\n";
-        csvContent += `Sub Total Penjualan:,${round(summary.subTotal)}\n`;
-        csvContent += `Total Pokok (HPP):,${round(summary.totalPokok)}\n`;
-        csvContent += `Laba Kotor Awal:,${round(summary.labaKotor)}\n`;
+        csvContent += `Penjualan Bersih (Setelah Retur):,${round(netSales)}\n`;
+        csvContent += `Total Pokok (HPP) Bersih:,${round(netCOGS)}\n`;
+        csvContent += `Laba Kotor (Setelah Retur & HPP):,${round(grossProfitAfterReturns)}\n`;
         csvContent += `Potongan Diskon Total:,-${round(summary.potFaktur)}\n`;
-        csvContent += `Total Retur:,-${round(summary.totalRetur)}\n`;
-        csvContent += `Laba Kotor Disesuaikan:,${round(labaSetelahDiskonDanRetur)}\n`;
         csvContent += `Total Pengeluaran:,${round(summary.totalPengeluaran)}\n`;
-        csvContent += `Laba Bersih (Setelah Pengeluaran):,${round(summary.labaJualBersih)}\n`;
+        csvContent += `Laba Bersih (Setelah Semua Biaya):,${round(summary.labaJualBersih)}\n`;
 
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");

@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   name: string;
@@ -11,7 +12,7 @@ export interface SaleItem {
   product: Product; // On client side, this is a full object.
   quantity: number;
   price: number; // This is the selling price before discount
-  costPriceAtSale?: number; // Cost price at the time of sale
+  costPriceAtSale: number; // Cost price at the time of sale
 }
 
 export interface Sale {

@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Return, Sale, SaleItem, ReturnItem, Product } from '@/lib/types';
+import type { Return, Sale, ReturnItem } from '@/lib/types';
 import { PlusCircle, MinusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getReturns, addReturn, getSales, getProducts } from '@/lib/data-service';
@@ -72,6 +72,7 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
 
         if (quantity > maxQuantity) {
             alert(`Jumlah retur tidak boleh melebihi jumlah pembelian (${maxQuantity})`);
+            setItemsToReturn(prev => prev.map(item => item.productId === productId ? { ...item, quantity: maxQuantity } : item));
             return;
         }
 
@@ -201,7 +202,6 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
 const ReturPage: FC = () => {
   const [returns, setReturns] = useState<Return[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const { toast } = useToast();
@@ -209,10 +209,9 @@ const ReturPage: FC = () => {
   useEffect(() => {
     const fetchData = async () => {
         try {
-            const [returnsData, salesData, productsData] = await Promise.all([getReturns(), getSales(), getProducts()]);
+            const [returnsData, salesData] = await Promise.all([getReturns(), getSales()]);
             setReturns(returnsData.sort((a,b) => b.date.getTime() - a.date.getTime()));
             setSales(salesData);
-            setProducts(productsData);
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
             console.error(error);
@@ -231,9 +230,9 @@ const ReturPage: FC = () => {
             title: "Retur Disimpan",
             description: "Data retur baru telah berhasil disimpan.",
         });
-        // Optional: re-fetch products to see updated stock
-        const updatedProducts = await getProducts();
-        setProducts(updatedProducts);
+        // re-fetch sales to reflect any potential changes (though none are made here)
+        const updatedSales = await getSales();
+        setSales(updatedSales);
     } catch(error) {
         toast({ title: "Error", description: "Gagal menyimpan data retur.", variant: "destructive" });
         console.error(error);
@@ -304,7 +303,7 @@ const ReturPage: FC = () => {
                             </ul>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{item.reason}</TableCell>
-                        <TableCell className="text-right font-medium text-destructive">{formatCurrency(item.totalRefund)}</TableCell>
+                        <TableCell className="text-right font-medium text-destructive">-{formatCurrency(item.totalRefund)}</TableCell>
                         </TableRow>
                     )) : (
                         <TableRow>
