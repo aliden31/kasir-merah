@@ -28,9 +28,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Expense } from '@/lib/types';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getExpenses, addExpense } from '@/lib/data-service';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -75,15 +79,20 @@ const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
 
 const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => void, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState('');
-    const [amount, setAmount] = useState(0);
+    const [amount, setAmount] = useState<number | ''>('');
     const [category, setCategory] = useState<'Operasional' | 'Gaji' | 'Pemasaran' | 'Lainnya'>('Lainnya');
+    const [date, setDate] = useState<Date>(new Date());
 
     const handleSubmit = () => {
+        if (!name || amount === '' || amount <= 0) {
+             // Optional: Add toast notification for validation
+            return;
+        }
         const newExpense: Omit<Expense, 'id'> = {
             name,
-            amount,
+            amount: Number(amount),
             category,
-            date: new Date(),
+            date,
         };
         onSave(newExpense);
         onOpenChange(false);
@@ -115,14 +124,43 @@ const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense,
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="amount" className="text-right">Jumlah</Label>
-                    <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className="col-span-3" />
+                    <Input 
+                        id="amount" 
+                        type="number" 
+                        value={amount} 
+                        onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))} 
+                        className="col-span-3"
+                        placeholder="0"
+                     />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="date" className="text-right">Tanggal</Label>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className="col-span-3 justify-start text-left font-normal"
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {format(date, "PPP", { locale: id })}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={date}
+                            onSelect={(selectedDate) => selectedDate && setDate(selectedDate)}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
                 </div>
             </div>
             <DialogFooter>
                  <DialogClose asChild>
                     <Button type="button" variant="secondary">Batal</Button>
                 </DialogClose>
-                <Button onClick={handleSubmit}>Simpan</Button>
+                <Button onClick={handleSubmit} disabled={!name || amount === '' || amount <= 0}>Simpan</Button>
             </DialogFooter>
         </DialogContent>
     )
@@ -152,7 +190,12 @@ const PengeluaranPage: FC = () => {
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
     try {
         const newExpense = await addExpense(expenseData);
-        setExpenses(prev => [...prev, newExpense].sort((a,b) => b.date.getTime() - a.date.getTime()));
+        // Manually convert timestamp back to Date for immediate UI update
+        const displayExpense = {
+            ...newExpense,
+            date: new Date(newExpense.date)
+        }
+        setExpenses(prev => [displayExpense, ...prev].sort((a,b) => b.date.getTime() - a.date.getTime()));
         toast({
             title: "Pengeluaran Disimpan",
             description: `Pengeluaran "${newExpense.name}" telah berhasil disimpan.`,
@@ -207,7 +250,7 @@ const PengeluaranPage: FC = () => {
                             <TableBody>
                             {expenses.length > 0 ? expenses.map((expense) => (
                                 <TableRow key={expense.id}>
-                                <TableCell>{expense.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
+                                <TableCell>{new Date(expense.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
                                 <TableCell className="font-medium">{expense.name}</TableCell>
                                 <TableCell>{expense.category}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
