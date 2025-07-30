@@ -97,7 +97,7 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
     }, [category]);
 
     const handleSubmit = async () => {
-        if (name.trim() === '' || amount === '' || amount <= 0 || !category) {
+        if (amount === '' || amount <= 0 || !category) {
             return;
         }
         if (selectedCategory?.subcategories?.length && !subcategory) {
@@ -105,7 +105,7 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
         }
         setIsSaving(true);
         const newExpense: Omit<Expense, 'id'> = {
-            name: name.trim(),
+            name: subcategory || category, // Use subcategory as name if available, otherwise category
             amount: Number(amount),
             category,
             subcategory,
@@ -121,7 +121,7 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
         setIsSaving(false);
     }
     
-    const isSaveDisabled = isSaving || name.trim() === '' || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
+    const isSaveDisabled = isSaving || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
     
     return (
         <DialogContent>
@@ -144,10 +144,10 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
                 </div>
                 {selectedCategory && selectedCategory.subcategories.length > 0 && (
                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="subcategory" className="text-right">Sub-Kategori</Label>
+                        <Label htmlFor="subcategory" className="text-right">Deskripsi</Label>
                         <Select onValueChange={(value) => setSubcategory(value)} value={subcategory}>
                             <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Pilih sub-kategori" />
+                                <SelectValue placeholder="Pilih deskripsi" />
                             </SelectTrigger>
                             <SelectContent>
                                 {selectedCategory.subcategories.map(sub => (
@@ -157,16 +157,6 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
                         </Select>
                     </div>
                 )}
-                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">Deskripsi</Label>
-                    <Input 
-                        id="name" 
-                        value={name} 
-                        onChange={(e) => setName(e.target.value)} 
-                        className="col-span-3"
-                        placeholder="Contoh: Bayar tagihan listrik"
-                     />
-                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="amount" className="text-right">Jumlah</Label>
                     <Input 
