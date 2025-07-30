@@ -1,13 +1,14 @@
+
 'use client';
 
 import type { FC } from 'react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { SaleItem, Product, Settings, FlashSale } from '@/lib/types';
+import type { SaleItem, Product, Settings, FlashSale, Sale } from '@/lib/types';
 import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
@@ -21,8 +22,9 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { getProducts, addSale } from '@/lib/data-service';
+import { getProducts, addSale, getSales } from '@/lib/data-service';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface KasirPageProps {
   cart: SaleItem[];
@@ -34,15 +36,16 @@ interface KasirPageProps {
   flashSale: FlashSale;
 }
 
-
 const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearCart, cartItemCount, settings, flashSale }) => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [discount, setDiscount] = useState(settings.defaultDiscount);
   const [transactionDate, setTransactionDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
   const [carouselApi, setCarouselApi] = React.useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = React.useState(0)
+  const [sortOrder, setSortOrder] = useState('terlaris');
 
   const { toast } = useToast();
 
@@ -51,17 +54,18 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
   }, [settings.defaultDiscount]);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
         try {
-            const productsData = await getProducts();
+            const [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
             setProducts(productsData);
+            setSales(salesData);
         } catch (error) {
-            toast({ title: "Error", description: "Gagal memuat data produk.", variant: "destructive" });
+            toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
-    fetchProducts();
+    fetchData();
   }, [toast]);
 
   React.useEffect(() => {
@@ -76,7 +80,33 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
     })
   }, [carouselApi])
 
-  const filteredProducts = products.filter((product) =>
+  const sortedProducts = useMemo(() => {
+    const productsWithSales = products.map(product => {
+        const salesCount = sales.reduce((count, sale) => {
+            return count + (sale.items.find(item => item.product.id === product.id)?.quantity || 0);
+        }, 0);
+        return { ...product, salesCount };
+    });
+
+    return [...productsWithSales].sort((a, b) => {
+        switch (sortOrder) {
+            case 'terlaris':
+                return b.salesCount - a.salesCount;
+            case 'nama-az':
+                return a.name.localeCompare(b.name);
+            case 'nama-za':
+                return b.name.localeCompare(a.name);
+            case 'stok-terbanyak':
+                return b.stock - a.stock;
+            case 'stok-tersedikit':
+                return a.stock - b.stock;
+            default:
+                return 0;
+        }
+    });
+  }, [products, sales, sortOrder]);
+
+  const filteredProducts = sortedProducts.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -114,9 +144,10 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
         });
         clearCart();
         setDiscount(settings.defaultDiscount);
-        // re-fetch products to update stock
-        const productsData = await getProducts();
+        // re-fetch products to update stock and sales for sorting
+        const [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
         setProducts(productsData);
+        setSales(salesData);
     } catch (error) {
         toast({ title: "Error", description: "Gagal menyimpan transaksi.", variant: "destructive" });
         console.error(error);
@@ -129,8 +160,74 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
     return productInSale?.discountPrice;
   };
 
+  const renderProductGrid = (isMobile = false) => (
+    <Card className={`h-full flex flex-col shadow-none border-0 ${isMobile ? '' : 'lg:col-span-2'}`}>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <CardTitle>Pilih Produk</CardTitle>
+          {flashSale.isActive && (
+            <Badge variant="destructive" className="animate-pulse">
+              <Zap className="mr-2 h-4 w-4" /> {flashSale.title}
+            </Badge>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 mt-2">
+            <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Cari produk..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <Select value={sortOrder} onValueChange={setSortOrder}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Urutkan berdasarkan" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="terlaris">Terlaris</SelectItem>
+                    <SelectItem value="nama-az">Nama A-Z</SelectItem>
+                    <SelectItem value="nama-za">Nama Z-A</SelectItem>
+                    <SelectItem value="stok-terbanyak">Stok Terbanyak</SelectItem>
+                    <SelectItem value="stok-tersedikit">Stok Tersedikit</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-grow p-0">
+        <ScrollArea className={isMobile ? "h-[calc(100vh-20rem)]" : "h-full lg:h-[calc(100vh-16rem)]"}>
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
+            {filteredProducts.map((product) => {
+              const flashPrice = getFlashSalePrice(product.id);
+              return (
+                <Card
+                  key={product.id}
+                  onClick={() => addToCart(product, flashPrice)}
+                  className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col items-center justify-center p-4 text-center"
+                >
+                  <CardContent className="p-0 flex-grow flex flex-col justify-center">
+                    <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
+                    {flashPrice !== undefined ? (
+                      <div className="mt-1">
+                        <p className="text-xs text-muted-foreground line-through">{formatCurrency(product.sellingPrice)}</p>
+                        <p className="text-sm text-destructive font-bold">{formatCurrency(flashPrice)}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-primary font-medium mt-1">{formatCurrency(product.sellingPrice)}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+
   if (loading) {
-      return <div>Memuat...</div>
+    return <div>Memuat...</div>
   }
 
   return (
@@ -139,57 +236,7 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
         <Carousel setApi={setCarouselApi} className="w-full">
           <CarouselContent>
             <CarouselItem>
-              <div className="lg:col-span-2">
-                    <Card className="h-full flex flex-col shadow-none border-0">
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <CardTitle>Pilih Produk</CardTitle>
-                             {flashSale.isActive && (
-                                <Badge variant="destructive" className="animate-pulse">
-                                  <Zap className="mr-2 h-4 w-4" /> {flashSale.title}
-                                </Badge>
-                              )}
-                        </div>
-                        <div className="relative mt-2">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Cari produk..."
-                            className="pl-10"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                        </div>
-                    </CardHeader>
-                    <CardContent className="flex-grow p-0">
-                        <ScrollArea className="h-[calc(100vh-16rem)]">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-1">
-                            {filteredProducts.map((product) => {
-                                const flashPrice = getFlashSalePrice(product.id);
-                                return (
-                                  <Card
-                                    key={product.id}
-                                    onClick={() => addToCart(product, flashPrice)}
-                                    className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col items-center justify-center p-4 text-center"
-                                  >
-                                    <CardContent className="p-0 flex-grow flex flex-col justify-center">
-                                        <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
-                                        {flashPrice !== undefined ? (
-                                          <div className="mt-1">
-                                            <p className="text-xs text-muted-foreground line-through">{formatCurrency(product.sellingPrice)}</p>
-                                            <p className="text-sm text-destructive font-bold">{formatCurrency(flashPrice)}</p>
-                                          </div>
-                                        ) : (
-                                          <p className="text-xs text-primary font-medium mt-1">{formatCurrency(product.sellingPrice)}</p>
-                                        )}
-                                    </CardContent>
-                                  </Card>
-                                )
-                            })}
-                          </div>
-                        </ScrollArea>
-                    </CardContent>
-                    </Card>
-                </div>
+              {renderProductGrid(true)}
             </CarouselItem>
             <CarouselItem>
                 <div className="lg:col-span-1">
@@ -333,58 +380,7 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
       </div>
 
       <div className="hidden lg:grid grid-cols-1 lg:grid-cols-3 gap-6 h-full lg:h-[calc(100vh-5rem)]">
-        <div className="lg:col-span-2">
-          <Card className="h-full flex flex-col">
-            <CardHeader>
-              <div className="hidden sm:flex justify-between items-center">
-                <CardTitle>Pilih Produk</CardTitle>
-                {flashSale.isActive && (
-                  <Badge variant="destructive" className="animate-pulse">
-                    <Zap className="mr-2 h-4 w-4" /> {flashSale.title}
-                  </Badge>
-                )}
-              </div>
-              <div className="relative mt-2">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Cari produk..."
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="flex-grow p-0">
-              <ScrollArea className="h-full lg:h-[calc(100vh-16rem)]">
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
-                  {filteredProducts.map((product) => {
-                     const flashPrice = getFlashSalePrice(product.id);
-                     return (
-                        <Card
-                          key={product.id}
-                          onClick={() => addToCart(product, flashPrice)}
-                          className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col items-center justify-center p-4 text-center"
-                        >
-                          <CardContent className="p-0 flex-grow flex flex-col justify-center">
-                              <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
-                               {flashPrice !== undefined ? (
-                                  <div className="mt-1">
-                                    <p className="text-xs text-muted-foreground line-through">{formatCurrency(product.sellingPrice)}</p>
-                                    <p className="text-sm text-destructive font-bold">{formatCurrency(flashPrice)}</p>
-                                  </div>
-                                ) : (
-                                  <p className="text-xs text-primary font-medium mt-1">{formatCurrency(product.sellingPrice)}</p>
-                                )}
-                          </CardContent>
-                        </Card>
-                     )
-                  })}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
-
+        {renderProductGrid()}
         <div className="lg:col-span-1">
           <Card className="h-full flex flex-col">
             <CardHeader>
@@ -501,3 +497,5 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
 };
 
 export default KasirPage;
+
+    

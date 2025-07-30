@@ -2,7 +2,7 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Product } from '@/lib/types';
+import type { Product, Sale } from '@/lib/types';
 import { PlusCircle, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -39,7 +39,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts, getProductById } from '@/lib/data-service';
+import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts, getProductById, getSales } from '@/lib/data-service';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState(product?.name || '');
@@ -129,15 +130,18 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
 
 const ProdukPage: FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
   const { toast } = useToast();
+  const [sortOrder, setSortOrder] = useState('terlaris');
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchProductsAndSales = async () => {
         try {
-            let productsData = await getProducts();
+            let [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
+
             if (productsData.length === 0) {
                 toast({ title: "Database produk kosong", description: "Menginisialisasi dengan data sampel..." });
                 await addPlaceholderProducts();
@@ -145,7 +149,6 @@ const ProdukPage: FC = () => {
                 toast({ title: "Inisialisasi berhasil", description: "Data produk sampel telah ditambahkan." });
             }
             
-            // Filter unique products by name
             const uniqueProductNames = new Set();
             const uniqueProducts = productsData.filter(product => {
                 if (uniqueProductNames.has(product.name)) {
@@ -156,7 +159,8 @@ const ProdukPage: FC = () => {
                 }
             });
 
-            setProducts(uniqueProducts.sort((a,b) => a.name.localeCompare(b.name)));
+            setProducts(uniqueProducts);
+            setSales(salesData);
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data produk.", variant: "destructive" });
             console.error(error);
@@ -164,9 +168,35 @@ const ProdukPage: FC = () => {
             setLoading(false);
         }
     }
-    fetchProducts();
+    fetchProductsAndSales();
   }, [toast]);
   
+  const sortedProducts = useMemo(() => {
+    const productsWithSales = products.map(product => {
+        const salesCount = sales.reduce((count, sale) => {
+            return count + (sale.items.find(item => item.product.id === product.id)?.quantity || 0);
+        }, 0);
+        return { ...product, salesCount };
+    });
+
+    return [...productsWithSales].sort((a, b) => {
+        switch (sortOrder) {
+            case 'terlaris':
+                return b.salesCount - a.salesCount;
+            case 'nama-az':
+                return a.name.localeCompare(b.name);
+            case 'nama-za':
+                return b.name.localeCompare(a.name);
+            case 'stok-terbanyak':
+                return b.stock - a.stock;
+            case 'stok-tersedikit':
+                return a.stock - b.stock;
+            default:
+                return 0;
+        }
+    });
+  }, [products, sales, sortOrder]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
   };
@@ -175,11 +205,11 @@ const ProdukPage: FC = () => {
     try {
         if ('id' in productData) {
             await updateProduct(productData.id, productData);
-            setProducts(prev => prev.map(p => p.id === productData.id ? {...p, ...productData} : p).sort((a,b) => a.name.localeCompare(b.name)));
+            setProducts(prev => prev.map(p => p.id === productData.id ? {...p, ...productData} : p));
             toast({ title: "Produk diperbarui", description: `${productData.name} telah berhasil diperbarui.` });
         } else {
             const newProduct = await addProduct(productData);
-            setProducts(prev => [...prev, newProduct].sort((a,b) => a.name.localeCompare(b.name)));
+            setProducts(prev => [...prev, newProduct]);
             toast({ title: "Produk ditambahkan", description: `${newProduct.name} telah berhasil ditambahkan.` });
         }
     } catch (error) {
@@ -245,8 +275,24 @@ const ProdukPage: FC = () => {
       
       <Card>
         <CardHeader>
-            <CardTitle>Daftar Produk</CardTitle>
-            <CardDescription>Total {products.length} produk ditemukan.</CardDescription>
+            <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>Daftar Produk</CardTitle>
+                    <CardDescription>Total {products.length} produk ditemukan.</CardDescription>
+                </div>
+                 <Select value={sortOrder} onValueChange={setSortOrder}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Urutkan berdasarkan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="terlaris">Terlaris</SelectItem>
+                        <SelectItem value="nama-az">Nama A-Z</SelectItem>
+                        <SelectItem value="nama-za">Nama Z-A</SelectItem>
+                        <SelectItem value="stok-terbanyak">Stok Terbanyak</SelectItem>
+                        <SelectItem value="stok-tersedikit">Stok Tersedikit</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
         </CardHeader>
         <CardContent>
             <Table>
@@ -257,11 +303,12 @@ const ProdukPage: FC = () => {
                     <TableHead className="text-right">Harga Modal</TableHead>
                     <TableHead className="text-right">Harga Jual</TableHead>
                     <TableHead className="text-right">Stok</TableHead>
+                    <TableHead className="text-right">Terjual</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {products.map((product) => (
+                {sortedProducts.map((product) => (
                     <TableRow key={product.id}>
                     <TableCell
                         className="font-medium cursor-pointer hover:underline"
@@ -273,6 +320,7 @@ const ProdukPage: FC = () => {
                     <TableCell className="text-right">{formatCurrency(product.costPrice)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(product.sellingPrice)}</TableCell>
                     <TableCell className="text-right">{product.stock}</TableCell>
+                    <TableCell className="text-right font-medium">{(product as any).salesCount || 0}</TableCell>
                     <TableCell className="text-right">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -321,3 +369,5 @@ const ProdukPage: FC = () => {
 };
 
 export default ProdukPage;
+
+    
