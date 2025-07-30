@@ -38,7 +38,7 @@ const formatCurrency = (amount: number) => {
 };
 
 
-const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
+export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void, userRole: UserRole }) => {
     const [selectedSaleId, setSelectedSaleId] = useState<string>('');
     const [reason, setReason] = useState('');
     const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
@@ -253,12 +253,14 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
   
   const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
     try {
-        const newReturn = await addReturn(itemData, userRole);
-        setReturns(prev => [newReturn, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
+        await addReturn(itemData, userRole);
         toast({
             title: "Retur Disimpan",
             description: "Data retur baru telah berhasil disimpan.",
         });
+        const [returnsData, salesData] = await Promise.all([getReturns(), getSales()]);
+        setReturns(returnsData.sort((a,b) => b.date.getTime() - a.date.getTime()));
+        setSales(salesData);
         onDataChange();
     } catch(error) {
         const errorMessage = error instanceof Error ? error.message : "Gagal menyimpan data retur.";
@@ -285,7 +287,7 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
                     Catat Retur
                 </Button>
             </DialogTrigger>
-            <ReturnForm sales={sales} onSave={handleSaveReturn} onOpenChange={setFormOpen} />
+            <ReturnForm sales={sales} onSave={handleSaveReturn} onOpenChange={setFormOpen} userRole={userRole} />
         </Dialog>
       </div>
 

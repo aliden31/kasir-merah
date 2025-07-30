@@ -79,7 +79,7 @@ const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
     );
 };
 
-const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => Promise<void>, onOpenChange: (open: boolean) => void, settings: Settings }) => {
+export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => Promise<void>, onOpenChange: (open: boolean) => void, settings: Settings }) => {
     const [amount, setAmount] = useState<number | ''>('');
     const [category, setCategory] = useState('');
     const [subcategory, setSubcategory] = useState('');
@@ -102,9 +102,7 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
             return;
         }
         setIsSaving(true);
-        const name = `${category}${subcategory ? ` - ${subcategory}` : ''}`;
-        const newExpense: Omit<Expense, 'id'> = {
-            name,
+        const newExpense: Omit<Expense, 'id' | 'date'> & { date: Date } = {
             amount: Number(amount),
             category,
             subcategory,
@@ -203,7 +201,7 @@ interface PengeluaranPageProps {
     userRole: UserRole;
 }
 
-const PengeluaranPage: FC<PengeluaranPageProps> = ({ userRole }) => {
+const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -214,21 +212,22 @@ const PengeluaranPage: FC<PengeluaranPageProps> = ({ userRole }) => {
     to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
   });
 
+  const fetchInitialData = async () => {
+    try {
+        const [expensesData, settingsData] = await Promise.all([getExpenses(), getSettings()]);
+        setExpenses(expensesData.sort((a,b) => b.date.getTime() - a.date.getTime()));
+        setSettings(settingsData);
+    } catch (error) {
+        toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive"});
+        console.error(error);
+    } finally {
+        setLoading(false);
+    }
+  };
+  
   useEffect(() => {
-    const fetchExpenses = async () => {
-        try {
-            const [expensesData, settingsData] = await Promise.all([getExpenses(), getSettings()]);
-            setExpenses(expensesData.sort((a,b) => b.date.getTime() - a.date.getTime()));
-            setSettings(settingsData);
-        } catch (error) {
-            toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive"});
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-    fetchExpenses();
-  }, [toast]);
+    fetchInitialData();
+  }, []);
   
   const filteredExpenses = useMemo(() => {
     if (!date?.from || !date.to) return expenses;
@@ -240,15 +239,11 @@ const PengeluaranPage: FC<PengeluaranPageProps> = ({ userRole }) => {
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
     try {
         const newExpense = await addExpense(expenseData, userRole);
-        const displayExpense = {
-            ...newExpense,
-            date: new Date(newExpense.date)
-        }
-        setExpenses(prev => [displayExpense, ...prev].sort((a,b) => b.date.getTime() - a.date.getTime()));
         toast({
             title: "Pengeluaran Disimpan",
-            description: `Pengeluaran "${newExpense.name}" telah berhasil disimpan.`,
+            description: `Pengeluaran telah berhasil disimpan.`,
         });
+        await fetchInitialData();
     } catch(error) {
         toast({ title: "Error", description: "Gagal menyimpan pengeluaran.", variant: "destructive" });
         console.error(error);
@@ -372,6 +367,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = ({ userRole }) => {
       </Tabs>
     </div>
   );
-};
+});
 
+PengeluaranPage.displayName = 'PengeluaranPage';
 export default PengeluaranPage;
