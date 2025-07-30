@@ -265,11 +265,7 @@ export async function getExpenses(): Promise<Expense[]> {
 }
 
 export const addExpense = async (expense: Omit<Expense, 'id'>, user: UserRole) => {
-    const newExpenseData = {
-        ...expense,
-        name: `${expense.category}${expense.subcategory ? ` - ${expense.subcategory}` : ''}`
-    }
-    const newExpense = await addDocument<Expense>('expenses', newExpenseData);
+    const newExpense = await addDocument<Expense>('expenses', expense);
     await addActivityLog(user, `mencatat pengeluaran: "${newExpense.name}" sebesar ${formatCurrency(newExpense.amount)}`);
     return newExpense;
 };

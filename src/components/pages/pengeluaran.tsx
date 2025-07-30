@@ -80,7 +80,6 @@ const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
 };
 
 const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => Promise<void>, onOpenChange: (open: boolean) => void, settings: Settings }) => {
-    const [name, setName] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
     const [category, setCategory] = useState('');
     const [subcategory, setSubcategory] = useState('');
@@ -94,15 +93,6 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
     useEffect(() => {
         setSubcategory('');
     }, [category]);
-    
-    useEffect(() => {
-        let newName = category;
-        if (subcategory) {
-            newName = `${category} - ${subcategory}`;
-        }
-        setName(newName);
-    }, [category, subcategory]);
-
 
     const handleSubmit = async () => {
         if (amount === '' || amount <= 0 || !category) {
@@ -112,6 +102,7 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
             return;
         }
         setIsSaving(true);
+        const name = `${category}${subcategory ? ` - ${subcategory}` : ''}`;
         const newExpense: Omit<Expense, 'id'> = {
             name,
             amount: Number(amount),
