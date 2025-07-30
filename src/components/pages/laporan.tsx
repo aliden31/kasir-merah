@@ -11,10 +11,9 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, startOfDay, eachDayOfInterval, endOfDay } from 'date-fns';
-import type { Sale, Expense, Product, Return } from '@/lib/types';
-import { getSales, getExpenses, getProducts, getReturns } from '@/lib/data-service';
+import type { Sale, Expense, Return, SaleItem, ReturnItem } from '@/lib/types';
+import { getSales, getExpenses, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
-import { SaleItem } from '@/lib/types';
 import {
   ResponsiveContainer,
   LineChart,
@@ -31,6 +30,7 @@ const formatCurrency = (amount: number) => {
 };
 
 type View =
+  | 'dashboard'
   | 'kasir'
   | 'produk'
   | 'penjualan'
@@ -260,7 +260,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
             const row = [
                 format(expense.date, "yyyy-MM-dd"),
                 expense.category,
-                `"${expense.name.replace(/"/g, '""')}"`,
+                `"${(expense.subcategory || expense.category).replace(/"/g, '""')}"`,
                 round(expense.amount)
             ].join(",");
             csvContent += row + "\n";
@@ -402,4 +402,3 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
 };
 
 export default LaporanPage;
-

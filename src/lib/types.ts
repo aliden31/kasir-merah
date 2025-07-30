@@ -1,4 +1,5 @@
 
+
 export interface Category {
   id: string;
   name: string;
@@ -61,7 +62,6 @@ export interface Return {
 
 export interface Expense {
   id: string;
-  name: string;
   amount: number;
   category: string;
   subcategory?: string;
@@ -85,6 +85,7 @@ export interface Settings {
   defaultDiscount: number;
   syncCostPrice: boolean;
   theme: 'default' | 'colorful';
+  categories?: Category[];
   expenseCategories?: ExpenseCategory[];
 }
 

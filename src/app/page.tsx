@@ -25,11 +25,13 @@ import {
   Settings,
   Store,
   Users,
+  Home as HomeIcon,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
+import DashboardPage from '@/components/pages/dashboard';
 import KasirPage from '@/components/pages/kasir';
 import ProdukPage from '@/components/pages/produk';
 import PenjualanPage from '@/components/pages/penjualan';
@@ -46,6 +48,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 type View =
+  | 'dashboard'
   | 'kasir'
   | 'produk'
   | 'penjualan'
@@ -66,7 +69,7 @@ const defaultSettings: AppSettings = {
 const defaultFlashSale: FlashSale = { id: 'main', title: '', isActive: false, products: [] };
 
 export default function Home() {
-  const [activeView, setActiveView] = useState<View>('kasir');
+  const [activeView, setActiveView] = useState<View>('dashboard');
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [flashSale, setFlashSale] = useState<FlashSale>(defaultFlashSale);
@@ -126,7 +129,7 @@ export default function Home() {
     const newRole = isAdmin ? 'admin' : 'kasir';
     setUserRole(newRole);
     // Jika role kasir, dan halaman aktif tidak diizinkan, kembalikan ke halaman kasir
-    if (newRole === 'kasir' && !['kasir', 'pengeluaran', 'retur'].includes(activeView)) {
+    if (newRole === 'kasir' && !['dashboard', 'kasir', 'pengeluaran', 'retur'].includes(activeView)) {
         setActiveView('kasir');
     }
     toast({
@@ -136,6 +139,7 @@ export default function Home() {
   };
 
   const allMenuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, roles: ['admin', 'kasir'] },
     { id: 'kasir', label: 'Kasir', icon: LayoutGrid, roles: ['admin', 'kasir'] },
     { id: 'produk', label: 'Produk', icon: Package, roles: ['admin'] },
     { id: 'penjualan', label: 'Riwayat Penjualan', icon: ScrollText, roles: ['admin'] },
@@ -152,6 +156,8 @@ export default function Home() {
 
   const renderView = () => {
     switch (activeView) {
+      case 'dashboard':
+        return <DashboardPage onNavigate={setActiveView} />;
       case 'kasir':
         return <KasirPage 
           cart={cart}
@@ -177,15 +183,7 @@ export default function Home() {
       case 'pengaturan':
         return <PengaturanPage settings={settings} onSettingsChange={refreshSettings} />;
       default:
-        return <KasirPage 
-          cart={cart}
-          addToCart={addToCart}
-          updateQuantity={updateQuantity}
-          clearCart={clearCart}
-          cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-          settings={settings}
-          flashSale={flashSale}
-        />;
+        return <DashboardPage onNavigate={setActiveView} />;
     }
   };
 
