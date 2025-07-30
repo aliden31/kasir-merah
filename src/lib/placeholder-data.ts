@@ -1,4 +1,5 @@
-import type { Product, Sale, Return, Expense, FlashSale } from './types';
+
+import type { Product, Sale, Return, Expense, FlashSale, ReturnItem } from './types';
 
 export const placeholderProducts: Product[] = [
   { id: 'prod-001', name: 'ECERAN PUTIH 25 X 30 CM', costPrice: 3750, sellingPrice: 4250, stock: 0, category: 'Eceran' },
@@ -27,8 +28,8 @@ export const placeholderSales: Sale[] = [
   {
     id: 'sale-001',
     items: [
-      { product: placeholderProducts[0], quantity: 2, price: 18000 },
-      { product: placeholderProducts[1], quantity: 1, price: 22000 },
+      { product: { id: 'prod-001', name: 'ECERAN PUTIH 25 X 30 CM', category: 'Eceran', costPrice: 3750 }, quantity: 2, price: 18000, costPriceAtSale: 3750 },
+      { product: { id: 'prod-002', name: 'GLASWOOL 1M KUNING', category: 'Glaswool', costPrice: 10168 }, quantity: 1, price: 22000, costPriceAtSale: 10168 },
     ],
     subtotal: 58000,
     discount: 10,
@@ -38,7 +39,7 @@ export const placeholderSales: Sale[] = [
   {
     id: 'sale-002',
     items: [
-      { product: placeholderProducts[3], quantity: 1, price: 35000 },
+       { product: { id: 'prod-004', name: 'Ongkos kirim', category: 'Lainnya', costPrice: 0 }, quantity: 1, price: 35000, costPriceAtSale: 0 },
     ],
     subtotal: 35000,
     discount: 0,
@@ -48,8 +49,8 @@ export const placeholderSales: Sale[] = [
   {
     id: 'sale-003',
     items: [
-      { product: placeholderProducts[2], quantity: 3, price: 15000 },
-       { product: placeholderProducts[0], quantity: 1, price: 18000 },
+      { product: { id: 'prod-003', name: 'GLASWOOL 50 CM KUNING', category: 'Glaswool', costPrice: 5084 }, quantity: 3, price: 15000, costPriceAtSale: 5084 },
+      { product: { id: 'prod-001', name: 'ECERAN PUTIH 25 X 30 CM', category: 'Eceran', costPrice: 3750 }, quantity: 1, price: 18000, costPriceAtSale: 3750 },
     ],
     subtotal: 63000,
     discount: 5,
@@ -58,8 +59,18 @@ export const placeholderSales: Sale[] = [
   },
 ];
 
+const placeholderReturnItems: ReturnItem[] = [
+    {
+        product: { id: 'prod-001', name: 'ECERAN PUTIH 25 X 30 CM' },
+        quantity: 1,
+        priceAtSale: 18000,
+        costPriceAtSale: 3750,
+    }
+];
+
+
 export const placeholderReturns: Return[] = [
-    { id: 'ret-001', saleId: 'sale-001', productName: 'Kopi Susu Gula Aren', quantity: 1, reason: 'Rasa tidak sesuai', date: new Date('2023-10-26T11:00:00Z') },
+    { id: 'ret-001', saleId: 'sale-001', items: placeholderReturnItems, reason: 'Rasa tidak sesuai', date: new Date('2023-10-26T11:00:00Z'), totalRefund: 18000 },
 ];
 
 export const placeholderExpenses: Expense[] = [
@@ -70,6 +81,5 @@ export const placeholderExpenses: Expense[] = [
 ];
 
 export const placeholderFlashSales: FlashSale[] = [
-    { id: 'fs-001', productName: 'Croissant Cokelat', discountPrice: 18000, startTime: new Date('2023-10-28T14:00:00Z'), endTime: new Date('2023-10-28T16:00:00Z') },
-    { id: 'fs-002', productName: 'Nasi Goreng Spesial', discountPrice: 28000, startTime: new Date('2023-10-29T18:00:00Z'), endTime: new Date('2023-10-29T20:00:00Z') },
+    { id: 'fs-001', title: 'Diskon Kilat', isActive: true, products: [{...placeholderProducts[2], discountPrice: 12000 }] },
 ];

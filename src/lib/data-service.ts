@@ -181,20 +181,22 @@ export const addSale = async (sale: Omit<Sale, 'id'>, user: UserRole): Promise<S
         }
 
         // Create a clean object for Firestore without displayId
-        const { displayId, ...saleForDb } = sale;
         const saleDataForFirestore = {
-            ...saleForDb,
             items: sale.items.map(item => ({
                 product: {
                     id: item.product.id,
                     name: item.product.name,
                     category: item.product.category,
                     subcategory: item.product.subcategory || '',
+                    costPrice: item.product.costPrice,
                 },
                 quantity: item.quantity,
                 price: item.price,
                 costPriceAtSale: productsData[item.product.id].costPrice,
             })),
+            subtotal: sale.subtotal,
+            discount: sale.discount,
+            finalTotal: sale.finalTotal,
             date: Timestamp.fromDate(sale.date)
         };
         
@@ -255,6 +257,7 @@ export const updateSale = async (originalSale: Sale, updatedSaleData: Sale, user
                 name: item.product.name,
                 category: item.product.category,
                 subcategory: item.product.subcategory || '',
+                costPrice: item.product.costPrice
             },
             quantity: item.quantity,
             price: item.price,
@@ -296,14 +299,14 @@ export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole):
         
         await runTransaction(db, async (transaction) => {
             for (const item of returnData.items) {
-                const productRef = doc(db, "products", item.productId);
+                const productRef = doc(db, "products", item.product.id);
                 const productDoc = await transaction.get(productRef);
                 if (productDoc.exists()) {
                     const currentStock = productDoc.data().stock || 0;
                     const newStock = currentStock + item.quantity;
                     transaction.update(productRef, { stock: newStock });
                 } else {
-                    console.warn(`Product with ID ${item.productId} not found during return. Stock not updated.`);
+                    console.warn(`Product with ID ${item.product.id} not found during return. Stock not updated.`);
                 }
             }
 

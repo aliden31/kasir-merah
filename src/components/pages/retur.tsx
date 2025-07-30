@@ -54,10 +54,12 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
     const handleAddProductToReturn = (productId: string) => {
         if (!selectedSale) return;
         const saleItem = selectedSale.items.find(item => item.product.id === productId);
-        if (saleItem && !itemsToReturn.find(item => item.productId === productId)) {
+        if (saleItem && !itemsToReturn.find(item => item.product.id === productId)) {
             setItemsToReturn(prev => [...prev, {
-                productId: saleItem.product.id,
-                productName: saleItem.product.name,
+                product: {
+                    id: saleItem.product.id,
+                    name: saleItem.product.name,
+                },
                 quantity: 1,
                 priceAtSale: saleItem.price,
                 costPriceAtSale: saleItem.costPriceAtSale,
@@ -70,7 +72,7 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
         const maxQuantity = saleItem?.quantity || 0;
 
         if (quantity <= 0) {
-             setItemsToReturn(prev => prev.filter(item => item.productId !== productId));
+             setItemsToReturn(prev => prev.filter(item => item.product.id !== productId));
              return;
         }
 
@@ -83,7 +85,7 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
             quantity = maxQuantity;
         }
 
-        setItemsToReturn(prev => prev.map(item => item.productId === productId ? { ...item, quantity } : item));
+        setItemsToReturn(prev => prev.map(item => item.product.id === productId ? { ...item, quantity } : item));
     }
 
     const handleSubmit = async () => {
@@ -112,7 +114,7 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
     }
     
     const availableProductsForReturn = selectedSale?.items.filter(
-        saleItem => !itemsToReturn.some(returnItem => returnItem.productId === saleItem.product.id)
+        saleItem => !itemsToReturn.some(returnItem => returnItem.product.id === saleItem.product.id)
     ) || [];
     
     const sortedSales = useMemo(() => sales.sort((a,b) => b.date.getTime() - a.date.getTime()), [sales]);
@@ -168,25 +170,25 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
                                     <h4 className="font-semibold mb-2">Produk yang akan diretur:</h4>
                                      <div className="space-y-4">
                                         {itemsToReturn.map(item => (
-                                            <div key={item.productId} className="flex items-center justify-between">
+                                            <div key={item.product.id} className="flex items-center justify-between">
                                                 <div>
-                                                    <p className="font-medium">{item.productName}</p>
+                                                    <p className="font-medium">{item.product.name}</p>
                                                     <p className="text-sm text-muted-foreground">{formatCurrency(item.priceAtSale)}</p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.productId, item.quantity - 1)}>
+                                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.product.id, item.quantity - 1)}>
                                                         <MinusCircle className="h-4 w-4" />
                                                     </Button>
                                                     <Input 
                                                         type="number" 
                                                         className="w-16 h-8 text-center" 
                                                         value={item.quantity}
-                                                        onChange={(e) => updateReturnQuantity(item.productId, Number(e.target.value))}
+                                                        onChange={(e) => updateReturnQuantity(item.product.id, Number(e.target.value))}
                                                     />
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.productId, item.quantity + 1)}>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.product.id, item.quantity + 1)}>
                                                         <PlusCircle className="h-4 w-4" />
                                                     </Button>
-                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => updateReturnQuantity(item.productId, 0)}>
+                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => updateReturnQuantity(item.product.id, 0)}>
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -317,9 +319,9 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
                         </TableCell>
                         <TableCell>
                             <ul className="list-disc pl-4 text-sm">
-                                {item.items.map((product, index) => (
-                                    <li key={`${product.productId}-${index}`}>
-                                        <span className="font-medium">{product.productName}</span> x {product.quantity}
+                                {item.items.map((productItem, index) => (
+                                    <li key={`${productItem.product.id}-${index}`}>
+                                        <span className="font-medium">{productItem.product.name}</span> x {productItem.quantity}
                                     </li>
                                 ))}
                             </ul>

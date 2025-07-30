@@ -51,8 +51,10 @@ export interface Sale {
 }
 
 export interface ReturnItem {
-  productId: string;
-  productName: string;
+  product: {
+      id: string;
+      name: string;
+  };
   quantity: number;
   priceAtSale: number; // Selling price at the time of sale, before discount
   costPriceAtSale: number;
