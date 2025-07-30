@@ -65,7 +65,7 @@ export interface ReturnItem {
 export interface Return {
   id:string;
   saleId: string;
-  items: Omit<ReturnItem, 'product'> & { product: { id: string; name: string } }[];
+  items: ReturnItem[];
   reason: string;
   date: Date;
   totalRefund: number;
