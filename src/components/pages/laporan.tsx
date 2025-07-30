@@ -14,6 +14,7 @@ import { format, isWithinInterval, startOfDay, eachDayOfInterval, endOfDay } fro
 import type { Sale, Expense, Return, SaleItem, ReturnItem } from '@/lib/types';
 import { getSales, getExpenses, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
+import * as XLSX from 'xlsx';
 import {
   ResponsiveContainer,
   LineChart,
@@ -237,29 +238,37 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
     }, [filteredData, salesMap]);
 
 
-    const handleExportCSV = () => {
+    const handleExportXLSX = () => {
         const { salesWithDetails, filteredExpenses, filteredReturns, summary } = exportData;
         const { from, to } = date || {};
-        const dateRangeStr = from && to ? `${format(from, 'dd-MM-yyyy')}_-_${format(to, 'dd-MM-yyyy')}` : 'semua_waktu';
+        const dateRangeStr = from && to ? `${format(from, 'dd-MM-yyyy')} - ${format(to, 'dd-MM-yyyy')}` : 'Semua Waktu';
+
+        const wb = XLSX.utils.book_new();
         
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += `Laporan Laba Rugi - Periode: ${dateRangeStr.replace(/_/g, ' ')}\n\n`;
+        // --- DATA PREPARATION ---
+        const sheetData: (string | number)[][] = [];
 
-        // Summary
-        csvContent += "Ringkasan Laporan\n";
-        csvContent += "Keterangan,Jumlah\n";
-        csvContent += `Penjualan Bersih (Setelah Retur & Diskon),${summary.penjualanBersih}\n`;
-        csvContent += `Total Pokok (HPP) Bersih,${summary.totalPokokBersih}\n`;
-        csvContent += `Laba Kotor,${summary.labaKotor}\n`;
-        csvContent += `Total Pengeluaran,-${summary.totalPengeluaran}\n`;
-        csvContent += `LABA BERSIH,${summary.labaBersih}\n\n`;
+        // Title
+        sheetData.push([`Laporan Laba Rugi - Periode: ${dateRangeStr}`]);
+        sheetData.push([]); // Empty row
 
-        // Sales Details
-        csvContent += "Rincian Penjualan\n";
-        csvContent += "Tanggal,ID Transaksi,Item,Qty,Harga Satuan,Total,Diskon (%),Total Akhir,HPP,Laba Kotor\n";
+        // Summary Section
+        sheetData.push(['Ringkasan Laporan']);
+        sheetData.push(['Keterangan', 'Jumlah']);
+        sheetData.push(['Penjualan Bersih (Setelah Retur & Diskon)', summary.penjualanBersih]);
+        sheetData.push(['Total Pokok (HPP) Bersih', summary.totalPokokBersih]);
+        sheetData.push(['Laba Kotor', summary.labaKotor]);
+        sheetData.push(['Total Pengeluaran', -summary.totalPengeluaran]);
+        sheetData.push(['LABA BERSIH', summary.labaBersih]);
+        sheetData.push([]); // Empty row
+
+        // Sales Details Section
+        sheetData.push(['Rincian Penjualan']);
+        const salesHeader = ['Tanggal', 'ID Transaksi', 'Item', 'Qty', 'Harga Satuan', 'Total', 'Diskon (%)', 'Total Akhir', 'HPP', 'Laba Kotor'];
+        sheetData.push(salesHeader);
         salesWithDetails.forEach(sale => {
             sale.items.forEach((item, index) => {
-                const row = [
+                sheetData.push([
                     index === 0 ? format(new Date(sale.date), 'dd/MM/yyyy') : '',
                     index === 0 ? `trx ${String(sale.displayId || sale.id).padStart(4, '0')}` : '',
                     item.product.name,
@@ -270,55 +279,50 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
                     index === 0 ? sale.finalTotal : '',
                     item.costPriceAtSale * item.quantity,
                     ''
-                ].join(',');
-                csvContent += row + '\n';
+                ]);
             });
-             const summaryRow = [
-                '', '', '', '', '', 'Total Transaksi:', sale.subtotal, '', 'Total HPP:', sale.totalPokok, 'Laba Transaksi:', sale.labaKotor
-            ].join(',');
-            csvContent += summaryRow + '\n';
+            sheetData.push(['', '', '', '', '', 'Total Transaksi:', sale.subtotal, 'Total Akhir:', sale.finalTotal, 'Laba Transaksi:', sale.labaKotor]);
         });
-        csvContent += "\n";
+        sheetData.push([]); // Empty row
 
-        // Returns Details
-        csvContent += "Rincian Retur\n";
-        csvContent += "Tanggal,ID Transaksi Asal,Item,Qty,Total Refund\n";
+        // Returns Details Section
+        sheetData.push(['Rincian Retur']);
+        const returnsHeader = ['Tanggal', 'ID Transaksi Asal', 'Item', 'Qty', 'Total Refund'];
+        sheetData.push(returnsHeader);
         filteredReturns.forEach(ret => {
             ret.items.forEach(item => {
-                const row = [
+                sheetData.push([
                     format(new Date(ret.date), 'dd/MM/yyyy'),
                     `trx ${salesMap.has(ret.saleId) ? String(salesMap.get(ret.saleId)).padStart(4, '0') : `...${ret.saleId.slice(-6)}`}`,
                     item.productName,
                     item.quantity,
                     item.priceAtSale * item.quantity
-                ].join(',');
-                 csvContent += row + '\n';
+                ]);
             });
         });
-        csvContent += "\n";
-
-        // Expenses Details
-        csvContent += "Rincian Pengeluaran\n";
-        csvContent += "Tanggal,Kategori,Pengeluaran,Jumlah\n";
+        sheetData.push([]); // Empty row
+        
+        // Expenses Details Section
+        sheetData.push(['Rincian Pengeluaran']);
+        const expensesHeader = ['Tanggal', 'Kategori', 'Sub-Kategori', 'Pengeluaran', 'Jumlah'];
+        sheetData.push(expensesHeader);
         filteredExpenses.forEach(exp => {
-            const row = [
+            sheetData.push([
                 format(new Date(exp.date), 'dd/MM/yyyy'),
                 exp.category,
+                exp.subcategory || '',
                 exp.name,
                 exp.amount
-            ].join(',');
-            csvContent += row + '\n';
+            ]);
         });
 
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `laporan_arus_kas_${dateRangeStr}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        XLSX.utils.book_append_sheet(wb, ws, 'Laporan Arus Kas');
+
+        const fileName = `laporan_arus_kas_${dateRangeStr.replace(/ /g, '').replace(/-/g, '_')}.xlsx`;
+        XLSX.writeFile(wb, fileName);
         
-        toast({ title: "Ekspor Berhasil", description: "Laporan CSV sedang diunduh."});
+        toast({ title: "Ekspor Berhasil", description: "Laporan XLSX sedang diunduh."});
     };
     
 
@@ -380,14 +384,14 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
                     <DialogTrigger asChild>
                         <Button>
                             <Download className="mr-2 h-4 w-4" />
-                            Ekspor CSV
+                            Ekspor XLSX
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-md">
                         <DialogHeader>
                             <DialogTitle>Pratinjau Laporan</DialogTitle>
                             <DialogDescription>
-                                Ini adalah ringkasan laporan untuk periode <span className="font-semibold">{date?.from && date.to ? `${format(date.from, "d MMM yyyy")} - ${format(date.to, "d MMM yyyy")}` : 'yang dipilih'}</span>. File CSV akan berisi rincian lengkap.
+                                Ini adalah ringkasan laporan untuk periode <span className="font-semibold">{date?.from && date.to ? `${format(date.from, "d MMM yyyy")} - ${format(date.to, "d MMM yyyy")}` : 'yang dipilih'}</span>. File XLSX akan berisi rincian lengkap.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="py-4 space-y-2">
@@ -419,9 +423,9 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
                                 <Button variant="outline">Batal</Button>
                             </DialogClose>
                             <DialogClose asChild>
-                                <Button onClick={handleExportCSV}>
+                                <Button onClick={handleExportXLSX}>
                                     <Download className="mr-2 h-4 w-4" />
-                                    Unduh CSV
+                                    Unduh XLSX
                                 </Button>
                             </DialogClose>
                         </DialogFooter>
