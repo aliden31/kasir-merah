@@ -130,8 +130,8 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
                                         <SelectValue placeholder="Pilih produk untuk diretur..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {availableProductsForReturn.map(item => (
-                                            <SelectItem key={item.product.id} value={item.product.id}>
+                                        {availableProductsForReturn.map((item, index) => (
+                                            <SelectItem key={`${item.product.id}-${index}`} value={item.product.id}>
                                                 {item.product.name} (Dibeli: {item.quantity})
                                             </SelectItem>
                                         ))}
