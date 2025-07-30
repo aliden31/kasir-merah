@@ -401,20 +401,22 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
   const filteredProducts = sortedProducts.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  
-  const getFlashSalePrice = (productId: string): number | undefined => {
-    if (!flashSale.isActive) return undefined;
-    const productInSale = flashSale.products.find(p => p.id === productId);
-    return productInSale?.discountPrice;
-  };
 
   const addToCart = (product: Product) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.product.id === product.id);
-      const flashSalePrice = getFlashSalePrice(product.id);
-      const price = flashSalePrice !== undefined ? flashSalePrice : product.sellingPrice;
 
+      let price = product.sellingPrice;
+      // Directly check the flashSale prop
+      if (flashSale.isActive) {
+        const productInSale = flashSale.products.find(p => p.id === product.id);
+        if (productInSale) {
+          price = productInSale.discountPrice;
+        }
+      }
+      
       if (existingItem) {
+        // Ensure price is updated if flash sale status changes
         return prevCart.map((item) =>
           item.product.id === product.id ? { ...item, quantity: item.quantity + 1, price: price } : item
         );
@@ -542,7 +544,16 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
         <ScrollArea className={isMobile ? "h-[calc(100vh-20rem)]" : "h-full lg:h-[calc(100vh-16rem)]"}>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
             {filteredProducts.map((product) => {
-              const flashPrice = getFlashSalePrice(product.id);
+              let displayPrice = product.sellingPrice;
+              let originalPrice = undefined;
+              if (flashSale.isActive) {
+                const saleProduct = flashSale.products.find(p => p.id === product.id);
+                if (saleProduct) {
+                    displayPrice = saleProduct.discountPrice;
+                    originalPrice = product.sellingPrice;
+                }
+              }
+
               return (
                 <Card
                   key={product.id}
@@ -551,13 +562,13 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
                 >
                   <div className="flex-grow flex flex-col text-center justify-center p-2">
                     <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
-                    {flashPrice !== undefined ? (
+                    {originalPrice !== undefined ? (
                       <div className="mt-1">
-                        <p className="text-xs text-muted-foreground line-through">{formatCurrency(product.sellingPrice)}</p>
-                        <p className="text-sm text-destructive font-bold">{formatCurrency(flashPrice)}</p>
+                        <p className="text-xs text-muted-foreground line-through">{formatCurrency(originalPrice)}</p>
+                        <p className="text-sm text-destructive font-bold">{formatCurrency(displayPrice)}</p>
                       </div>
                     ) : (
-                      <p className="text-sm text-primary font-medium mt-1">{formatCurrency(product.sellingPrice)}</p>
+                      <p className="text-sm text-primary font-medium mt-1">{formatCurrency(displayPrice)}</p>
                     )}
                   </div>
                 </Card>
@@ -793,3 +804,5 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
 };
 
 export default KasirPage;
+
+    
