@@ -92,7 +92,7 @@ export interface Settings {
   storeName: string;
   defaultDiscount: number;
   syncCostPrice: boolean;
-  theme: 'default' | 'colorful';
+  theme: 'default' | 'colorful' | 'dark';
   categories?: Category[];
   expenseCategories?: ExpenseCategory[];
 }

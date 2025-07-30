@@ -183,11 +183,15 @@ const PengaturanPage: FC<PengaturanPageProps> = React.memo(({ settings, onSettin
                     <Label>Tema</Label>
                     <RadioGroup 
                         value={localSettings.theme} 
-                        onValueChange={(value) => updateLocalSetting('theme', value as 'default' | 'colorful')}
+                        onValueChange={(value) => updateLocalSetting('theme', value as 'default' | 'colorful' | 'dark')}
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="default" id="theme-default" />
                         <Label htmlFor="theme-default">Default</Label>
+                      </div>
+                       <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="dark" id="theme-dark" />
+                        <Label htmlFor="theme-dark">Gelap</Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="colorful" id="theme-colorful" />

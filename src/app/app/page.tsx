@@ -116,7 +116,15 @@ export default function AppPage() {
   }, [authLoading]);
   
   useEffect(() => {
-    document.documentElement.className = settings.theme || 'default';
+    if (settings.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    document.documentElement.className = document.documentElement.className.replace(/\btheme-\S+/g, '');
+    if (settings.theme !== 'dark') {
+      document.documentElement.classList.add(`theme-${settings.theme}`);
+    }
   }, [settings.theme]);
   
   useEffect(() => {
@@ -219,7 +227,7 @@ export default function AppPage() {
 
   return (
     <SidebarProvider>
-      <div className={cn("flex min-h-screen bg-background", settings.theme)}>
+      <div className={cn("flex min-h-screen bg-background")}>
         <Sidebar>
           <SidebarHeader>
             <div className="flex items-center gap-2">
@@ -278,5 +286,3 @@ export default function AppPage() {
     </SidebarProvider>
   );
 }
-
-    
