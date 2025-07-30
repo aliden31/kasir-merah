@@ -46,8 +46,6 @@ import PengaturanPage from '@/components/pages/pengaturan';
 import ActivityLogPage from '@/components/pages/activity-log';
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts } from '@/lib/data-service';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -124,6 +122,8 @@ export default function Home() {
   useEffect(() => {
     if (!authLoading && userRole === 'kasir') {
       setActiveView('kasir');
+    } else if (!authLoading && userRole === 'admin') {
+      setActiveView('dashboard');
     }
   }, [authLoading, userRole]);
 
@@ -166,7 +166,7 @@ export default function Home() {
   const renderView = () => {
     if (isLoading || authLoading) {
       return (
-        <div className="space-y-6">
+        <div className="space-y-6 p-4 md:p-6">
           <Skeleton className="h-8 w-48 mb-4" />
           <Skeleton className="h-64 w-full" />
           <Skeleton className="h-32 w-full" />
@@ -203,7 +203,13 @@ export default function Home() {
       case 'activity-log':
         return <ActivityLogPage />;
       default:
-        return <DashboardPage onNavigate={setActiveView} />;
+        return userRole === 'kasir' ? <KasirPage 
+          settings={settings}
+          flashSale={flashSale}
+          products={products}
+          onDataNeedsRefresh={refreshAllData}
+          userRole={userRole!}
+        /> : <DashboardPage onNavigate={setActiveView} />;
     }
   };
 
@@ -213,7 +219,7 @@ export default function Home() {
 
   return (
     <SidebarProvider>
-      <div className={cn("flex min-h-screen bg-background", settings.theme === 'colorful' && 'theme-colorful')}>
+      <div className={cn("flex min-h-screen bg-background", settings.theme)}>
         <Sidebar>
           <SidebarHeader>
             <div className="flex items-center gap-2">
@@ -246,7 +252,7 @@ export default function Home() {
             <div className="flex flex-col gap-4 p-2">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={`https://i.pravatar.cc/150?u=${user.email}`} alt="Avatar" />
+                    <AvatarImage src={`https://api.dicebear.com/8.x/initials/svg?seed=${user.email}`} alt="Avatar" />
                     <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
