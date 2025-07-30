@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { FC } from 'react';
@@ -17,12 +18,9 @@ import type { Product, StockOpnameLog } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getProducts, updateProduct, addStockOpnameLog, getStockOpnameLogs } from '@/lib/data-service';
+import { getProducts, updateProduct, addStockOpnameLog, getStockOpnameLogs, batchUpdateStockToZero } from '@/lib/data-service';
 import { Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { writeBatch } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { doc } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -122,31 +120,20 @@ const StokOpnamePage: FC = () => {
     const handleSetSelectedToZero = async () => {
         if(selectedProductIds.length === 0) return;
         setIsMassUpdating(true);
-        const batch = writeBatch(db);
-        const logs: Omit<StockOpnameLog, 'id'>[] = [];
+        
+        const productsToUpdate = selectedProductIds.map(id => {
+            return products.find(p => p.id === id);
+        }).filter((p): p is Product => !!p && p.stock !== 0);
 
-        for (const productId of selectedProductIds) {
-            const product = products.find(p => p.id === productId);
-            if(product && product.stock !== 0) {
-                const productRef = doc(db, "products", productId);
-                batch.update(productRef, { stock: 0 });
-
-                const logData: Omit<StockOpnameLog, 'id'> = {
-                    productId: product.id,
-                    productName: product.name,
-                    previousStock: product.stock,
-                    newStock: 0,
-                    date: new Date(),
-                    notes: "Diatur ke 0 secara massal",
-                };
-                const logRef = doc(collection(db, 'stockOpnameLogs'));
-                batch.set(logRef, { ...logData, date: Timestamp.fromDate(logData.date) });
-            }
+        if (productsToUpdate.length === 0) {
+            toast({ title: "Tidak ada perubahan", description: "Semua produk yang dipilih sudah memiliki stok 0."});
+            setIsMassUpdating(false);
+            return;
         }
         
         try {
-            await batch.commit();
-            toast({ title: "Sukses", description: `${selectedProductIds.length} produk berhasil diatur stoknya menjadi 0.`});
+            await batchUpdateStockToZero(productsToUpdate);
+            toast({ title: "Sukses", description: `${productsToUpdate.length} produk berhasil diatur stoknya menjadi 0.`});
             await fetchInitialData();
             setSelectedProducts({});
         } catch (error) {
@@ -351,3 +338,4 @@ const StokOpnamePage: FC = () => {
 };
 
 export default StokOpnamePage;
+

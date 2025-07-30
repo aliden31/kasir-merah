@@ -1,5 +1,6 @@
 
 
+
 import { db } from './firebase';
 import {
   collection,
@@ -337,6 +338,30 @@ export const addStockOpnameLog = async (
     await addDocument<StockOpnameLog>('stockOpnameLogs', logData);
 };
 
+export const batchUpdateStockToZero = async (products: Product[]): Promise<void> => {
+    const batch = writeBatch(db);
+
+    for (const product of products) {
+        // Update product stock
+        const productRef = doc(db, "products", product.id);
+        batch.update(productRef, { stock: 0 });
+
+        // Create log entry
+        const logData: Omit<StockOpnameLog, 'id'> = {
+            productId: product.id,
+            productName: product.name,
+            previousStock: product.stock,
+            newStock: 0,
+            date: new Date(),
+            notes: "Diatur ke 0 secara massal",
+        };
+        const logRef = doc(collection(db, 'stockOpnameLogs'));
+        batch.set(logRef, { ...logData, date: Timestamp.fromDate(logData.date) });
+    }
+    
+    await batch.commit();
+}
+
 
 // Danger Zone functions
 type DataType = 'products' | 'sales' | 'returns' | 'expenses';
@@ -361,3 +386,4 @@ export const clearData = async (dataToClear: Record<DataType, boolean>): Promise
 
     await batch.commit();
 };
+
