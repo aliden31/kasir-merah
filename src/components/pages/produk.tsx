@@ -148,7 +148,7 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
     );
 }
 
-const ProdukPage: FC<ProdukPageProps> = ({ onDataChange, userRole }) => {
+const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -411,8 +411,7 @@ const ProdukPage: FC<ProdukPageProps> = ({ onDataChange, userRole }) => {
       </Card>
     </div>
   );
-};
+});
 
+ProdukPage.displayName = 'ProdukPage';
 export default ProdukPage;
-
-    

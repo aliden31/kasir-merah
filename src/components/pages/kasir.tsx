@@ -10,7 +10,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { SaleItem, Product, Settings, FlashSale, Sale, Expense, Return, ReturnItem, UserRole } from '@/lib/types';
 import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap, Undo2, Wallet, Trash2 } from 'lucide-react';
-import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -320,7 +319,7 @@ interface KasirPageProps {
   userRole: UserRole;
 }
 
-const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNeedsRefresh, userRole }) => {
+const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, products, onDataNeedsRefresh, userRole }) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -394,9 +393,9 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
     });
   }, [products, sales, sortOrder]);
 
-  const filteredProducts = sortedProducts.filter((product) =>
+  const filteredProducts = useMemo(() => sortedProducts.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ), [sortedProducts, searchTerm]);
 
   const addToCart = (product: Product) => {
     setCart((prevCart) => {
@@ -438,11 +437,14 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
     setCart([]);
   };
 
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
 
-  const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const discountAmount = (subtotal * discount) / 100;
-  const total = subtotal - discountAmount;
+  const { subtotal, discountAmount, total } = useMemo(() => {
+    const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const discountAmount = (subtotal * discount) / 100;
+    const total = subtotal - discountAmount;
+    return { subtotal, discountAmount, total };
+  }, [cart, discount]);
   
   const handlePayment = async () => {
     if (cart.length === 0) {
@@ -795,8 +797,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
       </div>
     </>
   );
-};
+});
 
+KasirPage.displayName = 'KasirPage';
 export default KasirPage;
-
-    

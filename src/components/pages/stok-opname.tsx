@@ -38,7 +38,7 @@ interface StokOpnamePageProps {
     userRole: UserRole;
 }
 
-const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange, userRole }) => {
+const StokOpnamePage: FC<StokOpnamePageProps> = React.memo(({ onDataChange, userRole }) => {
     const [products, setProducts] = useState<Product[]>([]);
     const [logs, setLogs] = useState<StockOpnameLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -341,8 +341,7 @@ const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange, userRole }) => 
             </Tabs>
         </div>
     );
-};
+});
 
+StokOpnamePage.displayName = 'StokOpnamePage';
 export default StokOpnamePage;
-
-    

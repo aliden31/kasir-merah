@@ -34,7 +34,7 @@ const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 };
 
-const DashboardPage: FC<DashboardPageProps> = ({ onNavigate }) => {
+const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [returns, setReturns] = useState<Return[]>([]);
     const [loading, setLoading] = useState(true);
@@ -252,6 +252,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ onNavigate }) => {
             </div>
         </div>
     );
-};
+});
 
+DashboardPage.displayName = 'DashboardPage';
 export default DashboardPage;

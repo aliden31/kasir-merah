@@ -222,7 +222,7 @@ interface ReturPageProps {
     userRole: UserRole;
 }
 
-const ReturPage: FC<ReturPageProps> = ({ onDataChange, userRole }) => {
+const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) => {
   const [returns, setReturns] = useState<Return[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -339,6 +339,7 @@ const ReturPage: FC<ReturPageProps> = ({ onDataChange, userRole }) => {
       </Card>
     </div>
   );
-};
+});
 
+ReturPage.displayName = 'ReturPage';
 export default ReturPage;

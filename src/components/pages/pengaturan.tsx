@@ -35,7 +35,7 @@ interface PengaturanPageProps {
   userRole: UserRole;
 }
 
-const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange, userRole }) => {
+const PengaturanPage: FC<PengaturanPageProps> = React.memo(({ settings, onSettingsChange, userRole }) => {
     const [localSettings, setLocalSettings] = useState<Settings>(settings);
     const [newCategoryName, setNewCategoryName] = useState("");
     const [newSubCategoryNames, setNewSubCategoryNames] = useState<Record<string, string>>({});
@@ -379,6 +379,7 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange, u
       </div>
     </div>
   );
-};
+});
 
+PengaturanPage.displayName = 'PengaturanPage';
 export default PengaturanPage;

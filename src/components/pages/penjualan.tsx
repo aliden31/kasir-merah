@@ -228,7 +228,7 @@ interface PenjualanPageProps {
 }
 
 
-const PenjualanPage: FC<PenjualanPageProps> = ({ onDataChange, userRole }) => {
+const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRole }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
@@ -359,6 +359,7 @@ const PenjualanPage: FC<PenjualanPageProps> = ({ onDataChange, userRole }) => {
       </Tabs>
     </div>
   );
-};
+});
 
+PenjualanPage.displayName = 'PenjualanPage';
 export default PenjualanPage;

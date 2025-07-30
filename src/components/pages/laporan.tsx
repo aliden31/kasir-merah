@@ -56,7 +56,7 @@ interface LaporanPageProps {
 }
 
 
-const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
+const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [returns, setReturns] = useState<Return[]>([]);
@@ -482,8 +482,7 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
       </Card>
     </div>
   );
-};
+});
 
+LaporanPage.displayName = 'LaporanPage';
 export default LaporanPage;
-
-    
