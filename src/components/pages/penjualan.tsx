@@ -1,7 +1,7 @@
 'use client';
 
 import type { FC } from 'react';
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -12,30 +12,42 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { placeholderSales } from '@/lib/placeholder-data';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
-import type { Sale } from '@/lib/types';
+import type { Sale, Product } from '@/lib/types';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
+} from "@/components/ui/accordion";
+import { getSales, getProducts } from '@/lib/data-service';
+import { useToast } from '@/hooks/use-toast';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 };
 
-const SalesChart = () => {
-    const salesByItem = placeholderSales.flatMap(sale => sale.items).reduce((acc, item) => {
-        acc[item.product.name] = (acc[item.product.name] || 0) + item.quantity;
-        return acc;
-    }, {} as Record<string, number>);
+const SalesChart = ({ sales, products }: { sales: Sale[], products: Product[] }) => {
+    const salesByItem = useMemo(() => {
+        const itemMap: Record<string, { name: string, quantity: number }> = {};
+        
+        products.forEach(p => {
+            itemMap[p.id] = { name: p.name, quantity: 0 };
+        });
 
-    const chartData = Object.entries(salesByItem)
-        .map(([name, quantity]) => ({ name, quantity }))
-        .sort((a, b) => b.quantity - a.quantity)
-        .slice(0, 5);
+        sales.flatMap(sale => sale.items).forEach(item => {
+            const productId = typeof item.product === 'string' ? item.product : item.product.id;
+            if (itemMap[productId]) {
+                itemMap[productId].quantity += item.quantity;
+            }
+        });
+
+        return Object.values(itemMap)
+            .sort((a, b) => b.quantity - a.quantity)
+            .slice(0, 5);
+
+    }, [sales, products]);
+
 
     return (
         <Card>
@@ -44,7 +56,7 @@ const SalesChart = () => {
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={chartData}>
+                    <BarChart data={salesByItem}>
                         <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
                         <Tooltip
@@ -64,6 +76,41 @@ const SalesChart = () => {
 };
 
 const PenjualanPage: FC = () => {
+    const [sales, setSales] = useState<Sale[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [salesData, productsData] = await Promise.all([getSales(), getProducts()]);
+                const salesWithProductDetails = salesData.map(sale => ({
+                    ...sale,
+                    items: sale.items.map((item: any) => {
+                        const productDetail = productsData.find(p => p.id === item.product);
+                        return {
+                            ...item,
+                            product: productDetail || { id: item.product, name: 'Produk Tidak Ditemukan' }
+                        };
+                    })
+                }));
+                setSales(salesWithProductDetails);
+                setProducts(productsData);
+            } catch (error) {
+                toast({ title: "Error", description: "Gagal memuat data penjualan.", variant: "destructive" });
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchData();
+    }, [toast]);
+
+    if (loading) {
+        return <div>Memuat data penjualan...</div>
+    }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Riwayat Penjualan</h1>
@@ -74,7 +121,7 @@ const PenjualanPage: FC = () => {
         </TabsList>
         <TabsContent value="riwayat" className="mt-4">
              <Accordion type="single" collapsible className="w-full">
-                {placeholderSales.map((sale: Sale) => (
+                {sales.map((sale: Sale) => (
                     <AccordionItem value={sale.id} key={sale.id}>
                         <AccordionTrigger>
                             <div className="flex justify-between w-full pr-4">
@@ -117,7 +164,7 @@ const PenjualanPage: FC = () => {
              </Accordion>
         </TabsContent>
         <TabsContent value="diagram" className="mt-4">
-            <SalesChart />
+            <SalesChart sales={sales} products={products} />
         </TabsContent>
       </Tabs>
     </div>

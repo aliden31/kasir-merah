@@ -1,14 +1,13 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { placeholderProducts } from '@/lib/placeholder-data';
-import type { SaleItem } from '@/lib/types';
+import type { SaleItem, Product } from '@/lib/types';
 import { PlusCircle, MinusCircle, Trash2, Search, Calendar as CalendarIcon, ArrowLeft, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
@@ -20,20 +19,35 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
   type CarouselApi,
-} from "@/components/ui/carousel"
+} from "@/components/ui/carousel";
+import { getProducts, addSale } from '@/lib/data-service';
 
 const KasirPage: FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [discount, setDiscount] = useState(0);
   const [transactionDate, setTransactionDate] = useState<Date>(new Date());
+  const [loading, setLoading] = useState(true);
   const [carouselApi, setCarouselApi] = React.useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = React.useState(0)
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+        try {
+            const productsData = await getProducts();
+            setProducts(productsData);
+        } catch (error) {
+            toast({ title: "Error", description: "Gagal memuat data produk.", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchProducts();
+  }, [toast]);
 
   React.useEffect(() => {
     if (!carouselApi) {
@@ -47,7 +61,7 @@ const KasirPage: FC = () => {
     })
   }, [carouselApi])
 
-  const addToCart = (product: (typeof placeholderProducts)[0]) => {
+  const addToCart = (product: Product) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.product.id === product.id);
       if (existingItem) {
@@ -69,7 +83,7 @@ const KasirPage: FC = () => {
     }
   };
 
-  const filteredProducts = placeholderProducts.filter((product) =>
+  const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -81,7 +95,7 @@ const KasirPage: FC = () => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
   };
   
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (cart.length === 0) {
       toast({
         variant: "destructive",
@@ -90,12 +104,34 @@ const KasirPage: FC = () => {
       });
       return;
     }
-    toast({
-      title: "Pembayaran Berhasil",
-      description: `Total pembayaran ${formatCurrency(total)} telah berhasil diproses.`,
-    });
-    setCart([]);
-    setDiscount(0);
+
+    const newSale = {
+        items: cart,
+        subtotal,
+        discount,
+        finalTotal: total,
+        date: transactionDate,
+    };
+
+    try {
+        await addSale(newSale);
+        toast({
+          title: "Pembayaran Berhasil",
+          description: `Total pembayaran ${formatCurrency(total)} telah berhasil diproses.`,
+        });
+        setCart([]);
+        setDiscount(0);
+        // re-fetch products to update stock
+        const productsData = await getProducts();
+        setProducts(productsData);
+    } catch (error) {
+        toast({ title: "Error", description: "Gagal menyimpan transaksi.", variant: "destructive" });
+        console.error(error);
+    }
+  }
+
+  if (loading) {
+      return <div>Memuat...</div>
   }
 
   return (

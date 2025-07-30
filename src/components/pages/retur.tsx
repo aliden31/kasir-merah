@@ -1,7 +1,7 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -23,20 +23,19 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { placeholderReturns } from '@/lib/placeholder-data';
 import type { Return } from '@/lib/types';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getReturns, addReturn } from '@/lib/data-service';
 
-const ReturnForm = ({ onSave, onOpenChange }: { onSave: (item: Return) => void, onOpenChange: (open: boolean) => void }) => {
+const ReturnForm = ({ onSave, onOpenChange }: { onSave: (item: Omit<Return, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
     const [saleId, setSaleId] = useState('');
     const [productName, setProductName] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [reason, setReason] = useState('');
     
     const handleSubmit = () => {
-        const newReturn: Return = {
-            id: `ret-${Date.now()}`,
+        const newReturn: Omit<Return, 'id'> = {
             saleId,
             productName,
             quantity,
@@ -81,16 +80,42 @@ const ReturnForm = ({ onSave, onOpenChange }: { onSave: (item: Return) => void, 
 }
 
 const ReturPage: FC = () => {
-  const [returns, setReturns] = useState<Return[]>(placeholderReturns);
+  const [returns, setReturns] = useState<Return[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchReturns = async () => {
+        try {
+            const returnsData = await getReturns();
+            setReturns(returnsData);
+        } catch (error) {
+            toast({ title: "Error", description: "Gagal memuat data retur.", variant: "destructive" });
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchReturns();
+  }, [toast]);
   
-  const handleSaveReturn = (item: Return) => {
-    setReturns(prev => [...prev, item]);
-    toast({
-        title: "Retur Disimpan",
-        description: "Data retur baru telah berhasil disimpan.",
-    });
+  const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
+    try {
+        const newReturn = await addReturn(itemData);
+        setReturns(prev => [...prev, newReturn]);
+        toast({
+            title: "Retur Disimpan",
+            description: "Data retur baru telah berhasil disimpan.",
+        });
+    } catch(error) {
+        toast({ title: "Error", description: "Gagal menyimpan data retur.", variant: "destructive" });
+        console.error(error);
+    }
+  }
+
+  if (loading) {
+      return <div>Memuat data retur...</div>
   }
 
   return (

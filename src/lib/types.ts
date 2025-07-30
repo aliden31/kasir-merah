@@ -8,7 +8,7 @@ export interface Product {
 }
 
 export interface SaleItem {
-  product: Product;
+  product: Product; // On client side, this is a full object.
   quantity: number;
   price: number;
 }

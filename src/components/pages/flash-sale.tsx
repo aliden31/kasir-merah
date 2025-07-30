@@ -1,7 +1,7 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -23,27 +23,28 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-import { placeholderFlashSales, placeholderProducts } from '@/lib/placeholder-data';
-import type { FlashSale } from '@/lib/types';
+import type { FlashSale, Product } from '@/lib/types';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-
+import { getFlashSales, addFlashSale, getProducts } from '@/lib/data-service';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 };
 
-const FlashSaleForm = ({ onSave, onOpenChange }: { onSave: (sale: FlashSale) => void, onOpenChange: (open: boolean) => void }) => {
+const FlashSaleForm = ({ products, onSave, onOpenChange }: { products: Product[], onSave: (sale: Omit<FlashSale, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
     const [productName, setProductName] = useState('');
     const [discountPrice, setDiscountPrice] = useState(0);
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
 
     const handleSubmit = () => {
-        const newSale: FlashSale = {
-            id: `fs-${Date.now()}`,
+        if (!productName || !startTime || !endTime) {
+            alert('Harap isi semua kolom!');
+            return;
+        }
+        const newSale: Omit<FlashSale, 'id'> = {
             productName,
             discountPrice,
             startTime: new Date(startTime),
@@ -66,7 +67,7 @@ const FlashSaleForm = ({ onSave, onOpenChange }: { onSave: (sale: FlashSale) => 
                             <SelectValue placeholder="Pilih produk" />
                         </SelectTrigger>
                         <SelectContent>
-                            {placeholderProducts.map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
+                            {products.map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
@@ -94,16 +95,40 @@ const FlashSaleForm = ({ onSave, onOpenChange }: { onSave: (sale: FlashSale) => 
 }
 
 const FlashSalePage: FC = () => {
-  const [flashSales, setFlashSales] = useState<FlashSale[]>(placeholderFlashSales);
+  const [flashSales, setFlashSales] = useState<FlashSale[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleSaveSale = (sale: FlashSale) => {
-    setFlashSales(prev => [...prev, sale]);
-    toast({
-        title: "Flash Sale Dibuat",
-        description: `Flash sale untuk ${sale.productName} telah dijadwalkan.`,
-    });
+  useEffect(() => {
+    const fetchData = async () => {
+        try {
+            const [flashSalesData, productsData] = await Promise.all([getFlashSales(), getProducts()]);
+            setFlashSales(flashSalesData);
+            setProducts(productsData);
+        } catch (error) {
+            toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+    fetchData();
+  }, [toast]);
+
+  const handleSaveSale = async (saleData: Omit<FlashSale, 'id'>) => {
+    try {
+        const newSale = await addFlashSale(saleData);
+        setFlashSales(prev => [...prev, newSale]);
+        toast({
+            title: "Flash Sale Dibuat",
+            description: `Flash sale untuk ${newSale.productName} telah dijadwalkan.`,
+        });
+    } catch (error) {
+        toast({ title: "Error", description: "Gagal membuat flash sale.", variant: "destructive" });
+        console.error(error);
+    }
   }
 
   const getStatus = (sale: FlashSale) => {
@@ -111,6 +136,10 @@ const FlashSalePage: FC = () => {
     if (now < sale.startTime) return <Badge variant="outline">Akan Datang</Badge>;
     if (now >= sale.startTime && now <= sale.endTime) return <Badge className="bg-destructive text-destructive-foreground">Sedang Berlangsung</Badge>;
     return <Badge variant="secondary">Selesai</Badge>;
+  }
+
+  if (loading) {
+      return <div>Memuat data flash sale...</div>;
   }
 
   return (
@@ -124,7 +153,7 @@ const FlashSalePage: FC = () => {
                     Buat Flash Sale
                 </Button>
             </DialogTrigger>
-            <FlashSaleForm onSave={handleSaveSale} onOpenChange={setFormOpen}/>
+            <FlashSaleForm products={products} onSave={handleSaveSale} onOpenChange={setFormOpen}/>
         </Dialog>
       </div>
 

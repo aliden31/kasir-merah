@@ -1,7 +1,7 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -26,11 +26,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-import { placeholderExpenses } from '@/lib/placeholder-data';
 import type { Expense } from '@/lib/types';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getExpenses, addExpense } from '@/lib/data-service';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -38,8 +37,8 @@ const formatCurrency = (amount: number) => {
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
 
-const ExpenseChart = () => {
-    const expensesByCategory = placeholderExpenses.reduce((acc, expense) => {
+const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
+    const expensesByCategory = expenses.reduce((acc, expense) => {
         acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
         return acc;
     }, {} as Record<string, number>);
@@ -72,14 +71,13 @@ const ExpenseChart = () => {
     );
 };
 
-const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Expense) => void, onOpenChange: (open: boolean) => void }) => {
+const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState('');
     const [amount, setAmount] = useState(0);
     const [category, setCategory] = useState<'Operasional' | 'Gaji' | 'Pemasaran' | 'Lainnya'>('Lainnya');
 
     const handleSubmit = () => {
-        const newExpense: Expense = {
-            id: `exp-${Date.now()}`,
+        const newExpense: Omit<Expense, 'id'> = {
             name,
             amount,
             category,
@@ -129,16 +127,42 @@ const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Expense) => v
 }
 
 const PengeluaranPage: FC = () => {
-  const [expenses, setExpenses] = useState<Expense[]>(placeholderExpenses);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleSaveExpense = (expense: Expense) => {
-    setExpenses(prev => [...prev, expense]);
-    toast({
-        title: "Pengeluaran Disimpan",
-        description: `Pengeluaran "${expense.name}" telah berhasil disimpan.`,
-    });
+  useEffect(() => {
+    const fetchExpenses = async () => {
+        try {
+            const expensesData = await getExpenses();
+            setExpenses(expensesData);
+        } catch (error) {
+            toast({ title: "Error", description: "Gagal memuat data pengeluaran.", variant: "destructive"});
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchExpenses();
+  }, [toast]);
+
+  const handleSaveExpense = async (expenseData: Omit<Expense, 'id'>) => {
+    try {
+        const newExpense = await addExpense(expenseData);
+        setExpenses(prev => [...prev, newExpense]);
+        toast({
+            title: "Pengeluaran Disimpan",
+            description: `Pengeluaran "${newExpense.name}" telah berhasil disimpan.`,
+        });
+    } catch(error) {
+        toast({ title: "Error", description: "Gagal menyimpan pengeluaran.", variant: "destructive" });
+        console.error(error);
+    }
+  }
+
+  if (loading) {
+    return <div>Memuat data pengeluaran...</div>;
   }
     
   return (
@@ -184,7 +208,7 @@ const PengeluaranPage: FC = () => {
           </Table>
         </TabsContent>
         <TabsContent value="diagram" className="mt-4">
-            <ExpenseChart />
+            <ExpenseChart expenses={expenses} />
         </TabsContent>
       </Tabs>
     </div>

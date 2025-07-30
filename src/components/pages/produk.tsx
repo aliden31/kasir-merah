@@ -1,7 +1,7 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { placeholderProducts } from '@/lib/placeholder-data';
 import type { Product } from '@/lib/types';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -37,9 +36,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { getProducts, addProduct, updateProduct, deleteProduct } from '@/lib/data-service';
 
 
-const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product) => void, onOpenChange: (open: boolean) => void }) => {
+const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState(product?.name || '');
     const [costPrice, setCostPrice] = useState(product?.costPrice || 0);
     const [sellingPrice, setSellingPrice] = useState(product?.sellingPrice || 0);
@@ -47,15 +47,20 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
     const [category, setCategory] = useState(product?.category || '');
 
     const handleSubmit = () => {
-        const newProduct: Product = {
-            id: product?.id || `prod-${Date.now()}`,
+        const productData = {
             name,
             costPrice,
             sellingPrice,
             stock,
             category,
         };
-        onSave(newProduct);
+
+        if (product?.id) {
+            onSave({ id: product.id, ...productData });
+        } else {
+            onSave(productData);
+        }
+        
         onOpenChange(false);
     };
     
@@ -97,30 +102,64 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
 }
 
 const ProdukPage: FC = () => {
-  const [products, setProducts] = useState<Product[]>(placeholderProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+        try {
+            const productsData = await getProducts();
+            setProducts(productsData);
+        } catch (error) {
+            toast({ title: "Error", description: "Gagal memuat data produk.", variant: "destructive" });
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+    fetchProducts();
+  }, [toast]);
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
   };
   
-  const handleSaveProduct = (product: Product) => {
-    const isEditing = products.some(p => p.id === product.id);
-    setProducts(prev => isEditing ? prev.map(p => p.id === product.id ? product : p) : [...prev, product]);
-    toast({
-        title: `Produk ${isEditing ? 'diperbarui' : 'ditambahkan'}`,
-        description: `${product.name} telah berhasil disimpan.`,
-    });
+  const handleSaveProduct = async (productData: Product | Omit<Product, 'id'>) => {
+    try {
+        if ('id' in productData) {
+            await updateProduct(productData.id, productData);
+            setProducts(prev => prev.map(p => p.id === productData.id ? {...p, ...productData} : p));
+            toast({ title: "Produk diperbarui", description: `${productData.name} telah berhasil diperbarui.` });
+        } else {
+            const newProduct = await addProduct(productData);
+            setProducts(prev => [...prev, newProduct]);
+            toast({ title: "Produk ditambahkan", description: `${newProduct.name} telah berhasil ditambahkan.` });
+        }
+    } catch (error) {
+        toast({ title: "Error", description: "Gagal menyimpan produk.", variant: "destructive" });
+        console.error(error);
+    }
   };
 
-  const handleDeleteProduct = (productId: string) => {
-    setProducts(prev => prev.filter(p => p.id !== productId));
-    toast({
-        title: "Produk Dihapus",
-        description: "Produk telah berhasil dihapus dari daftar.",
-        variant: "destructive"
-    });
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+        await deleteProduct(productId);
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        toast({
+            title: "Produk Dihapus",
+            description: "Produk telah berhasil dihapus dari daftar.",
+            variant: "destructive"
+        });
+    } catch (error) {
+        toast({ title: "Error", description: "Gagal menghapus produk.", variant: "destructive" });
+        console.error(error);
+    }
+  }
+
+  if (loading) {
+    return <div>Memuat data produk...</div>
   }
 
   return (

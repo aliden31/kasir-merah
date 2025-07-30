@@ -1,50 +1,91 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { placeholderSales, placeholderExpenses, placeholderProducts } from '@/lib/placeholder-data';
 import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Wallet, Download } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
-import { addDays, format } from 'date-fns';
-import type { Sale } from '@/lib/types';
+import { addDays, format, isWithinInterval } from 'date-fns';
+import type { Sale, Expense, Product } from '@/lib/types';
+import { getSales, getExpenses, getProducts } from '@/lib/data-service';
+import { useToast } from '@/hooks/use-toast';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 };
 
 const LaporanPage: FC = () => {
+    const [sales, setSales] = useState<Sale[]>([]);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
     const [date, setDate] = React.useState<DateRange | undefined>({
-        from: new Date(2023, 9, 1),
-        to: addDays(new Date(2023, 9, 28), 0),
+        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
     });
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [salesData, expensesData, productsData] = await Promise.all([getSales(), getExpenses(), getProducts()]);
+                setSales(salesData);
+                setExpenses(expensesData);
+                setProducts(productsData);
+            } catch (error) {
+                toast({ title: "Error", description: "Gagal memuat data laporan.", variant: "destructive" });
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchData();
+    }, [toast]);
     
-    const financialSummary = useMemo(() => {
-        const totalSales = placeholderSales.reduce((sum, sale) => sum + sale.finalTotal, 0);
+    const filteredData = useMemo(() => {
+        if (!date?.from) return { filteredSales: [], filteredExpenses: [] };
+
+        const interval = { start: date.from, end: date.to || date.from };
         
-        const totalCostOfGoods = placeholderSales.reduce((totalCost, sale) => {
+        const filteredSales = sales.filter(sale => isWithinInterval(sale.date, interval));
+        const filteredExpenses = expenses.filter(expense => isWithinInterval(expense.date, interval));
+
+        return { filteredSales, filteredExpenses };
+
+    }, [sales, expenses, date]);
+
+    const financialSummary = useMemo(() => {
+        const { filteredSales, filteredExpenses } = filteredData;
+        
+        const totalSales = filteredSales.reduce((sum, sale) => sum + sale.finalTotal, 0);
+        
+        const totalCostOfGoods = filteredSales.reduce((totalCost, sale) => {
             const saleCost = sale.items.reduce((itemCost, item) => {
-                const product = placeholderProducts.find(p => p.id === item.product.id);
+                const productId = typeof item.product === 'string' ? item.product : item.product.id;
+                const product = products.find(p => p.id === productId);
                 return itemCost + (product ? product.costPrice * item.quantity : 0);
             }, 0);
             return totalCost + saleCost;
         }, 0);
 
-        const totalExpenses = placeholderExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+        const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
         const grossProfit = totalSales - totalCostOfGoods;
         const netProfit = grossProfit - totalExpenses;
         
         return { totalSales, totalCostOfGoods, totalExpenses, grossProfit, netProfit };
-    }, []);
+    }, [filteredData, products]);
 
     const handleExport = () => {
-        const salesWithDetails = placeholderSales.map(sale => {
+        const { filteredSales, filteredExpenses } = filteredData;
+
+        const salesWithDetails = filteredSales.map(sale => {
             const totalPokok = sale.items.reduce((acc, item) => {
-                const product = placeholderProducts.find(p => p.id === item.product.id);
+                const productId = typeof item.product === 'string' ? item.product : item.product.id;
+                const product = products.find(p => p.id === productId);
                 return acc + (product ? product.costPrice * item.quantity : 0);
             }, 0);
             const labaKotor = sale.subtotal - totalPokok;
@@ -60,8 +101,8 @@ const LaporanPage: FC = () => {
             totalPokok: salesWithDetails.reduce((acc, sale) => acc + sale.totalPokok, 0),
             labaKotor: salesWithDetails.reduce((acc, sale) => acc + sale.labaKotor, 0),
             potFaktur: salesWithDetails.reduce((acc, sale) => acc + (sale.subtotal * sale.discount / 100), 0),
-            totalPengeluaran: placeholderExpenses.reduce((acc, exp) => acc + exp.amount, 0),
-            labaJualBersih: salesWithDetails.reduce((acc, sale) => acc + sale.labaKotor, 0) - placeholderExpenses.reduce((acc, exp) => acc + exp.amount, 0) - salesWithDetails.reduce((acc, sale) => acc + (sale.subtotal * sale.discount / 100), 0),
+            totalPengeluaran: filteredExpenses.reduce((acc, exp) => acc + exp.amount, 0),
+            labaJualBersih: salesWithDetails.reduce((acc, sale) => acc + sale.labaKotor, 0) - filteredExpenses.reduce((acc, exp) => acc + exp.amount, 0) - salesWithDetails.reduce((acc, sale) => acc + (sale.subtotal * sale.discount / 100), 0),
         };
 
 
@@ -91,7 +132,7 @@ const LaporanPage: FC = () => {
         // Expenses Section
         csvContent += "DAFTAR PENGELUARAN\n";
         csvContent += "Tanggal Pengeluaran,Kategori,Deskripsi,Jumlah\n";
-        placeholderExpenses.forEach(expense => {
+        filteredExpenses.forEach(expense => {
             const row = [
                 format(expense.date, "yyyy-MM-dd"),
                 expense.category,
@@ -129,6 +170,10 @@ const LaporanPage: FC = () => {
         { title: 'Laba Kotor', value: formatCurrency(financialSummary.grossProfit), icon: DollarSign, color: 'text-primary' },
         { title: 'Laba Bersih', value: formatCurrency(financialSummary.netProfit), icon: financialSummary.netProfit > 0 ? TrendingUp : TrendingDown, color: financialSummary.netProfit > 0 ? 'text-green-600' : 'text-red-500' },
     ];
+
+  if (loading) {
+      return <div>Memuat data laporan...</div>;
+  }
 
   return (
     <div className="space-y-6">
