@@ -33,8 +33,9 @@ import { useToast } from '@/hooks/use-toast';
 import { getExpenses, addExpense, getSettings } from '@/lib/data-service';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -54,7 +55,7 @@ const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
     if (chartData.length === 0) {
         return (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                Tidak ada data untuk ditampilkan.
+                Tidak ada data untuk ditampilkan pada rentang tanggal ini.
             </div>
         )
     }
@@ -216,6 +217,10 @@ const PengeluaranPage: FC = () => {
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const { toast } = useToast();
+  const [date, setDate] = React.useState<DateRange | undefined>({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
+  });
 
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -232,6 +237,13 @@ const PengeluaranPage: FC = () => {
     };
     fetchExpenses();
   }, [toast]);
+  
+  const filteredExpenses = useMemo(() => {
+    if (!date?.from || !date.to) return expenses;
+    const toDate = endOfDay(date.to);
+    const interval = { start: startOfDay(date.from), end: toDate };
+    return expenses.filter(expense => isWithinInterval(expense.date, interval));
+  }, [expenses, date]);
 
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
     try {
@@ -257,17 +269,55 @@ const PengeluaranPage: FC = () => {
     
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Manajemen Pengeluaran</h1>
-        <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-            <DialogTrigger asChild>
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Catat Pengeluaran
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+        <div>
+            <h1 className="text-2xl font-bold">Manajemen Pengeluaran</h1>
+            <p className="text-muted-foreground">Catat dan lihat semua pengeluaran toko Anda.</p>
+        </div>
+        <div className="flex items-center gap-2">
+            <Popover>
+                <PopoverTrigger asChild>
+                <Button
+                    id="date"
+                    variant={"outline"}
+                    className="w-full sm:w-[260px] justify-start text-left font-normal"
+                >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date?.from ? (
+                    date.to ? (
+                        <>
+                        {format(date.from, "LLL dd, y")} -{" "}
+                        {format(date.to, "LLL dd, y")}
+                        </>
+                    ) : (
+                        format(date.from, "LLL dd, y")
+                    )
+                    ) : (
+                    <span>Pilih rentang tanggal</span>
+                    )}
                 </Button>
-            </DialogTrigger>
-            <ExpenseForm onSave={handleSaveExpense} onOpenChange={setFormOpen} settings={settings} />
-        </Dialog>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={date?.from}
+                    selected={date}
+                    onSelect={setDate}
+                    numberOfMonths={2}
+                />
+                </PopoverContent>
+            </Popover>
+            <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
+                <DialogTrigger asChild>
+                    <Button>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Catat
+                    </Button>
+                </DialogTrigger>
+                <ExpenseForm onSave={handleSaveExpense} onOpenChange={setFormOpen} settings={settings} />
+            </Dialog>
+        </div>
       </div>
 
       <Tabs defaultValue="riwayat">
@@ -279,7 +329,7 @@ const PengeluaranPage: FC = () => {
             <Card>
                 <CardHeader>
                     <CardTitle>Riwayat Pengeluaran</CardTitle>
-                    <CardDescription>Daftar semua pengeluaran yang telah dicatat.</CardDescription>
+                    <CardDescription>Daftar semua pengeluaran yang telah dicatat dalam rentang waktu terpilih.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto">
@@ -293,7 +343,7 @@ const PengeluaranPage: FC = () => {
                             </TableRow>
                             </TableHeader>
                             <TableBody>
-                            {expenses.length > 0 ? expenses.map((expense) => (
+                            {filteredExpenses.length > 0 ? filteredExpenses.map((expense) => (
                                 <TableRow key={expense.id}>
                                 <TableCell>{new Date(expense.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
                                 <TableCell className="font-medium">{expense.name}</TableCell>
@@ -306,7 +356,7 @@ const PengeluaranPage: FC = () => {
                             )) : (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-24 text-center">
-                                        Belum ada data pengeluaran.
+                                        Belum ada data pengeluaran pada rentang tanggal ini.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -320,10 +370,10 @@ const PengeluaranPage: FC = () => {
             <Card>
                 <CardHeader>
                     <CardTitle>Diagram Pengeluaran</CardTitle>
-                    <CardDescription>Visualisasi pengeluaran berdasarkan kategori.</CardDescription>
+                    <CardDescription>Visualisasi pengeluaran berdasarkan kategori dalam rentang waktu terpilih.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ExpenseChart expenses={expenses} />
+                    <ExpenseChart expenses={filteredExpenses} />
                 </CardContent>
             </Card>
         </TabsContent>
