@@ -110,10 +110,10 @@ export default function AppPage() {
 
 
   useEffect(() => {
-    if (!authLoading) {
+    if (user) {
         refreshAllData();
     }
-  }, [authLoading]);
+  }, [user]);
   
   useEffect(() => {
     if (settings.theme === 'dark') {
