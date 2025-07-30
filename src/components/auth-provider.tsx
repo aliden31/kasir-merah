@@ -54,13 +54,16 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     if (loading) return;
 
     const isAuthPage = pathname === '/login' || pathname === '/register';
+    const isAppPage = pathname.startsWith('/app');
 
-    if (!user && !isAuthPage) {
+    // If user is not logged in and is trying to access a protected app page
+    if (!user && isAppPage) {
       router.push('/login');
     }
 
+    // If user is logged in and is on an auth page
     if (user && isAuthPage) {
-      router.push('/');
+      router.push('/app');
     }
   }, [user, loading, pathname, router]);
 

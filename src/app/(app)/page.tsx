@@ -76,7 +76,7 @@ const defaultSettings: AppSettings = {
 };
 const defaultFlashSale: FlashSale = { id: 'main', title: '', isActive: false, products: [] };
 
-export default function Home() {
+export default function AppPage() {
   const { user, userRole, loading: authLoading } = useAuth();
   const router = useRouter();
   const [activeView, setActiveView] = useState<View>('dashboard');
