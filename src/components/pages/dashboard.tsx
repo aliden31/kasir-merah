@@ -134,7 +134,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ onNavigate }) => {
     if (loading) {
         return (
             <div className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     <Skeleton className="h-32" />
                     <Skeleton className="h-32" />
                     <Skeleton className="h-32" />
@@ -150,7 +150,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ onNavigate }) => {
     
     return (
         <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Penjualan Hari Ini</CardTitle>
