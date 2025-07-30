@@ -3,17 +3,52 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 8, 29);
+    // Helper function to check user role from the 'users' collection
+    function isUserRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    
+    // Users can only read their own data. Admins can read/write any user data.
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || isUserRole('admin');
+      allow write: if isUserRole('admin');
+    }
+
+    // Products: Admin can do anything. Cashiers and others can only read.
+    match /products/{productId} {
+      allow read: if request.auth != null;
+      allow write, delete: if isUserRole('admin');
+    }
+
+    // Sales: Admin can do anything. Cashiers can only create.
+    match /sales/{saleId} {
+      allow read, update, delete: if isUserRole('admin');
+      allow create: if isUserRole('admin') || isUserRole('kasir');
+    }
+
+    // Returns: Admin can do anything. Cashiers can only create.
+    match /returns/{returnId} {
+      allow read, update, delete: if isUserRole('admin');
+      allow create: if isUserRole('admin') || isUserRole('kasir');
+    }
+
+    // Expenses: Admin can do anything. Cashiers can only create.
+    match /expenses/{expenseId} {
+      allow read, update, delete: if isUserRole('admin');
+      allow create: if isUserRole('admin') || isUserRole('kasir');
+    }
+
+    // Settings & Logs: Only admins have access.
+    match /settings/{settingId} {
+       allow read, write: if isUserRole('admin');
+    }
+    
+    match /stockOpnameLogs/{logId} {
+      allow read, write: if isUserRole('admin');
+    }
+
+    match /activityLogs/{logId} {
+        allow read, write: if isUserRole('admin') || isUserRole('kasir');
     }
   }
 }
