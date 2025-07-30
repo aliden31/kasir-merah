@@ -1,5 +1,6 @@
 
 
+
 import { db } from './firebase';
 import {
   collection,
@@ -82,10 +83,10 @@ async function deleteDocument(collectionName: string, id: string): Promise<void>
 
 // Activity Log Functions
 export const getActivityLogs = () => getCollection<ActivityLog>('activityLogs');
-export const addActivityLog = (user: UserRole, description: string) => {
+export const addActivityLog = (user: UserRole | null | undefined, description: string) => {
     const log: Omit<ActivityLog, 'id'> = {
         date: new Date(),
-        user,
+        user: user || 'sistem',
         description,
     };
     return addDocument<ActivityLog>('activityLogs', log);
