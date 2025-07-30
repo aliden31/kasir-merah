@@ -168,39 +168,52 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
 
 
 export const updateSale = async (originalSale: Sale, updatedSale: Sale): Promise<void> => {
+    // 1. Calculate stock differences and gather all needed product IDs
+    const stockChanges: Record<string, number> = {};
+    const productIds = new Set<string>();
+
+    originalSale.items.forEach(item => {
+        stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) + item.quantity;
+        productIds.add(item.product.id);
+    });
+
+    updatedSale.items.forEach(item => {
+        stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) - item.quantity;
+        productIds.add(item.product.id);
+    });
+    
+    // 2. Read all product documents that will be affected BEFORE the transaction
+    const productRefs = Array.from(productIds).map(id => doc(db, "products", id));
+    const productDocs = await Promise.all(productRefs.map(ref => getDoc(ref)));
+    
+    const existingProducts: Record<string, DocumentData> = {};
+    productDocs.forEach(docSnap => {
+        if(docSnap.exists()){
+            existingProducts[docSnap.id] = docSnap.data();
+        }
+    });
+
+    // 3. Run the transaction with only write operations
     return runTransaction(db, async (transaction) => {
         const saleRef = doc(db, "sales", originalSale.id);
 
-        // 1. Calculate stock differences
-        const stockChanges: Record<string, number> = {};
-
-        // Original items
-        originalSale.items.forEach(item => {
-            stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) + item.quantity;
-        });
-
-        // Updated items
-        updatedSale.items.forEach(item => {
-            stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) - item.quantity;
-        });
-
-        // 2. Update product stocks
+        // Update product stocks
         for (const productId in stockChanges) {
             const change = stockChanges[productId];
             if (change !== 0) {
                 const productRef = doc(db, "products", productId);
-                const productDoc = await transaction.get(productRef);
-                if (!productDoc.exists()) {
-                    // This could happen if a product was deleted after the sale
+                const productData = existingProducts[productId];
+
+                if (!productData) {
                     console.warn(`Product with ID ${productId} not found during sale update. Stock not updated.`);
                     continue;
                 }
-                const newStock = productDoc.data().stock + change;
+                const newStock = productData.stock + change;
                 transaction.update(productRef, { stock: newStock });
             }
         }
         
-        // 3. Update the sale document
+        // Update the sale document
         const { id, displayId, ...saleDataToUpdate } = updatedSale;
         
         transaction.update(saleRef, {
