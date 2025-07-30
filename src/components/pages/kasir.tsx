@@ -71,11 +71,13 @@ const KasirPage: FC = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-4rem)]">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full lg:h-[calc(100vh-5rem)]">
       <div className="lg:col-span-2">
         <Card className="h-full flex flex-col">
           <CardHeader>
-            <CardTitle>Pilih Produk</CardTitle>
+            <div className="hidden sm:block">
+              <CardTitle>Pilih Produk</CardTitle>
+            </div>
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -87,7 +89,7 @@ const KasirPage: FC = () => {
             </div>
           </CardHeader>
           <CardContent className="flex-grow">
-            <ScrollArea className="h-[calc(100vh-16rem)]">
+            <ScrollArea className="h-full lg:h-[calc(100vh-16rem)]">
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredProducts.map((product) => (
                   <Card
@@ -123,7 +125,7 @@ const KasirPage: FC = () => {
             <CardTitle>Keranjang</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow">
-            <ScrollArea className="h-[calc(100vh-22rem)]">
+            <ScrollArea className="h-full lg:h-[calc(100vh-22rem)]">
               {cart.length === 0 ? (
                 <div className="text-center text-muted-foreground py-10">
                   <p>Keranjang masih kosong.</p>

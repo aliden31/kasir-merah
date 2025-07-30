@@ -60,6 +60,8 @@ export default function Home() {
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap },
     { id: 'pengaturan', label: 'Pengaturan', icon: Settings },
   ];
+  
+  const activeMenu = menuItems.find(item => item.id === activeView);
 
   const renderView = () => {
     switch (activeView) {
@@ -129,7 +131,11 @@ export default function Home() {
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>
-          <div className="p-4 md:p-6">{renderView()}</div>
+            <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+                <SidebarTrigger className="sm:hidden" />
+                <h1 className="text-xl font-semibold sm:hidden">{activeMenu?.label}</h1>
+            </header>
+            <main className="p-4 md:p-6">{renderView()}</main>
         </SidebarInset>
       </div>
     </SidebarProvider>
