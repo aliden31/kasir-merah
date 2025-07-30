@@ -144,7 +144,19 @@ const ProdukPage: FC = () => {
                 productsData = await getProducts();
                 toast({ title: "Inisialisasi berhasil", description: "Data produk sampel telah ditambahkan." });
             }
-            setProducts(productsData.sort((a,b) => a.name.localeCompare(b.name)));
+            
+            // Filter unique products by name
+            const uniqueProductNames = new Set();
+            const uniqueProducts = productsData.filter(product => {
+                if (uniqueProductNames.has(product.name)) {
+                    return false;
+                } else {
+                    uniqueProductNames.add(product.name);
+                    return true;
+                }
+            });
+
+            setProducts(uniqueProducts.sort((a,b) => a.name.localeCompare(b.name)));
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data produk.", variant: "destructive" });
             console.error(error);
