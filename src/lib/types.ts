@@ -46,3 +46,9 @@ export interface FlashSale {
     startTime: Date;
     endTime: Date;
 }
+
+export interface Settings {
+  id?: string; // id is 'main'
+  storeName: string;
+  defaultDiscount: number;
+}

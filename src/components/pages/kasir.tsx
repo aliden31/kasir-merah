@@ -30,19 +30,24 @@ interface KasirPageProps {
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   cartItemCount: number;
+  defaultDiscount: number;
 }
 
 
-const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearCart, cartItemCount }) => {
+const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearCart, cartItemCount, defaultDiscount }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [discount, setDiscount] = useState(0);
+  const [discount, setDiscount] = useState(defaultDiscount);
   const [transactionDate, setTransactionDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
   const [carouselApi, setCarouselApi] = React.useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = React.useState(0)
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    setDiscount(defaultDiscount);
+  }, [defaultDiscount]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -107,7 +112,7 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
           description: `Total pembayaran ${formatCurrency(total)} telah berhasil diproses.`,
         });
         clearCart();
-        setDiscount(0);
+        setDiscount(defaultDiscount);
         // re-fetch products to update stock
         const productsData = await getProducts();
         setProducts(productsData);
@@ -150,11 +155,11 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
                               <Card
                                 key={product.id}
                                 onClick={() => addToCart(product)}
-                                className="cursor-pointer hover:shadow-lg transition-shadow group flex items-center justify-center p-4"
+                                className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col items-center justify-center p-4 text-center"
                               >
-                                <CardContent className="p-0 text-center">
-                                    <h3 className="font-semibold text-sm">{product.name}</h3>
-                                    <p className="text-xs text-primary font-medium">{formatCurrency(product.sellingPrice)}</p>
+                                <CardContent className="p-0 flex-grow flex flex-col justify-center">
+                                    <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
+                                    <p className="text-xs text-primary font-medium mt-1">{formatCurrency(product.sellingPrice)}</p>
                                 </CardContent>
                               </Card>
                             ))}
@@ -287,7 +292,7 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
 
         {currentSlide === 0 && (
           <Button
-            className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg lg:hidden"
+            className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg lg:hidden z-20"
             size="icon"
             onClick={() => carouselApi?.scrollNext()}
           >
@@ -322,18 +327,18 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
                 />
               </div>
             </CardHeader>
-            <CardContent className="flex-grow">
+            <CardContent className="flex-grow p-0">
               <ScrollArea className="h-full lg:h-[calc(100vh-16rem)]">
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
                   {filteredProducts.map((product) => (
                     <Card
                       key={product.id}
                       onClick={() => addToCart(product)}
-                      className="cursor-pointer hover:shadow-lg transition-shadow group flex items-center justify-center p-4"
+                      className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col items-center justify-center p-4 text-center"
                     >
-                      <CardContent className="p-0 text-center">
-                          <h3 className="font-semibold text-sm">{product.name}</h3>
-                          <p className="text-xs text-primary font-medium">{formatCurrency(product.sellingPrice)}</p>
+                      <CardContent className="p-0 flex-grow flex flex-col justify-center">
+                          <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
+                          <p className="text-xs text-primary font-medium mt-1">{formatCurrency(product.sellingPrice)}</p>
                       </CardContent>
                     </Card>
                   ))}

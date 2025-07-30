@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -36,7 +36,8 @@ import PengeluaranPage from '@/components/pages/pengeluaran';
 import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
-import { SaleItem, Product } from '@/lib/types';
+import { SaleItem, Product, Settings as AppSettings } from '@/lib/types';
+import { getSettings } from '@/lib/data-service';
 
 type View =
   | 'kasir'
@@ -51,6 +52,15 @@ type View =
 export default function Home() {
   const [activeView, setActiveView] = useState<View>('kasir');
   const [cart, setCart] = useState<SaleItem[]>([]);
+  const [settings, setSettings] = useState<AppSettings>({ storeName: 'Memuat...', defaultDiscount: 0 });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const appSettings = await getSettings();
+      setSettings(appSettings);
+    };
+    fetchSettings();
+  }, []);
 
   const addToCart = (product: Product) => {
     setCart((prevCart) => {
@@ -100,6 +110,7 @@ export default function Home() {
           updateQuantity={updateQuantity}
           clearCart={clearCart}
           cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+          defaultDiscount={settings.defaultDiscount}
         />;
       case 'produk':
         return <ProdukPage />;
@@ -114,7 +125,7 @@ export default function Home() {
       case 'flash-sale':
         return <FlashSalePage />;
       case 'pengaturan':
-        return <PengaturanPage />;
+        return <PengaturanPage settings={settings} onSettingsChange={setSettings} />;
       default:
         return <KasirPage 
           cart={cart}
@@ -122,6 +133,7 @@ export default function Home() {
           updateQuantity={updateQuantity}
           clearCart={clearCart}
           cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+          defaultDiscount={settings.defaultDiscount}
         />;
     }
   };
@@ -136,7 +148,7 @@ export default function Home() {
                 <Store className="h-5 w-5 text-primary" />
               </Button>
               <div className="flex flex-col">
-                <span className="font-semibold tracking-tight">Toko Cepat</span>
+                <span className="font-semibold tracking-tight">{settings.storeName}</span>
               </div>
             </div>
           </SidebarHeader>

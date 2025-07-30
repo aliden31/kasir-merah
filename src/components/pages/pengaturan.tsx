@@ -1,7 +1,7 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,17 +20,40 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Settings } from '@/lib/types';
+import { saveSettings } from '@/lib/data-service';
 
-const PengaturanPage: FC = () => {
-    const [storeName, setStoreName] = useState('Toko Cepat');
-    const [defaultDiscount, setDefaultDiscount] = useState(10.5);
+interface PengaturanPageProps {
+  settings: Settings;
+  onSettingsChange: (settings: Settings) => void;
+}
+
+const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange }) => {
+    const [storeName, setStoreName] = useState(settings.storeName);
+    const [defaultDiscount, setDefaultDiscount] = useState(settings.defaultDiscount);
     const { toast } = useToast();
+
+    useEffect(() => {
+      setStoreName(settings.storeName);
+      setDefaultDiscount(settings.defaultDiscount);
+    }, [settings]);
     
-    const handleSaveSettings = () => {
-        toast({
-            title: "Pengaturan Disimpan",
-            description: "Pengaturan toko telah berhasil diperbarui.",
-        });
+    const handleSaveSettings = async () => {
+        try {
+            const newSettings = { storeName, defaultDiscount };
+            await saveSettings(newSettings);
+            onSettingsChange(newSettings);
+            toast({
+                title: "Pengaturan Disimpan",
+                description: "Pengaturan toko telah berhasil diperbarui.",
+            });
+        } catch (error) {
+            toast({
+                title: "Gagal Menyimpan",
+                description: "Terjadi kesalahan saat menyimpan pengaturan.",
+                variant: "destructive"
+            });
+        }
     }
 
     const handleDeleteDatabase = () => {

@@ -9,8 +9,10 @@ import {
   writeBatch,
   query,
   Timestamp,
+  getDoc,
+  setDoc,
 } from 'firebase/firestore';
-import type { Product, Sale, Return, Expense, FlashSale, SaleItem } from './types';
+import type { Product, Sale, Return, Expense, FlashSale, Settings } from './types';
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -140,4 +142,25 @@ export const addFlashSale = (sale: Omit<FlashSale, 'id'>) => {
         startTime: Timestamp.fromDate(sale.startTime),
         endTime: Timestamp.fromDate(sale.endTime)
     });
+};
+
+// Settings-specific functions
+export const getSettings = async (): Promise<Settings> => {
+    const docRef = doc(db, 'settings', 'main');
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+        return docSnap.data() as Settings;
+    } else {
+        // Return default settings if not found
+        const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0 };
+        // Optionally, create the default settings document in Firestore
+        await setDoc(docRef, defaultSettings);
+        return defaultSettings;
+    }
+};
+
+export const saveSettings = async (settings: Settings): Promise<void> => {
+    const docRef = doc(db, 'settings', 'main');
+    await setDoc(docRef, settings, { merge: true });
 };
