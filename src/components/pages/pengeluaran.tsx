@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { FC } from 'react';
@@ -72,7 +73,7 @@ const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
     );
 };
 
-const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
+const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => void, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState('');
     const [amount, setAmount] = useState(0);
     const [category, setCategory] = useState<'Operasional' | 'Gaji' | 'Pemasaran' | 'Lainnya'>('Lainnya');
@@ -137,7 +138,7 @@ const PengeluaranPage: FC = () => {
     const fetchExpenses = async () => {
         try {
             const expensesData = await getExpenses();
-            setExpenses(expensesData);
+            setExpenses(expensesData.sort((a,b) => b.date.getTime() - a.date.getTime()));
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data pengeluaran.", variant: "destructive"});
             console.error(error);
@@ -148,7 +149,7 @@ const PengeluaranPage: FC = () => {
     fetchExpenses();
   }, [toast]);
 
-  const handleSaveExpense = async (expenseData: Omit<Expense, 'id'>) => {
+  const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
     try {
         const newExpense = await addExpense(expenseData);
         setExpenses(prev => [...prev, newExpense].sort((a,b) => b.date.getTime() - a.date.getTime()));
@@ -193,32 +194,34 @@ const PengeluaranPage: FC = () => {
                     <CardDescription>Daftar semua pengeluaran yang telah dicatat.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                        <TableRow>
-                            <TableHead>Tanggal</TableHead>
-                            <TableHead>Nama Pengeluaran</TableHead>
-                            <TableHead>Kategori</TableHead>
-                            <TableHead className="text-right">Jumlah</TableHead>
-                        </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                        {expenses.length > 0 ? expenses.map((expense) => (
-                            <TableRow key={expense.id}>
-                            <TableCell>{expense.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
-                            <TableCell className="font-medium">{expense.name}</TableCell>
-                            <TableCell>{expense.category}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
-                            </TableRow>
-                        )) : (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
-                                    Belum ada data pengeluaran.
-                                </TableCell>
+                                <TableHead>Tanggal</TableHead>
+                                <TableHead>Nama Pengeluaran</TableHead>
+                                <TableHead>Kategori</TableHead>
+                                <TableHead className="text-right">Jumlah</TableHead>
                             </TableRow>
-                        )}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                            {expenses.length > 0 ? expenses.map((expense) => (
+                                <TableRow key={expense.id}>
+                                <TableCell>{expense.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
+                                <TableCell className="font-medium">{expense.name}</TableCell>
+                                <TableCell>{expense.category}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
+                                </TableRow>
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">
+                                        Belum ada data pengeluaran.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </TabsContent>

@@ -28,14 +28,28 @@ async function getDocumentById<T>(collectionName: string, id: string): Promise<T
     const docRef = doc(db, collectionName, id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as T;
+        const data = docSnap.data();
+        // Convert Firestore Timestamps to JS Dates
+        Object.keys(data).forEach(key => {
+            if (data[key] instanceof Timestamp) {
+                data[key] = data[key].toDate();
+            }
+        });
+        return { id: docSnap.id, ...data } as T;
     }
     return undefined;
 }
 
 
 async function addDocument<T>(collectionName: string, data: Omit<T, 'id'>): Promise<T> {
-  const docRef = await addDoc(collection(db, collectionName), data);
+    const dataWithTimestamp = { ...data };
+    Object.keys(dataWithTimestamp).forEach(key => {
+        if (dataWithTimestamp[key as keyof typeof dataWithTimestamp] instanceof Date) {
+            dataWithTimestamp[key as keyof typeof dataWithTimestamp] = Timestamp.fromDate(dataWithTimestamp[key as keyof typeof dataWithTimestamp] as Date) as any;
+        }
+    });
+
+  const docRef = await addDoc(collection(db, collectionName), dataWithTimestamp);
   return { id: docRef.id, ...data } as T;
 }
 
@@ -76,6 +90,11 @@ export async function getSales(): Promise<Sale[]> {
     return salesData.map(sale => ({
         ...sale,
         date: (sale.date as Timestamp).toDate(),
+        items: sale.items.map((item: any) => ({
+             ...item,
+             // Ensure product is a proper object, not a reference
+             product: item.product || { id: 'unknown', name: 'Produk Dihapus', costPrice: 0, sellingPrice: 0, stock: 0, category: 'Lainnya' }
+        }))
     }));
 }
 
@@ -136,11 +155,12 @@ export async function getExpenses(): Promise<Expense[]> {
     }));
 }
 
-export const addExpense = (expense: Omit<Expense, 'id'>) => {
-    return addDocument<Expense>('expenses', {
+export const addExpense = (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
+    const newExpense = {
         ...expense,
-        date: Timestamp.fromDate(expense.date)
-    });
+        date: expense.date || new Date(),
+    }
+    return addDocument<Expense>('expenses', newExpense);
 };
 
 // Return-specific functions
@@ -162,7 +182,7 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
                 const productRef = doc(db, "products", item.productId);
                 const productDoc = await transaction.get(productRef);
                 if (productDoc.exists()) {
-                    const currentStock = productDoc.data().stock;
+                    const currentStock = productDoc.data().stock || 0;
                     const newStock = currentStock + item.quantity;
                     transaction.update(productRef, { stock: newStock });
                 } else {
@@ -178,7 +198,8 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
             });
         });
 
-        return { ...returnData, id: newReturnRef.id };
+        const newReturnWithId: Return = { ...returnData, id: newReturnRef.id };
+        return newReturnWithId;
 
     } catch (e) {
         console.error("Return transaction failed: ", e);
