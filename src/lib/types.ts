@@ -113,7 +113,7 @@ export interface StockOpnameLog {
 export interface ActivityLog {
     id: string;
     date: Date;
-    user: UserRole;
+    user: UserRole | 'sistem';
     description: string;
 }
 
