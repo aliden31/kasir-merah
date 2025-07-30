@@ -91,6 +91,21 @@ export const addActivityLog = (user: UserRole, description: string) => {
     return addDocument<ActivityLog>('activityLogs', log);
 };
 
+export const deleteActivityLog = async (id: string): Promise<void> => {
+    await deleteDocument('activityLogs', id);
+};
+
+export const clearActivityLogs = async (user: UserRole): Promise<void> => {
+    const logsSnapshot = await getDocs(query(collection(db, 'activityLogs')));
+    const batch = writeBatch(db);
+    logsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    await batch.commit();
+    await addActivityLog(user, 'menghapus seluruh riwayat log aktivitas.');
+}
+
+
 
 // Product-specific functions
 export const getProducts = () => getCollection<Product>('products');
