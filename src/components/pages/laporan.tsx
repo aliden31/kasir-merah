@@ -2,9 +2,9 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Wallet, Download, Undo2 } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Wallet, Download, Undo2, Printer } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon } from 'lucide-react';
@@ -54,12 +54,13 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
     const [returns, setReturns] = useState<Return[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
-    const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
-    const [exportData, setExportData] = useState<string | null>(null);
+    const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
     const [date, setDate] = React.useState<DateRange | undefined>({
         from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
     });
+    const printRef = useRef<HTMLDivElement>(null);
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -228,80 +229,20 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         };
     }, [filteredData, salesMap]);
 
-    const prepareExport = () => {
-        const { salesWithDetails, filteredExpenses, filteredReturns, summary } = exportPreviewData;
-        const round = (num: number) => Math.round(num);
 
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "LAPORAN LABA RUGI\n\n";
-
-        csvContent += "No Transaksi,Tanggal,Dept,Kode Pel,Nama Pelanggan,Sub Total,Total Pokok,Laba Kotor,Biaya Msk Total (+) Diskon,Biaya Lain,Laba Jual\n";
-        salesWithDetails.forEach(sale => {
-            const row = [
-                `trx-${String(salesMap.get(sale.id)).padStart(4, '0')}`,
-                format(sale.date, "yyyy-MM-dd"),
-                "UTM",
-                "PL0001",
-                "PELANGGAN",
-                round(sale.subtotal),
-                round(sale.totalPokok),
-                round(sale.labaKotor),
-                round(sale.subtotal * sale.discount / 100),
-                0,
-                round(sale.finalTotal)
-            ].join(",");
-            csvContent += row + "\n";
-        });
-        csvContent += "\n";
-        
-        csvContent += "DAFTAR RETUR\n";
-        csvContent += "Tanggal Retur,ID Transaksi Asal,Alasan,Total Refund\n";
-        filteredReturns.forEach(ret => {
-            const row = [
-                format(ret.date, "yyyy-MM-dd"),
-                `trx-${salesMap.has(ret.saleId) ? String(salesMap.get(ret.saleId)).padStart(4, '0') : `...${ret.saleId.slice(-6)}`}`,
-                `"${ret.reason.replace(/"/g, '""')}"`,
-                round(ret.totalRefund)
-            ].join(",");
-            csvContent += row + "\n";
-        });
-        csvContent += "\n";
-
-        csvContent += "DAFTAR PENGELUARAN\n";
-        csvContent += "Tanggal Pengeluaran,Kategori,Deskripsi,Jumlah\n";
-        filteredExpenses.forEach(expense => {
-            const row = [
-                format(expense.date, "yyyy-MM-dd"),
-                expense.category,
-                `"${(expense.subcategory || expense.category).replace(/"/g, '""')}"`,
-                round(expense.amount)
-            ].join(",");
-            csvContent += row + "\n";
-        });
-        csvContent += "\n";
-
-        csvContent += "TOTAL KESELURUHAN\n";
-        csvContent += `Penjualan Bersih (Setelah Retur & Diskon):,${round(summary.penjualanBersih)}\n`;
-        csvContent += `Total Pokok (HPP) Bersih:,${round(summary.totalPokokBersih)}\n`;
-        csvContent += `Laba Kotor (Setelah Retur & HPP):,${round(summary.labaKotor)}\n`;
-        csvContent += `Total Pengeluaran:,-${round(summary.totalPengeluaran)}\n`;
-        csvContent += `Laba Bersih (Setelah Semua Biaya):,${round(summary.labaBersih)}\n`;
-
-        setExportData(csvContent);
-        setIsExportPreviewOpen(true);
+    const handlePrint = () => {
+        const printContent = printRef.current;
+        if (printContent) {
+            const originalContents = document.body.innerHTML;
+            const printSection = printContent.innerHTML;
+            document.body.innerHTML = printSection;
+            window.print();
+            document.body.innerHTML = originalContents;
+            // We need to re-bind the event listeners after replacing body content
+            window.location.reload();
+        }
     };
-
-    const handleDownload = () => {
-        if (!exportData) return;
-        const encodedUri = encodeURI(exportData);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "laporan_laba_rugi.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setIsExportPreviewOpen(false);
-    };
+    
 
     const kpiCards = [
         { title: 'Penjualan Bersih', value: formatCurrency(financialSummary.totalSales), icon: TrendingUp, color: 'text-green-500', view: 'penjualan' as View | undefined },
@@ -357,69 +298,69 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
                     />
                     </PopoverContent>
                 </Popover>
-                <Button onClick={prepareExport}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Ekspor
-                </Button>
+                 <Dialog open={isPrintPreviewOpen} onOpenChange={setIsPrintPreviewOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Cetak Laporan
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl">
+                        <DialogHeader>
+                            <DialogTitle>Pratinjau Laporan</DialogTitle>
+                            <DialogDescription>
+                            Berikut adalah ringkasan dari data yang akan dicetak.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <ScrollArea className="max-h-[60vh]">
+                            <div className="space-y-6 p-1" ref={printRef}>
+                            <Card>
+                                <CardHeader>
+                                <CardTitle>Ringkasan Laba Rugi</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                <Table>
+                                    <TableBody>
+                                    <TableRow>
+                                        <TableCell>Penjualan Bersih (Setelah Retur & Diskon)</TableCell>
+                                        <TableCell className="text-right font-medium">{formatCurrency(exportPreviewData.summary.penjualanBersih)}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell>Total Pokok (HPP) Bersih</TableCell>
+                                        <TableCell className="text-right font-medium">{formatCurrency(exportPreviewData.summary.totalPokokBersih)}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell className="font-semibold">Laba Kotor</TableCell>
+                                        <TableCell className="text-right font-semibold">{formatCurrency(exportPreviewData.summary.labaKotor)}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell>Total Pengeluaran</TableCell>
+                                        <TableCell className="text-right font-medium text-destructive">-{formatCurrency(exportPreviewData.summary.totalPengeluaran)}</TableCell>
+                                    </TableRow>
+                                    <TableRow className="bg-muted/50">
+                                        <TableCell className="font-bold text-base">Laba Bersih (Setelah Semua Biaya)</TableCell>
+                                        <TableCell className={`text-right font-bold text-base ${exportPreviewData.summary.labaBersih >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                                            {formatCurrency(exportPreviewData.summary.labaBersih)}
+                                        </TableCell>
+                                    </TableRow>
+                                    </TableBody>
+                                </Table>
+                                </CardContent>
+                            </Card>
+                            </div>
+                        </ScrollArea>
+                        <DialogFooter>
+                            <Button variant="secondary" onClick={() => setIsPrintPreviewOpen(false)}>Batal</Button>
+                            <Button onClick={handlePrint}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Cetak
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
         
-      <Dialog open={isExportPreviewOpen} onOpenChange={setIsExportPreviewOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Pratinjau Ekspor Laporan</DialogTitle>
-            <DialogDescription>
-              Berikut adalah ringkasan dari data yang akan diekspor. Angka dalam file CSV tidak akan diformat.
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-6 p-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ringkasan Laba Rugi</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell>Penjualan Bersih (Setelah Retur & Diskon)</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(exportPreviewData.summary.penjualanBersih)}</TableCell>
-                      </TableRow>
-                       <TableRow>
-                        <TableCell>Total Pokok (HPP) Bersih</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(exportPreviewData.summary.totalPokokBersih)}</TableCell>
-                      </TableRow>
-                       <TableRow>
-                        <TableCell className="font-semibold">Laba Kotor</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(exportPreviewData.summary.labaKotor)}</TableCell>
-                      </TableRow>
-                       <TableRow>
-                        <TableCell>Total Pengeluaran</TableCell>
-                        <TableCell className="text-right font-medium text-destructive">-{formatCurrency(exportPreviewData.summary.totalPengeluaran)}</TableCell>
-                      </TableRow>
-                       <TableRow className="bg-muted/50">
-                        <TableCell className="font-bold text-base">Laba Bersih (Setelah Semua Biaya)</TableCell>
-                        <TableCell className={`text-right font-bold text-base ${exportPreviewData.summary.labaBersih >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                            {formatCurrency(exportPreviewData.summary.labaBersih)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </div>
-          </ScrollArea>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsExportPreviewOpen(false)}>Batal</Button>
-            <Button onClick={handleDownload}>
-              <Download className="mr-2 h-4 w-4" />
-              Unduh CSV
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {kpiCards.map(card => (
             <Card 
@@ -477,4 +418,4 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
 
 export default LaporanPage;
 
-      
+    
