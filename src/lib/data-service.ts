@@ -22,6 +22,16 @@ async function getCollection<T>(collectionName: string): Promise<T[]> {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
 }
 
+async function getDocumentById<T>(collectionName: string, id: string): Promise<T | undefined> {
+    const docRef = doc(db, collectionName, id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as T;
+    }
+    return undefined;
+}
+
+
 async function addDocument<T>(collectionName: string, data: Omit<T, 'id'>): Promise<T> {
   const docRef = await addDoc(collection(db, collectionName), data);
   return { id: docRef.id, ...data } as T;
@@ -38,6 +48,7 @@ async function deleteDocument(collectionName: string, id: string): Promise<void>
 
 // Product-specific functions
 export const getProducts = () => getCollection<Product>('products');
+export const getProductById = (id: string) => getDocumentById<Product>('products', id);
 export const addProduct = (product: Omit<Product, 'id'>) => addDocument<Product>('products', product);
 export const updateProduct = (id: string, product: Partial<Product>) => updateDocument<Product>('products', id, product);
 export const deleteProduct = (id: string) => deleteDocument('products', id);
@@ -164,3 +175,5 @@ export const saveSettings = async (settings: Settings): Promise<void> => {
     const docRef = doc(db, 'settings', 'main');
     await setDoc(docRef, settings, { merge: true });
 };
+
+    

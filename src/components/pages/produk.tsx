@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts } from '@/lib/data-service';
+import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts, getProductById } from '@/lib/data-service';
 
 const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState(product?.name || '');
@@ -48,6 +48,16 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
     const [stock, setStock] = useState(product?.stock || 0);
     const [category, setCategory] = useState(product?.category || '');
     const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (product) {
+            setName(product.name);
+            setCostPrice(product.costPrice);
+            setSellingPrice(product.sellingPrice);
+            setStock(product.stock);
+            setCategory(product.category);
+        }
+    }, [product]);
 
     const handleSubmit = async () => {
         setIsSaving(true);
@@ -173,8 +183,23 @@ const ProdukPage: FC = () => {
     }
   }
 
-  const handleOpenForm = (product?: Product) => {
-      setEditingProduct(product);
+  const handleOpenForm = async (productId?: string) => {
+      if (productId) {
+        try {
+            const product = await getProductById(productId);
+            if (product) {
+                setEditingProduct(product);
+            } else {
+                 toast({ title: "Error", description: "Produk tidak ditemukan.", variant: "destructive" });
+                 return;
+            }
+        } catch (error) {
+            toast({ title: "Error", description: "Gagal mengambil data produk.", variant: "destructive" });
+            return;
+        }
+      } else {
+        setEditingProduct(undefined);
+      }
       setFormOpen(true);
   }
 
@@ -221,7 +246,7 @@ const ProdukPage: FC = () => {
                     <TableRow key={product.id}>
                     <TableCell
                         className="font-medium cursor-pointer hover:underline"
-                        onClick={() => handleOpenForm(product)}
+                        onClick={() => handleOpenForm(product.id)}
                     >
                         {product.name}
                     </TableCell>
@@ -239,7 +264,7 @@ const ProdukPage: FC = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => handleOpenForm(product)}>
+                                <DropdownMenuItem onClick={() => handleOpenForm(product.id)}>
                                     <Edit className="mr-2 h-4 w-4" />
                                     <span>Edit</span>
                                 </DropdownMenuItem>
@@ -277,3 +302,5 @@ const ProdukPage: FC = () => {
 };
 
 export default ProdukPage;
+
+    
