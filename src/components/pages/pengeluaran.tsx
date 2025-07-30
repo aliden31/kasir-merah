@@ -230,10 +230,13 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
     setLoading(true);
     try {
         const expensesPromise = getExpenses();
-        // Admins fetch settings from the DB, cashiers use a default object
         const settingsPromise = userRole === 'admin' 
             ? getSettings() 
-            : Promise.resolve({ 
+            : Promise.resolve({
+                storeName: 'Toko Cepat',
+                defaultDiscount: 0,
+                syncCostPrice: true,
+                theme: 'default',
                 expenseCategories: [
                     { id: 'exp-cat-1', name: 'Operasional', subcategories: [] },
                     { id: 'exp-cat-2', name: 'Gaji', subcategories: [] },
@@ -267,7 +270,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
 
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id'>) => {
     try {
-        const newExpense = await addExpense(expenseData, userRole);
+        await addExpense(expenseData, userRole);
         toast({
             title: "Pengeluaran Disimpan",
             description: `Pengeluaran telah berhasil disimpan.`,
