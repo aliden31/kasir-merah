@@ -65,12 +65,16 @@ export default function Home() {
   const [userRole, setUserRole] = useState<UserRole>('admin');
   const { toast } = useToast();
 
+  const refreshFlashSale = async () => {
+    const flashSaleSettings = await getFlashSaleSettings();
+    setFlashSale(flashSaleSettings);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       const appSettings = await getSettings();
       setSettings(appSettings);
-      const flashSaleSettings = await getFlashSaleSettings();
-      setFlashSale(flashSaleSettings);
+      await refreshFlashSale();
     };
     fetchData();
   }, []);
@@ -153,7 +157,7 @@ export default function Home() {
       case 'laporan':
         return <LaporanPage onNavigate={setActiveView} />;
       case 'flash-sale':
-        return <FlashSalePage />;
+        return <FlashSalePage onSettingsSave={refreshFlashSale} />;
       case 'pengaturan':
         return <PengaturanPage settings={settings} onSettingsChange={setSettings} />;
       default:
@@ -230,3 +234,5 @@ export default function Home() {
     </SidebarProvider>
   );
 }
+
+    

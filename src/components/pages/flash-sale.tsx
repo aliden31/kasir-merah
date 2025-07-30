@@ -27,7 +27,12 @@ const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 };
 
-const FlashSalePage: FC = () => {
+interface FlashSalePageProps {
+  onSettingsSave: () => void;
+}
+
+
+const FlashSalePage: FC<FlashSalePageProps> = ({ onSettingsSave }) => {
   const [settings, setSettings] = useState<FlashSale | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +60,7 @@ const FlashSalePage: FC = () => {
     setIsSaving(true);
     try {
       await saveFlashSaleSettings(settings);
+      onSettingsSave(); // Panggil callback untuk menyegarkan data di Home
       toast({
         title: "Pengaturan Disimpan",
         description: "Pengaturan flash sale telah diperbarui.",
@@ -145,7 +151,7 @@ const FlashSalePage: FC = () => {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-4">
-            <Select onValueChange={handleProductAdd}>
+            <Select onValueChange={handleProductAdd} value="">
                 <SelectTrigger>
                     <SelectValue placeholder="Pilih produk untuk ditambahkan..." />
                 </SelectTrigger>
@@ -153,7 +159,10 @@ const FlashSalePage: FC = () => {
                     {availableProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
             </Select>
-            <Button variant="outline" disabled={!availableProducts.length}><PlusCircle className="mr-2 h-4 w-4"/> Tambah</Button>
+            <Button variant="outline" disabled={!availableProducts.length} onClick={() => {
+                const trigger = document.querySelector('.flex.items-center.gap-2.mb-4 > div > button') as HTMLElement | null;
+                if(trigger) trigger.click();
+            }}><PlusCircle className="mr-2 h-4 w-4"/> Tambah</Button>
           </div>
           <div className="rounded-md border">
             <Table>
@@ -199,3 +208,5 @@ const FlashSalePage: FC = () => {
 };
 
 export default FlashSalePage;
+
+    
