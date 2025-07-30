@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { FC } from 'react';
@@ -218,7 +219,12 @@ const ProdukPage: FC = () => {
                 <TableBody>
                 {products.map((product) => (
                     <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell
+                        className="font-medium cursor-pointer hover:underline"
+                        onClick={() => handleOpenForm(product)}
+                    >
+                        {product.name}
+                    </TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell className="text-right">{formatCurrency(product.costPrice)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(product.sellingPrice)}</TableCell>
