@@ -76,6 +76,7 @@ export default function Home() {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [flashSale, setFlashSale] = useState<FlashSale>(defaultFlashSale);
   const [userRole, setUserRole] = useState<UserRole>('admin');
+  const [kasirDataVersion, setKasirDataVersion] = useState(0);
   const { toast } = useToast();
 
   const refreshFlashSale = async () => {
@@ -87,6 +88,15 @@ export default function Home() {
     const appSettings = await getSettings();
     setSettings(appSettings);
   };
+  
+  const refreshKasirData = () => {
+    setKasirDataVersion(prev => prev + 1);
+  };
+  
+  const handleFlashSaleSave = async () => {
+    await refreshFlashSale();
+    refreshKasirData();
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -163,6 +173,7 @@ export default function Home() {
         return <DashboardPage onNavigate={setActiveView} />;
       case 'kasir':
         return <KasirPage 
+          key={kasirDataVersion} // Re-mount component when data needs refresh
           cart={cart}
           addToCart={addToCart}
           updateQuantity={updateQuantity}
@@ -170,6 +181,7 @@ export default function Home() {
           cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
           settings={settings}
           flashSale={flashSale}
+          onDataNeedsRefresh={refreshKasirData}
         />;
       case 'produk':
         return <ProdukPage />;
@@ -184,7 +196,7 @@ export default function Home() {
       case 'laporan':
         return <LaporanPage onNavigate={setActiveView} />;
       case 'flash-sale':
-        return <FlashSalePage onSettingsSave={refreshFlashSale} />;
+        return <FlashSalePage onSettingsSave={handleFlashSaleSave} />;
       case 'pengaturan':
         return <PengaturanPage settings={settings} onSettingsChange={refreshSettings} />;
       default:
@@ -253,5 +265,3 @@ export default function Home() {
     </SidebarProvider>
   );
 }
-
-    

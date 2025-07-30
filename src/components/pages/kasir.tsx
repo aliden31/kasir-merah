@@ -324,9 +324,10 @@ interface KasirPageProps {
   cartItemCount: number;
   settings: Settings;
   flashSale: FlashSale;
+  onDataNeedsRefresh: () => void;
 }
 
-const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearCart, cartItemCount, settings, flashSale }) => {
+const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearCart, cartItemCount, settings, flashSale, onDataNeedsRefresh }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
