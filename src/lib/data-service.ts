@@ -467,5 +467,3 @@ export const clearData = async (dataToClear: Record<DataType, boolean>, user: Us
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
-
-    
