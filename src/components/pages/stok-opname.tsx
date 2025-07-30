@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import type { Product, StockOpnameLog } from '@/lib/types';
+import type { Product, StockOpnameLog, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,9 +35,10 @@ import {
 
 interface StokOpnamePageProps {
     onDataChange: () => void;
+    userRole: UserRole;
 }
 
-const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange }) => {
+const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange, userRole }) => {
     const [products, setProducts] = useState<Product[]>([]);
     const [logs, setLogs] = useState<StockOpnameLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -83,8 +84,8 @@ const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange }) => {
 
         setUpdatingId(product.id);
         try {
-            await updateProduct(product.id, { stock: newStock });
-            await addStockOpnameLog(product, newStock, notes);
+            await updateProduct(product.id, { stock: newStock }, userRole);
+            await addStockOpnameLog(product, newStock, notes, userRole);
 
             toast({ title: "Stok Diperbarui", description: `Stok untuk ${product.name} telah disesuaikan.` });
             
@@ -134,7 +135,7 @@ const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange }) => {
         }
         
         try {
-            await batchUpdateStockToZero(productsToUpdate);
+            await batchUpdateStockToZero(productsToUpdate, userRole);
             toast({ title: "Sukses", description: `${productsToUpdate.length} produk berhasil diatur stoknya menjadi 0.`});
             await fetchInitialData();
             onDataChange();
@@ -301,6 +302,7 @@ const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange }) => {
                                         <TableRow>
                                             <TableHead>Tanggal</TableHead>
                                             <TableHead>Nama Produk</TableHead>
+                                            <TableHead>Pengguna</TableHead>
                                             <TableHead>Catatan</TableHead>
                                             <TableHead className="text-center">Stok Sebelumnya</TableHead>
                                             <TableHead className="text-center">Stok Baru</TableHead>
@@ -314,6 +316,7 @@ const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange }) => {
                                                 <TableRow key={log.id}>
                                                     <TableCell>{new Date(log.date).toLocaleString('id-ID')}</TableCell>
                                                     <TableCell className="font-medium">{log.productName}</TableCell>
+                                                    <TableCell className="capitalize">{log.user}</TableCell>
                                                     <TableCell className="text-muted-foreground">{log.notes}</TableCell>
                                                     <TableCell className="text-center">{log.previousStock}</TableCell>
                                                     <TableCell className="text-center">{log.newStock}</TableCell>
@@ -324,7 +327,7 @@ const StokOpnamePage: FC<StokOpnamePageProps> = ({ onDataChange }) => {
                                             )
                                         }) : (
                                             <TableRow>
-                                                <TableCell colSpan={6} className="text-center h-24">
+                                                <TableCell colSpan={7} className="text-center h-24">
                                                     Belum ada riwayat penyesuaian stok.
                                                 </TableCell>
                                             </TableRow>

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
-import type { Sale, Product, SaleItem } from '@/lib/types';
+import type { Sale, Product, SaleItem, UserRole } from '@/lib/types';
 import {
   Accordion,
   AccordionContent,
@@ -44,13 +44,12 @@ const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
-const EditSaleForm = ({ sale, onSave, onOpenChange }: { sale: Sale, onSave: () => void, onOpenChange: (open: boolean) => void }) => {
+const EditSaleForm = ({ sale, onSave, onOpenChange, userRole }: { sale: Sale, onSave: () => void, onOpenChange: (open: boolean) => void, userRole: UserRole }) => {
     const [editedSale, setEditedSale] = useState<Sale | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
-        // Deep copy to avoid direct mutation and ensure date is a JS Date object
         const saleCopy = JSON.parse(JSON.stringify(sale));
         saleCopy.date = new Date(saleCopy.date);
         setEditedSale(saleCopy);
@@ -63,7 +62,6 @@ const EditSaleForm = ({ sale, onSave, onOpenChange }: { sale: Sale, onSave: () =
             item.product.id === productId ? { ...item, quantity: newQuantity } : item
         );
 
-        // Remove item if quantity is 0 or less
         updatedItems = updatedItems.filter(item => item.quantity > 0);
         
         recalculateTotals(updatedItems, editedSale.discount);
@@ -86,9 +84,9 @@ const EditSaleForm = ({ sale, onSave, onOpenChange }: { sale: Sale, onSave: () =
       if (!editedSale) return;
       setIsSaving(true);
       try {
-        await updateSale(sale, editedSale);
+        await updateSale(sale, editedSale, userRole);
         toast({ title: "Transaksi Diperbarui", description: "Perubahan pada transaksi telah disimpan." });
-        onSave(); // Callback to refresh data on the main page
+        onSave();
         onOpenChange(false);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui transaksi.";
@@ -226,10 +224,11 @@ const SalesChart = ({ sales, products }: { sales: Sale[], products: Product[] })
 
 interface PenjualanPageProps {
     onDataChange: () => void;
+    userRole: UserRole;
 }
 
 
-const PenjualanPage: FC<PenjualanPageProps> = ({ onDataChange }) => {
+const PenjualanPage: FC<PenjualanPageProps> = ({ onDataChange, userRole }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
@@ -245,7 +244,7 @@ const PenjualanPage: FC<PenjualanPageProps> = ({ onDataChange }) => {
                 .map((sale, index) => ({
                     ...sale,
                     displayId: salesData.length - index,
-                    date: new Date(sale.date), // Ensure date is a JS Date object
+                    date: new Date(sale.date), 
                     items: sale.items.map((item: any) => ({
                         ...item,
                         product: item.product || { id: 'unknown', name: 'Produk Dihapus', costPrice: 0, sellingPrice: 0, stock: 0, category: 'Lainnya' }
@@ -286,7 +285,7 @@ const PenjualanPage: FC<PenjualanPageProps> = ({ onDataChange }) => {
       <h1 className="text-2xl font-bold">Riwayat Penjualan</h1>
       {editingSale && (
         <Dialog open={!!editingSale} onOpenChange={(open) => !open && setEditingSale(null)}>
-            <EditSaleForm sale={editingSale} onSave={handleSave} onOpenChange={(open) => !open && setEditingSale(null)} />
+            <EditSaleForm sale={editingSale} onSave={handleSave} onOpenChange={(open) => !open && setEditingSale(null)} userRole={userRole}/>
         </Dialog>
       )}
 

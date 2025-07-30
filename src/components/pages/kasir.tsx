@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { SaleItem, Product, Settings, FlashSale, Sale, Expense, Return, ReturnItem } from '@/lib/types';
+import type { SaleItem, Product, Settings, FlashSale, Sale, Expense, Return, ReturnItem, UserRole } from '@/lib/types';
 import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap, Undo2, Wallet, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
@@ -34,8 +34,7 @@ const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
-// ReturnForm Component (copied from retur.tsx)
-const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
+const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void, userRole: UserRole }) => {
     const [selectedSaleId, setSelectedSaleId] = useState<string>('');
     const [reason, setReason] = useState('');
     const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
@@ -200,7 +199,6 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
     )
 }
 
-// ExpenseForm Component (copied from pengeluaran.tsx)
 const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => Promise<void>, onOpenChange: (open: boolean) => void, settings: Settings }) => {
     const [name, setName] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
@@ -214,12 +212,10 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
     }, [category, settings.expenseCategories]);
 
     useEffect(() => {
-        // Reset subcategory when category changes
         setSubcategory('');
     }, [category]);
     
     useEffect(() => {
-        // Set name based on category and subcategory
         let newName = category;
         if (subcategory) {
             newName = `${category} - ${subcategory}`;
@@ -240,7 +236,6 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
         const newExpense: Omit<Expense, 'id'> = { name, amount: Number(amount), category, subcategory, date };
         await onSave(newExpense);
         onOpenChange(false);
-        // Reset form
         setName('');
         setAmount('');
         setCategory('');
@@ -322,9 +317,10 @@ interface KasirPageProps {
   flashSale: FlashSale;
   products: Product[];
   onDataNeedsRefresh: () => void;
+  userRole: UserRole;
 }
 
-const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNeedsRefresh }) => {
+const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNeedsRefresh, userRole }) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -407,7 +403,6 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
       const existingItem = prevCart.find((item) => item.product.id === product.id);
 
       let price = product.sellingPrice;
-      // Directly check the flashSale prop
       if (flashSale.isActive) {
         const productInSale = flashSale.products.find(p => p.id === product.id);
         if (productInSale) {
@@ -416,7 +411,6 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
       }
       
       if (existingItem) {
-        // Ensure price is updated if flash sale status changes
         return prevCart.map((item) =>
           item.product.id === product.id ? { ...item, quantity: item.quantity + 1, price: price } : item
         );
@@ -469,7 +463,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
     };
 
     try {
-        await addSale(newSale, settings);
+        await addSale(newSale, userRole);
         toast({
           title: "Pembayaran Berhasil",
           description: `Total pembayaran ${formatCurrency(total)} telah berhasil diproses.`,
@@ -485,7 +479,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
 
   const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
     try {
-        await addReturn(itemData);
+        await addReturn(itemData, userRole);
         toast({ title: "Retur Disimpan", description: "Data retur baru telah berhasil disimpan." });
         onDataNeedsRefresh();
     } catch(error) {
@@ -497,7 +491,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
 
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
     try {
-        await addExpense(expenseData);
+        await addExpense(expenseData, userRole);
         toast({ title: "Pengeluaran Disimpan", description: `Pengeluaran telah berhasil disimpan.` });
     } catch(error) {
         toast({ title: "Error", description: "Gagal menyimpan pengeluaran.", variant: "destructive" });
@@ -600,7 +594,7 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
                             <Undo2 className="mr-2 h-4 w-4" /> Retur
                         </Button>
                     </DialogTrigger>
-                    <ReturnForm sales={sales} onSave={handleSaveReturn} onOpenChange={setReturnFormOpen} />
+                    <ReturnForm sales={sales} onSave={handleSaveReturn} onOpenChange={setReturnFormOpen} userRole={userRole} />
                 </Dialog>
                 <Dialog open={isExpenseFormOpen} onOpenChange={setExpenseFormOpen}>
                     <DialogTrigger asChild>
@@ -804,5 +798,3 @@ const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, products, onDataNe
 };
 
 export default KasirPage;
-
-    

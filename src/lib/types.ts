@@ -105,6 +105,15 @@ export interface StockOpnameLog {
     previousStock: number;
     newStock: number;
     notes: string;
+    user: UserRole;
 }
+
+export interface ActivityLog {
+    id: string;
+    date: Date;
+    user: UserRole;
+    description: string;
+}
+
 
 export type UserRole = 'admin' | 'kasir';

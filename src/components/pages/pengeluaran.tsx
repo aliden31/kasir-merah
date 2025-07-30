@@ -27,7 +27,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Expense, Settings } from '@/lib/types';
+import type { Expense, Settings, UserRole } from '@/lib/types';
 import { PlusCircle, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getExpenses, addExpense, getSettings } from '@/lib/data-service';
@@ -92,12 +92,10 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
     }, [category, settings.expenseCategories]);
 
     useEffect(() => {
-        // Reset subcategory when category changes
         setSubcategory('');
     }, [category]);
     
     useEffect(() => {
-        // Set name based on category and subcategory
         let newName = category;
         if (subcategory) {
             newName = `${category} - ${subcategory}`;
@@ -111,7 +109,6 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
             return;
         }
         if (selectedCategory?.subcategories?.length && !subcategory) {
-             // Optional: Add toast notification for validation
             return;
         }
         setIsSaving(true);
@@ -211,7 +208,11 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
     )
 }
 
-const PengeluaranPage: FC = () => {
+interface PengeluaranPageProps {
+    userRole: UserRole;
+}
+
+const PengeluaranPage: FC<PengeluaranPageProps> = ({ userRole }) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -247,7 +248,7 @@ const PengeluaranPage: FC = () => {
 
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
     try {
-        const newExpense = await addExpense(expenseData);
+        const newExpense = await addExpense(expenseData, userRole);
         const displayExpense = {
             ...newExpense,
             date: new Date(newExpense.date)

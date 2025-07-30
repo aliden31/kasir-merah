@@ -17,7 +17,7 @@ import {
   DocumentReference,
   DocumentData,
 } from 'firebase/firestore';
-import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog } from './types';
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog } from './types';
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -80,20 +80,50 @@ async function deleteDocument(collectionName: string, id: string): Promise<void>
   await deleteDoc(doc(db, collectionName, id));
 }
 
+// Activity Log Functions
+export const getActivityLogs = () => getCollection<ActivityLog>('activityLogs');
+export const addActivityLog = (user: UserRole, description: string) => {
+    const log: Omit<ActivityLog, 'id'> = {
+        date: new Date(),
+        user,
+        description,
+    };
+    return addDocument<ActivityLog>('activityLogs', log);
+};
+
+
 // Product-specific functions
 export const getProducts = () => getCollection<Product>('products');
 export const getProductById = (id: string) => getDocumentById<Product>('products', id);
-export const addProduct = (product: Omit<Product, 'id'>) => addDocument<Product>('products', product);
-export const updateProduct = (id: string, product: Partial<Product>) => updateDocument<Product>('products', id, product);
-export const deleteProduct = (id: string) => deleteDocument('products', id);
+
+export const addProduct = async (product: Omit<Product, 'id'>, user: UserRole) => {
+    const newProduct = await addDocument<Product>('products', product);
+    await addActivityLog(user, `menambahkan produk baru: "${newProduct.name}"`);
+    return newProduct;
+};
+
+export const updateProduct = async (id: string, product: Partial<Product>, user: UserRole) => {
+    const originalProduct = await getProductById(id);
+    if (originalProduct) {
+        await updateDocument<Product>('products', id, product);
+        await addActivityLog(user, `memperbarui produk: "${originalProduct.name}"`);
+    }
+};
+
+export const deleteProduct = async (id: string, user: UserRole) => {
+    const product = await getProductById(id);
+    if (product) {
+        await deleteDocument('products', id);
+        await addActivityLog(user, `menghapus produk: "${product.name}"`);
+    }
+};
+
 export const addPlaceholderProducts = async () => {
     const batch = writeBatch(db);
     const productsCollection = collection(db, 'products');
     
     placeholderProducts.forEach(product => {
-        // Create a new document reference for each placeholder product without specifying an ID
         const docRef = doc(productsCollection); 
-        // We omit the 'id' field from the placeholder product data
         const { id, ...productData } = product;
         batch.set(docRef, productData);
     });
@@ -117,23 +147,24 @@ export const getSales = async (): Promise<Sale[]> => {
 
 export const getSaleById = (id: string) => getDocumentById<Sale>('sales', id);
 
-export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promise<Sale> => {
-    // 1. First, read all the necessary product documents outside the transaction.
+export const addSale = async (sale: Omit<Sale, 'id'>, user: UserRole): Promise<Sale> => {
     const productRefs = sale.items.map(item => doc(db, 'products', item.product.id));
-    const productDocs = await Promise.all(productRefs.map(ref => getDoc(ref)));
-
-    const productsData: Record<string, Product> = {};
-    for (const docSnap of productDocs) {
-        if (docSnap.exists()) {
-            productsData[docSnap.id] = { id: docSnap.id, ...docSnap.data() } as Product;
-        } else {
-            // This check ensures we don't proceed with a sale for a non-existent product.
-            throw new Error(`Product with ID ${docSnap.id} not found.`);
+    
+    let newSaleId = '';
+    const newSale = await runTransaction(db, async (transaction) => {
+        const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
+        const productsData: Record<string, Product> = {};
+        for (const docSnap of productDocs) {
+            if (docSnap.exists()) {
+                productsData[docSnap.id] = { id: docSnap.id, ...docSnap.data() } as Product;
+            } else {
+                // Find which product name is missing
+                const missingProductId = docSnap.ref.id;
+                const missingItem = sale.items.find(i => i.product.id === missingProductId);
+                throw new Error(`Produk "${missingItem?.product.name || missingProductId}" tidak ditemukan.`);
+            }
         }
-    }
 
-    // 2. Now, run the transaction with only write operations.
-    return runTransaction(db, async (transaction) => {
         const saleDataForFirestore = {
             ...sale,
             items: sale.items.map(item => ({
@@ -145,35 +176,36 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
                 },
                 quantity: item.quantity,
                 price: item.price,
-                costPriceAtSale: item.product.costPrice,
+                costPriceAtSale: productsData[item.product.id].costPrice,
             })),
             date: Timestamp.fromDate(sale.date)
         };
         
-        // Remove displayId before saving
         if ('displayId' in saleDataForFirestore) {
             delete (saleDataForFirestore as Partial<Sale>).displayId;
         }
 
         const saleRef = doc(collection(db, "sales"));
+        newSaleId = saleRef.id;
         transaction.set(saleRef, saleDataForFirestore);
 
         for (const item of sale.items) {
             const productRef = doc(db, "products", item.product.id);
             const productData = productsData[item.product.id];
-            // No need to check for existence here again as we did it before the transaction
             const newStock = productData.stock - item.quantity;
             transaction.update(productRef, { stock: newStock });
         }
         
         return { ...sale, id: saleRef.id };
     });
+
+    await addActivityLog(user, `mencatat penjualan baru (ID: ...${newSaleId.slice(-6)}) dengan total ${formatCurrency(sale.finalTotal)}`);
+    return newSale;
 }
 
 
-export const updateSale = async (originalSale: Sale, updatedSaleData: Sale): Promise<void> => {
-    return runTransaction(db, async (transaction) => {
-        // 1. Calculate stock changes based on item differences
+export const updateSale = async (originalSale: Sale, updatedSaleData: Sale, user: UserRole): Promise<void> => {
+    await runTransaction(db, async (transaction) => {
         const stockChanges: Record<string, number> = {};
         const allProductIds = new Set<string>();
 
@@ -187,41 +219,21 @@ export const updateSale = async (originalSale: Sale, updatedSaleData: Sale): Pro
             allProductIds.add(item.product.id);
         });
 
-        // 2. READ phase: Get all product documents involved in the transaction
-        const productRefs: DocumentReference[] = [];
-        const productPromises = [];
-        for (const productId of allProductIds) {
-            const productRef = doc(db, "products", productId);
-            productRefs.push(productRef);
-            productPromises.push(transaction.get(productRef));
-        }
-        const productSnapshots = await Promise.all(productPromises);
-
-        const productsData: Record<string, Product> = {};
-        productSnapshots.forEach(snap => {
-            if (snap.exists()) {
-                productsData[snap.id] = { id: snap.id, ...snap.data() } as Product;
-            }
-        });
-
-
-        // 3. WRITE phase: Update stocks and the sale document
         for (const productId in stockChanges) {
-            const change = stockChanges[productId];
-            if (change === 0) continue;
-
-            const productData = productsData[productId];
-            if (!productData) {
-                console.warn(`Product with ID ${productId} not found during sale update. Stock not updated.`);
-                continue; // Skip if product was deleted
-            }
-
+            if (stockChanges[productId] === 0) continue;
+            
             const productRef = doc(db, "products", productId);
-            const newStock = productData.stock + change;
+            const productDoc = await transaction.get(productRef);
+
+            if (!productDoc.exists()) {
+                 console.warn(`Product with ID ${productId} not found during sale update. Stock not updated.`);
+                continue;
+            }
+            const productData = productDoc.data() as Product;
+            const newStock = productData.stock + stockChanges[productId];
             transaction.update(productRef, { stock: newStock });
         }
 
-        // Prepare updated sale document for Firestore
         const { id, displayId, ...saleDataForUpdate } = updatedSaleData;
         const cleanedItems = saleDataForUpdate.items.map(item => ({
             product: {
@@ -242,6 +254,7 @@ export const updateSale = async (originalSale: Sale, updatedSaleData: Sale): Pro
             date: Timestamp.fromDate(new Date(updatedSaleData.date)),
         });
     });
+     await addActivityLog(user, `memperbarui penjualan (ID: ...${originalSale.id.slice(-6)})`);
 };
 
 
@@ -251,12 +264,14 @@ export async function getExpenses(): Promise<Expense[]> {
     return expenses.map(e => ({...e, date: new Date(e.date) }));
 }
 
-export const addExpense = (expense: Omit<Expense, 'id'>) => {
-    const newExpense = {
+export const addExpense = async (expense: Omit<Expense, 'id'>, user: UserRole) => {
+    const newExpenseData = {
         ...expense,
         name: `${expense.category}${expense.subcategory ? ` - ${expense.subcategory}` : ''}`
     }
-    return addDocument<Expense>('expenses', newExpense);
+    const newExpense = await addDocument<Expense>('expenses', newExpenseData);
+    await addActivityLog(user, `mencatat pengeluaran: "${newExpense.name}" sebesar ${formatCurrency(newExpense.amount)}`);
+    return newExpense;
 };
 
 // Return-specific functions
@@ -264,12 +279,12 @@ export async function getReturns(): Promise<Return[]> {
     return getCollection<Return>('returns');
 }
 
-export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return> => {
+export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole): Promise<Return> => {
+    let newReturn: Return | null = null;
     try {
         const newReturnRef = doc(collection(db, 'returns'));
         
         await runTransaction(db, async (transaction) => {
-            // 1. Update stock for each returned item
             for (const item of returnData.items) {
                 const productRef = doc(db, "products", item.productId);
                 const productDoc = await transaction.get(productRef);
@@ -282,7 +297,6 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
                 }
             }
 
-            // 2. Save the new return document
             transaction.set(newReturnRef, {
                 ...returnData,
                 date: Timestamp.fromDate(returnData.date)
@@ -300,7 +314,9 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
                 newReturnData![key] = newReturnData![key].toDate();
             }
         });
-        return { id: newReturnDoc.id, ...newReturnData } as Return;
+        newReturn = { id: newReturnDoc.id, ...newReturnData } as Return;
+        await addActivityLog(user, `mencatat retur dari penjualan (ID: ...${newReturn.saleId.slice(-6)})`);
+        return newReturn;
 
     } catch (e) {
         console.error("Return transaction failed: ", e);
@@ -316,7 +332,6 @@ export const getFlashSaleSettings = async (): Promise<FlashSale> => {
 
     if (docSnap.exists()) {
         const data = docSnap.data();
-        // Ensure products is always an array
         return { id: 'main', ...data, products: data.products || [] } as FlashSale;
     } else {
         const defaultSettings: FlashSale = { id: 'main', title: 'Flash Sale', isActive: false, products: [] };
@@ -325,10 +340,11 @@ export const getFlashSaleSettings = async (): Promise<FlashSale> => {
     }
 };
 
-export const saveFlashSaleSettings = async (settings: FlashSale): Promise<void> => {
+export const saveFlashSaleSettings = async (settings: FlashSale, user: UserRole): Promise<void> => {
     const { id, ...settingsData } = settings;
     const docRef = doc(db, 'settings', 'flashSale');
     await setDoc(docRef, settingsData, { merge: true });
+    await addActivityLog(user, `memperbarui pengaturan Flash Sale. Status: ${settings.isActive ? 'Aktif' : 'Nonaktif'}`);
 };
 
 // Settings-specific functions
@@ -353,9 +369,7 @@ export const getSettings = async (): Promise<Settings> => {
 
     if (docSnap.exists()) {
         const data = docSnap.data();
-        // Merge with defaults to ensure new settings are present
         const settings = { ...defaultSettings, ...data } as Settings;
-        // Ensure subcategories array exists for each category
         if(settings.expenseCategories) {
             settings.expenseCategories.forEach(cat => {
                 if (!cat.subcategories) {
@@ -365,15 +379,15 @@ export const getSettings = async (): Promise<Settings> => {
         }
         return settings;
     } else {
-        // Create the default settings document in Firestore if it doesn't exist
         await setDoc(docRef, defaultSettings);
         return defaultSettings;
     }
 };
 
-export const saveSettings = async (settings: Partial<Settings>): Promise<void> => {
+export const saveSettings = async (settings: Partial<Settings>, user: UserRole): Promise<void> => {
     const docRef = doc(db, 'settings', 'main');
     await setDoc(docRef, settings, { merge: true });
+     await addActivityLog(user, `memperbarui pengaturan umum toko.`);
 };
 
 
@@ -384,6 +398,7 @@ export const addStockOpnameLog = async (
     product: Product,
     newStock: number,
     notes: string,
+    user: UserRole,
 ): Promise<void> => {
     const logData: Omit<StockOpnameLog, 'id'> = {
         productId: product.id,
@@ -392,16 +407,14 @@ export const addStockOpnameLog = async (
         newStock: newStock,
         date: new Date(),
         notes,
+        user,
     };
     await addDocument<StockOpnameLog>('stockOpnameLogs', logData);
+    await addActivityLog(user, `melakukan stok opname untuk "${product.name}". Stok berubah dari ${product.stock} menjadi ${newStock}.`);
 };
 
-export const batchUpdateStockToZero = async (products: Product[]): Promise<void> => {
-    return runTransaction(db, async (transaction) => {
-      // READ phase: Pre-fetch all product data if needed for validation, though not strictly necessary for this operation.
-      // This is a WRITE-only transaction, which is simpler.
-  
-      // WRITE phase
+export const batchUpdateStockToZero = async (products: Product[], user: UserRole): Promise<void> => {
+    await runTransaction(db, async (transaction) => {
       const logCollectionRef = collection(db, 'stockOpnameLogs');
       for (const product of products) {
         const productRef = doc(db, "products", product.id);
@@ -414,20 +427,21 @@ export const batchUpdateStockToZero = async (products: Product[]): Promise<void>
           newStock: 0,
           date: new Date(),
           notes: "Diatur ke 0 secara massal",
+          user: user,
         };
   
         const logDocRef = doc(logCollectionRef);
-        // Ensure date is a Timestamp for Firestore
         transaction.set(logDocRef, { ...logData, date: Timestamp.fromDate(logData.date) });
       }
     });
+     await addActivityLog(user, `mengatur stok 0 untuk ${products.length} produk secara massal.`);
   };
 
 
 // Danger Zone functions
 type DataType = 'products' | 'sales' | 'returns' | 'expenses';
 
-export const clearData = async (dataToClear: Record<DataType, boolean>): Promise<void> => {
+export const clearData = async (dataToClear: Record<DataType, boolean>, user: UserRole): Promise<void> => {
     const collectionsToDelete = Object.entries(dataToClear)
         .filter(([, shouldDelete]) => shouldDelete)
         .map(([collectionName]) => collectionName);
@@ -446,5 +460,12 @@ export const clearData = async (dataToClear: Record<DataType, boolean>): Promise
     }
 
     await batch.commit();
+    await addActivityLog(user, `menghapus data: ${collectionsToDelete.join(', ')}.`);
 };
 
+// Helper
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
+};
+
+    

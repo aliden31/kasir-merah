@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { FlashSale, Product } from '@/lib/types';
+import type { FlashSale, Product, UserRole } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getFlashSaleSettings, saveFlashSaleSettings, getProducts } from '@/lib/data-service';
@@ -29,10 +29,11 @@ const formatCurrency = (amount: number) => {
 
 interface FlashSalePageProps {
   onSettingsSave: () => void;
+  userRole: UserRole;
 }
 
 
-const FlashSalePage: FC<FlashSalePageProps> = ({ onSettingsSave }) => {
+const FlashSalePage: FC<FlashSalePageProps> = ({ onSettingsSave, userRole }) => {
   const [settings, setSettings] = useState<FlashSale | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,8 +63,8 @@ const FlashSalePage: FC<FlashSalePageProps> = ({ onSettingsSave }) => {
     if (!settings) return;
     setIsSaving(true);
     try {
-      await saveFlashSaleSettings(settings);
-      onSettingsSave(); // Panggil callback untuk menyegarkan data di Home
+      await saveFlashSaleSettings(settings, userRole);
+      onSettingsSave();
       toast({
         title: "Pengaturan Disimpan",
         description: "Pengaturan flash sale telah diperbarui.",

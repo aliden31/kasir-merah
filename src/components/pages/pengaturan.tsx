@@ -23,7 +23,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, ExpenseCategory, SubCategory } from '@/lib/types';
+import { Settings, ExpenseCategory, SubCategory, UserRole } from '@/lib/types';
 import { saveSettings, clearData } from '@/lib/data-service';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -32,9 +32,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 interface PengaturanPageProps {
   settings: Settings;
   onSettingsChange: (settings: Settings) => void;
+  userRole: UserRole;
 }
 
-const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange }) => {
+const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange, userRole }) => {
     const [localSettings, setLocalSettings] = useState<Settings>(settings);
     const [newCategoryName, setNewCategoryName] = useState("");
     const [newSubCategoryNames, setNewSubCategoryNames] = useState<Record<string, string>>({});
@@ -56,7 +57,7 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
         const settingsToSave = updatedSettings || localSettings;
         setIsSaving(true);
         try {
-            await saveSettings(settingsToSave);
+            await saveSettings(settingsToSave, userRole);
             onSettingsChange(settingsToSave);
             toast({
                 title: "Pengaturan Disimpan",
@@ -138,7 +139,7 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
     const handleClearData = async () => {
         setIsDeleting(true);
         try {
-            await clearData(dataToDelete);
+            await clearData(dataToDelete, userRole);
             toast({
                 title: "Data Dihapus",
                 description: "Data yang dipilih telah berhasil dihapus.",

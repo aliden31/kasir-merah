@@ -26,6 +26,7 @@ import {
   Store,
   ClipboardList,
   Home as HomeIcon,
+  History,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ import PengeluaranPage from '@/components/pages/pengeluaran';
 import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
+import ActivityLogPage from '@/components/pages/activity-log';
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts } from '@/lib/data-service';
 import { Label } from '@/components/ui/label';
@@ -59,7 +61,8 @@ type View =
   | 'pengeluaran'
   | 'laporan'
   | 'flash-sale'
-  | 'pengaturan';
+  | 'pengaturan'
+  | 'activity-log';
 
 const defaultSettings: AppSettings = { 
   storeName: 'Memuat...', 
@@ -114,7 +117,6 @@ export default function Home() {
   const handleRoleChange = (isAdmin: boolean) => {
     const newRole = isAdmin ? 'admin' : 'kasir';
     setUserRole(newRole);
-    // Jika role kasir, dan halaman aktif tidak diizinkan, kembalikan ke halaman kasir
     if (newRole === 'kasir' && !['dashboard', 'kasir', 'pengeluaran', 'retur'].includes(activeView)) {
         setActiveView('kasir');
     }
@@ -135,6 +137,7 @@ export default function Home() {
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
     { id: 'pengaturan', label: 'Pengaturan', icon: Settings, roles: ['admin'] },
+    { id: 'activity-log', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
   ];
 
   const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
@@ -160,23 +163,26 @@ export default function Home() {
           flashSale={flashSale}
           products={products}
           onDataNeedsRefresh={refreshAllData}
+          userRole={userRole}
         />;
       case 'produk':
-        return <ProdukPage onDataChange={refreshAllData} />;
+        return <ProdukPage onDataChange={refreshAllData} userRole={userRole} />;
       case 'stok-opname':
-        return <StokOpnamePage onDataChange={refreshAllData} />;
+        return <StokOpnamePage onDataChange={refreshAllData} userRole={userRole}/>;
       case 'penjualan':
-        return <PenjualanPage onDataChange={refreshAllData} />;
+        return <PenjualanPage onDataChange={refreshAllData} userRole={userRole} />;
       case 'retur':
-        return <ReturPage onDataChange={refreshAllData} />;
+        return <ReturPage onDataChange={refreshAllData} userRole={userRole} />;
       case 'pengeluaran':
-        return <PengeluaranPage />;
+        return <PengeluaranPage userRole={userRole} />;
       case 'laporan':
         return <LaporanPage onNavigate={setActiveView} />;
       case 'flash-sale':
-        return <FlashSalePage onSettingsSave={refreshAllData} />;
+        return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole} />;
       case 'pengaturan':
-        return <PengaturanPage settings={settings} onSettingsChange={refreshAllData} />;
+        return <PengaturanPage settings={settings} onSettingsChange={refreshAllData} userRole={userRole} />;
+      case 'activity-log':
+        return <ActivityLogPage />;
       default:
         return <DashboardPage onNavigate={setActiveView} />;
     }
@@ -243,4 +249,3 @@ export default function Home() {
     </SidebarProvider>
   );
 }
-

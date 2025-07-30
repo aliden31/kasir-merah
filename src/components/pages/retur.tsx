@@ -25,7 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Return, Sale, ReturnItem } from '@/lib/types';
+import type { Return, Sale, ReturnItem, UserRole } from '@/lib/types';
 import { PlusCircle, MinusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getReturns, addReturn, getSales } from '@/lib/data-service';
@@ -48,7 +48,6 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
     const selectedSale = useMemo(() => sales.find(s => s.id === selectedSaleId), [selectedSaleId, sales]);
 
     useEffect(() => {
-        // Reset items when a new sale is selected
         setItemsToReturn([]);
     }, [selectedSaleId]);
 
@@ -112,7 +111,6 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
         onOpenChange(false);
     }
     
-    // Products from the selected sale that haven't been added to the return list yet
     const availableProductsForReturn = selectedSale?.items.filter(
         saleItem => !itemsToReturn.some(returnItem => returnItem.productId === saleItem.product.id)
     ) || [];
@@ -221,9 +219,10 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
 
 interface ReturPageProps {
     onDataChange: () => void;
+    userRole: UserRole;
 }
 
-const ReturPage: FC<ReturPageProps> = ({ onDataChange }) => {
+const ReturPage: FC<ReturPageProps> = ({ onDataChange, userRole }) => {
   const [returns, setReturns] = useState<Return[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,7 +253,7 @@ const ReturPage: FC<ReturPageProps> = ({ onDataChange }) => {
   
   const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
     try {
-        const newReturn = await addReturn(itemData);
+        const newReturn = await addReturn(itemData, userRole);
         setReturns(prev => [newReturn, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
         toast({
             title: "Retur Disimpan",

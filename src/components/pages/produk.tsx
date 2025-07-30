@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Product, Sale, Settings } from '@/lib/types';
+import type { Product, Sale, Settings, UserRole } from '@/lib/types';
 import { PlusCircle, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -44,6 +44,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 interface ProdukPageProps {
     onDataChange: () => void;
+    userRole: UserRole;
 }
 
 const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
@@ -65,7 +66,6 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
             setCategory(product.category);
             setSubcategory(product.subcategory || '');
         } else {
-            // Reset form when there's no product (for 'Add New')
             setName('');
             setCostPrice('');
             setSellingPrice('');
@@ -148,7 +148,7 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
     );
 }
 
-const ProdukPage: FC<ProdukPageProps> = ({ onDataChange }) => {
+const ProdukPage: FC<ProdukPageProps> = ({ onDataChange, userRole }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +170,6 @@ const ProdukPage: FC<ProdukPageProps> = ({ onDataChange }) => {
                 onDataChange();
             }
 
-            // Find and delete duplicates
             const productMap = new Map<string, Product[]>();
             productsData.forEach(p => {
                 const key = p.name.toLowerCase().trim();
@@ -181,21 +180,20 @@ const ProdukPage: FC<ProdukPageProps> = ({ onDataChange }) => {
             });
 
             let duplicatesFound = false;
-            for (const [name, products] of productMap.entries()) {
+            for (const products of productMap.values()) {
                 if (products.length > 1) {
                     duplicatesFound = true;
-                    // Keep the first one, delete the rest
                     const productsToDelete = products.slice(1);
                     for (const p of productsToDelete) {
-                        await deleteProduct(p.id);
+                        await deleteProduct(p.id, userRole);
                     }
                 }
             }
 
             if (duplicatesFound) {
                  toast({ title: "Produk Ganda Dihapus", description: "Beberapa produk ganda telah dihapus secara otomatis." });
-                 // Refetch after deleting
                  productsData = await getProducts();
+                 onDataChange();
             }
             
             setProducts(productsData);
@@ -245,11 +243,11 @@ const ProdukPage: FC<ProdukPageProps> = ({ onDataChange }) => {
   const handleSaveProduct = async (productData: Product | Omit<Product, 'id'>) => {
     try {
         if ('id' in productData) {
-            await updateProduct(productData.id, productData as Product);
+            await updateProduct(productData.id, productData as Product, userRole);
             toast({ title: "Produk diperbarui", description: `${productData.name} telah berhasil diperbarui.` });
         } else {
-            const newProduct = await addProduct(productData);
-            toast({ title: "Produk ditambahkan", description: `${newProduct.name} telah berhasil ditambahkan.` });
+            await addProduct(productData, userRole);
+            toast({ title: "Produk ditambahkan", description: `Produk baru telah berhasil ditambahkan.` });
         }
         await fetchInitialData();
         onDataChange();
@@ -261,7 +259,7 @@ const ProdukPage: FC<ProdukPageProps> = ({ onDataChange }) => {
 
   const handleDeleteProduct = async (productId: string) => {
     try {
-        await deleteProduct(productId);
+        await deleteProduct(productId, userRole);
         setProducts(prev => prev.filter(p => p.id !== productId));
         toast({
             title: "Produk Dihapus",
