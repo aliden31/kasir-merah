@@ -23,7 +23,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push('/');
+      router.push('/app');
       toast({
         title: 'Login Berhasil',
         description: 'Selamat datang kembali!',
@@ -74,12 +74,6 @@ export default function LoginPage() {
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
             Masuk
           </Button>
-           <p className="text-xs text-center text-muted-foreground">
-            Belum punya akun?{' '}
-            <Link href="/register" className="underline hover:text-primary">
-              Daftar di sini
-            </Link>
-          </p>
         </CardFooter>
       </form>
     </Card>
