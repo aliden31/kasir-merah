@@ -12,7 +12,7 @@ export default function RootPage() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        router.replace('/'); // Redirect to the main app page if logged in
+        router.replace('/app'); // Redirect to the main app page if logged in
       } else {
         router.replace('/login'); // Redirect to login if not logged in
       }
