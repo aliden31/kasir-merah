@@ -82,7 +82,7 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
     // 1. Prepare sale items for Firestore
     const itemsForFirestore = sale.items.map(item => {
         const saleItem: any = {
-            product: item.product.id, // Store only product ID
+            product: item.product, // Store the entire product object
             quantity: item.quantity,
             price: item.price,
         };

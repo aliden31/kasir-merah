@@ -38,7 +38,7 @@ const SalesChart = ({ sales, products }: { sales: Sale[], products: Product[] })
         });
 
         sales.flatMap(sale => sale.items).forEach(item => {
-            const productId = typeof item.product === 'string' ? item.product : item.product.id;
+            const productId = item.product.id;
             if (itemMap[productId]) {
                 itemMap[productId].quantity += item.quantity;
             }
@@ -94,7 +94,10 @@ const PenjualanPage: FC = () => {
                     .map(sale => ({
                         ...sale,
                         items: sale.items.map((item: any) => {
-                            const productDetail = productsData.find(p => p.id === (item.product.id || item.product));
+                            // The product object is already in the item, but we ensure it's up-to-date if needed
+                            // For simplicity, we trust the data from the sales record.
+                            // If a product was deleted, the info from sale time is still valuable.
+                            const productDetail = item.product;
                             return {
                                 ...item,
                                 product: productDetail || { id: item.product, name: 'Produk Tidak Ditemukan', category: '' }
@@ -180,4 +183,3 @@ const PenjualanPage: FC = () => {
 };
 
 export default PenjualanPage;
-

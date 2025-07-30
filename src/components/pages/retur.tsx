@@ -237,17 +237,16 @@ const ReturPage: FC = () => {
   }
   
   const salesWithDetails = useMemo(() => {
-    return sales.map(sale => ({
-        ...sale,
-        items: sale.items.map((item: any) => {
-            const productDetail = products.find(p => p.id === (item.product.id || item.product));
-            return {
+    return sales
+        .map(sale => ({
+            ...sale,
+            items: sale.items.map((item: any) => ({
                 ...item,
-                product: productDetail || { id: item.product, name: 'Produk Dihapus', category: '' }
-            };
-        })
-    })).sort((a,b) => b.date.getTime() - a.date.getTime());
-  }, [sales, products]);
+                product: item.product || { id: 'unknown', name: 'Produk Dihapus', category: '' }
+            }))
+        }))
+        .sort((a, b) => b.date.getTime() - a.date.getTime());
+}, [sales]);
 
 
   if (loading) {

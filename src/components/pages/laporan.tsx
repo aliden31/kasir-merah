@@ -83,10 +83,8 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         const totalSalesValue = filteredSales.reduce((sum, sale) => sum + sale.finalTotal, 0);
         
         const totalCostOfGoodsValue = filteredSales.reduce((totalCost, sale) => {
-            const saleCost = sale.items.reduce((itemCost, item: SaleItem & {product: any}) => {
-                const productId = typeof item.product === 'string' ? item.product : item.product.id;
-                const product = products.find(p => p.id === productId);
-                const costPrice = item.costPriceAtSale ?? (product ? product.costPrice : 0);
+            const saleCost = sale.items.reduce((itemCost, item: SaleItem) => {
+                const costPrice = item.costPriceAtSale ?? (item.product ? item.product.costPrice : 0);
                 return itemCost + (costPrice * item.quantity);
             }, 0);
             return totalCost + saleCost;
@@ -123,10 +121,8 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         const { filteredSales, filteredExpenses } = filteredData;
 
         const salesWithDetails = filteredSales.map(sale => {
-            const totalPokok = sale.items.reduce((acc, item: SaleItem & {product: any}) => {
-                const productId = typeof item.product === 'string' ? item.product : item.product.id;
-                const product = products.find(p => p.id === productId);
-                const costPrice = item.costPriceAtSale ?? (product ? product.costPrice : 0);
+            const totalPokok = sale.items.reduce((acc, item: SaleItem) => {
+                const costPrice = item.costPriceAtSale ?? (item.product ? item.product.costPrice : 0);
                 return acc + (costPrice * item.quantity);
             }, 0);
             const labaKotor = sale.subtotal - totalPokok;
