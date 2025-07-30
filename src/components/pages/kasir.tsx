@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { FC } from 'react';
@@ -216,7 +217,11 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
 
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
     try {
-        await addExpense(expenseData, userRole);
+        const finalExpenseData: Omit<Expense, 'id'> = {
+            ...expenseData,
+            date: expenseData.date || new Date(),
+        };
+        await addExpense(finalExpenseData, userRole);
         toast({ title: "Pengeluaran Disimpan", description: `Pengeluaran telah berhasil disimpan.` });
         onDataNeedsRefresh();
     } catch(error) {
@@ -525,3 +530,5 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
 
 KasirPage.displayName = 'KasirPage';
 export default KasirPage;
+
+    

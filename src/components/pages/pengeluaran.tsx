@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { FC } from 'react';
@@ -79,7 +80,8 @@ const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
     );
 };
 
-export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => Promise<void>, onOpenChange: (open: boolean) => void, settings: Settings }) => {
+export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void, settings: Settings }) => {
+    const [name, setName] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
     const [category, setCategory] = useState('');
     const [subcategory, setSubcategory] = useState('');
@@ -95,14 +97,15 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
     }, [category]);
 
     const handleSubmit = async () => {
-        if (amount === '' || amount <= 0 || !category) {
+        if (name.trim() === '' || amount === '' || amount <= 0 || !category) {
             return;
         }
         if (selectedCategory?.subcategories?.length && !subcategory) {
             return;
         }
         setIsSaving(true);
-        const newExpense: Omit<Expense, 'id' | 'date'> & { date: Date } = {
+        const newExpense: Omit<Expense, 'id'> = {
+            name: name.trim(),
             amount: Number(amount),
             category,
             subcategory,
@@ -110,6 +113,7 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
         };
         await onSave(newExpense);
         onOpenChange(false);
+        setName('');
         setAmount('');
         setCategory('');
         setSubcategory('');
@@ -117,7 +121,7 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
         setIsSaving(false);
     }
     
-    const isSaveDisabled = isSaving || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
+    const isSaveDisabled = isSaving || name.trim() === '' || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
     
     return (
         <DialogContent>
@@ -153,6 +157,16 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
                         </Select>
                     </div>
                 )}
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">Deskripsi</Label>
+                    <Input 
+                        id="name" 
+                        value={name} 
+                        onChange={(e) => setName(e.target.value)} 
+                        className="col-span-3"
+                        placeholder="Contoh: Bayar tagihan listrik"
+                     />
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="amount" className="text-right">Jumlah</Label>
                     <Input 
@@ -236,7 +250,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
     return expenses.filter(expense => isWithinInterval(expense.date, interval));
   }, [expenses, date]);
 
-  const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
+  const handleSaveExpense = async (expenseData: Omit<Expense, 'id'>) => {
     try {
         const newExpense = await addExpense(expenseData, userRole);
         toast({
@@ -371,3 +385,5 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
 
 PengeluaranPage.displayName = 'PengeluaranPage';
 export default PengeluaranPage;
+
+    
