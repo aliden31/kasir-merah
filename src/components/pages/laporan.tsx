@@ -185,9 +185,9 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
     }, [filteredData]);
     
     const salesMap = useMemo(() => {
-        const sortedSales = sales.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        return new Map(sortedSales.map((sale, index) => [sale.id, sales.length - index]));
-    }, [sales]);
+        const sortedSales = sales.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        return new Map(sortedSales.map((sale, index) => [sale.id, index + 1]));
+      }, [sales]);
 
     const exportData = useMemo(() => {
         const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
@@ -242,83 +242,101 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
         const { salesWithDetails, filteredExpenses, filteredReturns, summary } = exportData;
         const { from, to } = date || {};
         const dateRangeStr = from && to ? `${format(from, 'dd-MM-yyyy')} - ${format(to, 'dd-MM-yyyy')}` : 'Semua Waktu';
-
+    
         const wb = XLSX.utils.book_new();
-        
+        const numFormat = '#,##0';
+    
         // --- DATA PREPARATION ---
-        const sheetData: (string | number)[][] = [];
-
+        const sheetData: (any)[][] = [];
+    
         // Title
         sheetData.push([`Laporan Laba Rugi - Periode: ${dateRangeStr}`]);
-        sheetData.push([]); // Empty row
-
-        // Summary Section
-        sheetData.push(['Ringkasan Laporan']);
-        sheetData.push(['Keterangan', 'Jumlah']);
-        sheetData.push(['Penjualan Bersih (Setelah Retur & Diskon)', summary.penjualanBersih]);
-        sheetData.push(['Total Pokok (HPP) Bersih', summary.totalPokokBersih]);
-        sheetData.push(['Laba Kotor', summary.labaKotor]);
-        sheetData.push(['Total Pengeluaran', -summary.totalPengeluaran]);
-        sheetData.push(['LABA BERSIH', summary.labaBersih]);
-        sheetData.push([]); // Empty row
-
+        sheetData.push([]); 
+    
         // Sales Details Section
         sheetData.push(['Rincian Penjualan']);
         const salesHeader = ['Tanggal', 'ID Transaksi', 'Item', 'Qty', 'Harga Satuan', 'Total', 'Diskon (%)', 'Total Akhir', 'HPP', 'Laba Kotor'];
         sheetData.push(salesHeader);
         salesWithDetails.forEach(sale => {
             sale.items.forEach((item, index) => {
+                const costPriceAtSale = item.costPriceAtSale || 0;
+                const hpp = costPriceAtSale * item.quantity;
+    
                 sheetData.push([
                     index === 0 ? format(new Date(sale.date), 'dd/MM/yyyy') : '',
                     index === 0 ? `trx ${String(sale.displayId || sale.id).padStart(4, '0')}` : '',
                     item.product.name,
-                    item.quantity,
-                    item.price,
-                    item.quantity * item.price,
-                    index === 0 ? sale.discount : '',
-                    index === 0 ? sale.finalTotal : '',
-                    item.costPriceAtSale * item.quantity,
+                    { t: 'n', v: item.quantity },
+                    { t: 'n', v: item.price, z: numFormat },
+                    { t: 'n', v: item.quantity * item.price, z: numFormat },
+                    index === 0 ? { t: 'n', v: sale.discount } : '',
+                    index === 0 ? { t: 'n', v: sale.finalTotal, z: numFormat } : '',
+                    { t: 'n', v: hpp, z: numFormat },
                     ''
                 ]);
             });
-            sheetData.push(['', '', '', '', '', 'Total Transaksi:', sale.subtotal, 'Total Akhir:', sale.finalTotal, 'Laba Transaksi:', sale.labaKotor]);
+            sheetData.push(['', '', '', '', '','Total Transaksi:', { t: 'n', v: sale.subtotal, z: numFormat }, '', { t: 'n', v: sale.finalTotal, z: numFormat }, { t: 'n', v: sale.labaKotor, z: numFormat }]);
         });
-        sheetData.push([]); // Empty row
-
+        sheetData.push([]); 
+    
         // Returns Details Section
-        sheetData.push(['Rincian Retur']);
-        const returnsHeader = ['Tanggal', 'ID Transaksi Asal', 'Item', 'Qty', 'Total Refund'];
-        sheetData.push(returnsHeader);
-        filteredReturns.forEach(ret => {
-            ret.items.forEach(item => {
-                sheetData.push([
-                    format(new Date(ret.date), 'dd/MM/yyyy'),
-                    `trx ${salesMap.has(ret.saleId) ? String(salesMap.get(ret.saleId)).padStart(4, '0') : `...${ret.saleId.slice(-6)}`}`,
-                    item.productName,
-                    item.quantity,
-                    item.priceAtSale * item.quantity
-                ]);
+        if (filteredReturns.length > 0) {
+            sheetData.push(['Rincian Retur']);
+            const returnsHeader = ['Tanggal', 'ID Transaksi Asal', 'Item', 'Qty', 'Total Refund'];
+            sheetData.push(returnsHeader);
+            filteredReturns.forEach(ret => {
+                ret.items.forEach(item => {
+                    sheetData.push([
+                        format(new Date(ret.date), 'dd/MM/yyyy'),
+                        `trx ${salesMap.has(ret.saleId) ? String(salesMap.get(ret.saleId)).padStart(4, '0') : `...${ret.saleId.slice(-6)}`}`,
+                        item.product.name,
+                        { t: 'n', v: item.quantity },
+                        { t: 'n', v: item.priceAtSale * item.quantity, z: numFormat }
+                    ]);
+                });
             });
-        });
-        sheetData.push([]); // Empty row
+            sheetData.push([]);
+        }
         
         // Expenses Details Section
-        sheetData.push(['Rincian Pengeluaran']);
-        const expensesHeader = ['Tanggal', 'Kategori', 'Sub-Kategori', 'Pengeluaran', 'Jumlah'];
-        sheetData.push(expensesHeader);
-        filteredExpenses.forEach(exp => {
-            sheetData.push([
-                format(new Date(exp.date), 'dd/MM/yyyy'),
-                exp.category,
-                exp.subcategory || '',
-                exp.name,
-                exp.amount
-            ]);
+        if (filteredExpenses.length > 0) {
+            sheetData.push(['Rincian Pengeluaran']);
+            const expensesHeader = ['Tanggal', 'Kategori', 'Sub-Kategori', 'Deskripsi', 'Jumlah'];
+            sheetData.push(expensesHeader);
+            filteredExpenses.forEach(exp => {
+                sheetData.push([
+                    format(new Date(exp.date), 'dd/MM/yyyy'),
+                    exp.category,
+                    exp.subcategory || '',
+                    exp.name,
+                    { t: 'n', v: exp.amount, z: numFormat }
+                ]);
+            });
+            sheetData.push([]);
+        }
+    
+        // Summary Section at the bottom
+        sheetData.push(['Ringkasan Laporan']);
+        sheetData.push(['Keterangan', 'Jumlah']);
+        sheetData.push(['Penjualan Bersih (Setelah Retur & Diskon)', { t: 'n', v: summary.penjualanBersih, z: numFormat }]);
+        sheetData.push(['Total Modal (HPP) Bersih', { t: 'n', v: summary.totalPokokBersih, z: numFormat }]);
+        sheetData.push(['Laba Kotor', { t: 'n', v: summary.labaKotor, z: numFormat }]);
+        sheetData.push(['Total Pengeluaran', { t: 'n', v: -summary.totalPengeluaran, z: numFormat }]);
+        sheetData.push(['LABA BERSIH', { t: 'n', v: summary.labaBersih, z: numFormat, s: { font: { bold: true } } }]);
+
+        const ws = XLSX.utils.aoa_to_sheet(sheetData, { cellStyles: true });
+        
+        // Auto-fit columns
+        const cols = Object.keys(ws).filter(key => key.match(/[A-Z]+1$/)).map(key => key.replace('1', ''));
+        const colWidths = cols.map(col => {
+            const cells = Object.keys(ws).filter(key => key.startsWith(col));
+            const max = Math.max(...cells.map(cell => (ws[cell].v || '').toString().length));
+            return { wch: max + 2 };
         });
+        ws['!cols'] = colWidths;
 
-        const ws = XLSX.utils.aoa_to_sheet(sheetData);
         XLSX.utils.book_append_sheet(wb, ws, 'Laporan Arus Kas');
-
+    
         const fileName = `laporan_arus_kas_${dateRangeStr.replace(/ /g, '').replace(/-/g, '_')}.xlsx`;
         XLSX.writeFile(wb, fileName);
         
@@ -491,3 +509,4 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
 
 LaporanPage.displayName = 'LaporanPage';
 export default LaporanPage;
+
