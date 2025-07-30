@@ -5,9 +5,15 @@ export interface Category {
   subcategories: string[];
 }
 
+export interface SubCategory {
+  id: string;
+  name: string;
+}
+
 export interface ExpenseCategory {
   id: string;
   name: string;
+  subcategories: SubCategory[];
 }
 
 export interface Product {
@@ -58,6 +64,7 @@ export interface Expense {
   name: string;
   amount: number;
   category: string;
+  subcategory?: string;
   date: Date;
 }
 

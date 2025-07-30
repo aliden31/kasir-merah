@@ -14,7 +14,7 @@ import {
   setDoc,
   runTransaction,
 } from 'firebase/firestore';
-import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category } from './types';
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory } from './types';
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -53,21 +53,24 @@ async function getDocumentById<T>(collectionName: string, id: string): Promise<T
 
 
 async function addDocument<T>(collectionName: string, data: Omit<T, 'id'>): Promise<T> {
-    const dataWithTimestamp = { ...data };
+    const dataWithTimestamp: { [key: string]: any } = { ...data };
     Object.keys(dataWithTimestamp).forEach(key => {
-        if (dataWithTimestamp[key as keyof typeof dataWithTimestamp] instanceof Date) {
-            dataWithTimestamp[key as keyof typeof dataWithTimestamp] = Timestamp.fromDate(dataWithTimestamp[key as keyof typeof dataWithTimestamp] as Date) as any;
+        if (dataWithTimestamp[key] instanceof Date) {
+            dataWithTimestamp[key] = Timestamp.fromDate(dataWithTimestamp[key]);
         }
     });
 
   const docRef = await addDoc(collection(db, collectionName), dataWithTimestamp);
   const newDoc = await getDocumentById<T>(collectionName, docRef.id);
-  return newDoc!;
+  if (!newDoc) {
+    throw new Error("Failed to retrieve the new document.");
+  }
+  return newDoc;
 }
 
 async function updateDocument<T>(collectionName: string, id: string, data: Partial<T>): Promise<void> {
   const docRef = doc(db, collectionName, id);
-  await updateDoc(docRef, data);
+  await updateDoc(docRef, data as any);
 }
 
 async function deleteDocument(collectionName: string, id: string): Promise<void> {
@@ -196,7 +199,7 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
             });
         });
 
-        const newReturn = await getDocumentById<Return>(newReturnRef.path, newReturnRef.id);
+        const newReturn = await getDocumentById<Return>(newReturnRef.path.substring(newReturnRef.path.indexOf('/') + 1), newReturnRef.id);
         return newReturn!;
 
     } catch (e) {
@@ -238,17 +241,29 @@ export const getSettings = async (): Promise<Settings> => {
         syncCostPrice: true, 
         theme: 'default',
         expenseCategories: [
-            { id: 'exp-cat-1', name: 'Operasional' },
-            { id: 'exp-cat-2', name: 'Gaji' },
-            { id: 'exp-cat-3', name: 'Pemasaran' },
-            { id: 'exp-cat-4', name: 'Lainnya' },
+            { id: 'exp-cat-1', name: 'Operasional', subcategories: [
+                {id: 'exp-sub-1', name: 'Listrik & Air'},
+                {id: 'exp-sub-2', name: 'Internet'},
+            ] },
+            { id: 'exp-cat-2', name: 'Gaji', subcategories: [] },
+            { id: 'exp-cat-3', name: 'Pemasaran', subcategories: [] },
+            { id: 'exp-cat-4', name: 'Lainnya', subcategories: [] },
         ]
     };
 
     if (docSnap.exists()) {
         const data = docSnap.data();
         // Merge with defaults to ensure new settings are present
-        return { ...defaultSettings, ...data } as Settings;
+        const settings = { ...defaultSettings, ...data } as Settings;
+        // Ensure subcategories array exists for each category
+        if(settings.expenseCategories) {
+            settings.expenseCategories.forEach(cat => {
+                if (!cat.subcategories) {
+                    cat.subcategories = [];
+                }
+            });
+        }
+        return settings;
     } else {
         // Create the default settings document in Firestore if it doesn't exist
         await setDoc(docRef, defaultSettings);

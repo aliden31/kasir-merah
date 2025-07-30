@@ -2,7 +2,7 @@
 'use client';
 
 import type { FC } from 'react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -40,11 +40,12 @@ const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 };
 
-const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
+const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
 const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
     const expensesByCategory = expenses.reduce((acc, expense) => {
-        acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
+        const key = expense.subcategory || expense.category;
+        acc[key] = (acc[key] || 0) + expense.amount;
         return acc;
     }, {} as Record<string, number>);
 
@@ -81,10 +82,23 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
     const [name, setName] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
     const [category, setCategory] = useState('');
+    const [subcategory, setSubcategory] = useState('');
     const [date, setDate] = useState<Date>(new Date());
+    
+    const selectedCategory = useMemo(() => {
+        return (settings.expenseCategories || []).find(c => c.name === category);
+    }, [category, settings.expenseCategories]);
+
+    useEffect(() => {
+        // Reset subcategory when category changes
+        setSubcategory('');
+    }, [category]);
 
     const handleSubmit = () => {
         if (!name || amount === '' || amount <= 0 || !category) {
+            return;
+        }
+        if (selectedCategory?.subcategories?.length && !subcategory) {
              // Optional: Add toast notification for validation
             return;
         }
@@ -92,11 +106,14 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
             name,
             amount: Number(amount),
             category,
+            subcategory,
             date,
         };
         onSave(newExpense);
         onOpenChange(false);
     }
+    
+    const isSaveDisabled = !name || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
     
     return (
         <DialogContent>
@@ -106,7 +123,7 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
              <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="name" className="text-right">Nama</Label>
-                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="Contoh: Beli Air Galon"/>
                 </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="category" className="text-right">Kategori</Label>
@@ -121,6 +138,21 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
                         </SelectContent>
                     </Select>
                 </div>
+                {selectedCategory && selectedCategory.subcategories.length > 0 && (
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="subcategory" className="text-right">Sub-Kategori</Label>
+                        <Select onValueChange={(value) => setSubcategory(value)} value={subcategory}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Pilih sub-kategori" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {selectedCategory.subcategories.map(sub => (
+                                    <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="amount" className="text-right">Jumlah</Label>
                     <Input 
@@ -159,7 +191,7 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
                  <DialogClose asChild>
                     <Button type="button" variant="secondary">Batal</Button>
                 </DialogClose>
-                <Button onClick={handleSubmit} disabled={!name || amount === '' || amount <= 0 || !category}>Simpan</Button>
+                <Button onClick={handleSubmit} disabled={isSaveDisabled}>Simpan</Button>
             </DialogFooter>
         </DialogContent>
     )
@@ -191,7 +223,6 @@ const PengeluaranPage: FC = () => {
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
     try {
         const newExpense = await addExpense(expenseData);
-        // Manually convert timestamp back to Date for immediate UI update
         const displayExpense = {
             ...newExpense,
             date: new Date(newExpense.date)
@@ -253,7 +284,10 @@ const PengeluaranPage: FC = () => {
                                 <TableRow key={expense.id}>
                                 <TableCell>{new Date(expense.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
                                 <TableCell className="font-medium">{expense.name}</TableCell>
-                                <TableCell>{expense.category}</TableCell>
+                                <TableCell>
+                                    {expense.category}
+                                    {expense.subcategory && <span className="text-muted-foreground text-xs"> / {expense.subcategory}</span>}
+                                </TableCell>
                                 <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
                                 </TableRow>
                             )) : (

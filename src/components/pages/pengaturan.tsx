@@ -21,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, ExpenseCategory } from '@/lib/types';
+import { Settings, ExpenseCategory, SubCategory } from '@/lib/types';
 import { saveSettings } from '@/lib/data-service';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -35,6 +35,7 @@ interface PengaturanPageProps {
 const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange }) => {
     const [localSettings, setLocalSettings] = useState<Settings>(settings);
     const [newCategoryName, setNewCategoryName] = useState("");
+    const [newSubCategoryNames, setNewSubCategoryNames] = useState<Record<string, string>>({});
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const { toast } = useToast();
@@ -69,6 +70,7 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
         const newCategory: ExpenseCategory = {
             id: `exp-cat-${Date.now()}`,
             name: newCategoryName.trim(),
+            subcategories: []
         };
         const updatedCategories = [...(localSettings.expenseCategories || []), newCategory];
         const updatedSettings = { ...localSettings, expenseCategories: updatedCategories };
@@ -83,6 +85,48 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
         setLocalSettings(updatedSettings);
         handleSaveSettings(updatedSettings);
     }
+    
+    const handleAddSubCategory = (categoryId: string) => {
+        const subCategoryName = newSubCategoryNames[categoryId]?.trim();
+        if (!subCategoryName) return;
+
+        const newSubCategory: SubCategory = {
+            id: `exp-sub-${Date.now()}`,
+            name: subCategoryName
+        };
+
+        const updatedCategories = (localSettings.expenseCategories || []).map(cat => {
+            if (cat.id === categoryId) {
+                return {
+                    ...cat,
+                    subcategories: [...cat.subcategories, newSubCategory]
+                };
+            }
+            return cat;
+        });
+        
+        const updatedSettings = { ...localSettings, expenseCategories: updatedCategories };
+        setLocalSettings(updatedSettings);
+        handleSaveSettings(updatedSettings);
+        setNewSubCategoryNames(prev => ({...prev, [categoryId]: ""}));
+    };
+
+    const handleDeleteSubCategory = (categoryId: string, subCategoryId: string) => {
+        const updatedCategories = (localSettings.expenseCategories || []).map(cat => {
+            if (cat.id === categoryId) {
+                return {
+                    ...cat,
+                    subcategories: cat.subcategories.filter(sub => sub.id !== subCategoryId)
+                };
+            }
+            return cat;
+        });
+        
+        const updatedSettings = { ...localSettings, expenseCategories: updatedCategories };
+        setLocalSettings(updatedSettings);
+        handleSaveSettings(updatedSettings);
+    };
+
 
     const handleDeleteDatabase = () => {
         setIsDeleting(true);
@@ -200,29 +244,56 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-1">
             <h2 className="text-lg font-semibold">Kategori Pengeluaran</h2>
-            <p className="text-sm text-muted-foreground">Kelola kategori untuk pengeluaran Anda.</p>
+            <p className="text-sm text-muted-foreground">Kelola kategori dan sub-kategori untuk pengeluaran Anda.</p>
         </div>
         <div className="md:col-span-2">
             <Card>
                 <CardHeader>
-                    <CardTitle>Daftar Kategori</CardTitle>
+                    <CardTitle>Daftar Kategori & Sub-Kategori</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-2">
-                        {(localSettings.expenseCategories || []).map((cat) => (
-                           <div key={cat.id} className="flex items-center justify-between rounded-md border p-3">
+                    <Accordion type="multiple" className="w-full">
+                      {(localSettings.expenseCategories || []).map((cat) => (
+                        <AccordionItem value={cat.id} key={cat.id}>
+                          <AccordionTrigger className="hover:no-underline">
+                            <div className="flex items-center justify-between w-full">
                                 <span>{cat.name}</span>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDeleteExpenseCategory(cat.id); }}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0" onClick={(e) => { e.stopPropagation(); handleDeleteExpenseCategory(cat.id); }}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
-                           </div>
-                        ))}
-                    </div>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="pl-4 space-y-2">
+                               {cat.subcategories.map(sub => (
+                                 <div key={sub.id} className="flex items-center justify-between rounded-md border p-2">
+                                    <span>{sub.name}</span>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSubCategory(cat.id, sub.id)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                 </div>
+                               ))}
+                               <div className="flex items-center gap-2 pt-2">
+                                    <Input 
+                                        placeholder="Nama sub-kategori baru"
+                                        value={newSubCategoryNames[cat.id] || ""}
+                                        onChange={e => setNewSubCategoryNames(prev => ({...prev, [cat.id]: e.target.value}))}
+                                        onKeyDown={e => {if (e.key === 'Enter') handleAddSubCategory(cat.id)}}
+                                    />
+                                    <Button size="sm" onClick={() => handleAddSubCategory(cat.id)}>Tambah</Button>
+                               </div>
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+
                      <div className="flex items-center gap-2 pt-4 mt-4 border-t">
                         <Input 
-                            placeholder="Nama kategori baru"
+                            placeholder="Nama kategori utama baru"
                             value={newCategoryName}
                             onChange={e => setNewCategoryName(e.target.value)}
+                             onKeyDown={e => {if (e.key === 'Enter') handleAddExpenseCategory()}}
                         />
                         <Button onClick={handleAddExpenseCategory}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Tambah Kategori
