@@ -72,7 +72,7 @@ const LaporanPage: FC = () => {
         csvContent += "No Transaksi,Tanggal,Dept,Kode Pel,Nama Pelanggan,Sub Total,Total Pokok,Laba Kotor,Biaya Msk Total (+) Diskon,Biaya Lain,Laba Jual\n";
         salesWithDetails.forEach(sale => {
             const row = [
-                sale.id,
+                `TRX-${format(sale.date, "yyyyMMdd")}`,
                 format(sale.date, "yyyy-MM-dd"),
                 "UTM",
                 "PL0001", // Placeholder
