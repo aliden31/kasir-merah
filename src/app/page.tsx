@@ -24,7 +24,7 @@ import {
   Zap,
   Settings,
   Store,
-  Users,
+  ClipboardList,
   Home as HomeIcon,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -34,6 +34,7 @@ import { Separator } from '@/components/ui/separator';
 import DashboardPage from '@/components/pages/dashboard';
 import KasirPage from '@/components/pages/kasir';
 import ProdukPage from '@/components/pages/produk';
+import StokOpnamePage from '@/components/pages/stok-opname';
 import PenjualanPage from '@/components/pages/penjualan';
 import ReturPage from '@/components/pages/retur';
 import PengeluaranPage from '@/components/pages/pengeluaran';
@@ -51,6 +52,7 @@ type View =
   | 'dashboard'
   | 'kasir'
   | 'produk'
+  | 'stok-opname'
   | 'penjualan'
   | 'retur'
   | 'pengeluaran'
@@ -142,6 +144,7 @@ export default function Home() {
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, roles: ['admin', 'kasir'] },
     { id: 'kasir', label: 'Kasir', icon: LayoutGrid, roles: ['admin', 'kasir'] },
     { id: 'produk', label: 'Produk', icon: Package, roles: ['admin'] },
+    { id: 'stok-opname', label: 'Stok Opname', icon: ClipboardList, roles: ['admin'] },
     { id: 'penjualan', label: 'Riwayat Penjualan', icon: ScrollText, roles: ['admin'] },
     { id: 'retur', label: 'Retur', icon: Undo2, roles: ['admin', 'kasir'] },
     { id: 'pengeluaran', label: 'Pengeluaran', icon: Wallet, roles: ['admin', 'kasir'] },
@@ -170,6 +173,8 @@ export default function Home() {
         />;
       case 'produk':
         return <ProdukPage />;
+      case 'stok-opname':
+        return <StokOpnamePage />;
       case 'penjualan':
         return <PenjualanPage />;
       case 'retur':
@@ -239,7 +244,7 @@ export default function Home() {
         </Sidebar>
         <SidebarInset>
             <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-                <SidebarTrigger />
+                <SidebarTrigger className="md:hidden" />
                 <h1 className="text-xl font-semibold">{activeMenu?.label}</h1>
             </header>
             <main className="p-4 md:p-6">{renderView()}</main>
@@ -248,3 +253,5 @@ export default function Home() {
     </SidebarProvider>
   );
 }
+
+    

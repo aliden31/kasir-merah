@@ -41,11 +41,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts, getProductById, getSales, getSettings } from '@/lib/data-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
+const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState(product?.name || '');
-    const [costPrice, setCostPrice] = useState(product?.costPrice || 0);
-    const [sellingPrice, setSellingPrice] = useState(product?.sellingPrice || 0);
-    const [stock, setStock] = useState(product?.stock || 0);
+    const [costPrice, setCostPrice] = useState(product?.costPrice ?? '');
+    const [sellingPrice, setSellingPrice] = useState(product?.sellingPrice ?? '');
+    const [stock, setStock] = useState(product?.stock ?? '');
     const [category, setCategory] = useState(product?.category || '');
     const [subcategory, setSubcategory] = useState(product?.subcategory || '');
     const [isSaving, setIsSaving] = useState(false);
@@ -62,9 +62,9 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
         } else {
             // Reset form when there's no product (for 'Add New')
             setName('');
-            setCostPrice(0);
-            setSellingPrice(0);
-            setStock(0);
+            setCostPrice('');
+            setSellingPrice('');
+            setStock('');
             setCategory('');
             setSubcategory('');
         }
@@ -79,9 +79,9 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
         setIsSaving(true);
         const productData = {
             name,
-            costPrice,
-            sellingPrice,
-            stock,
+            costPrice: Number(costPrice) || 0,
+            sellingPrice: Number(sellingPrice) || 0,
+            stock: Number(stock) || 0,
             category,
             subcategory,
         };
@@ -112,23 +112,23 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
                 </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="category" className="text-right">Kategori</Label>
-                    <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="col-span-3" />
+                    <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="col-span-3" placeholder="Contoh: Makanan, Minuman" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="subcategory" className="text-right">Sub-Kategori</Label>
-                    <Input id="subcategory" value={subcategory} onChange={(e) => setSubcategory(e.target.value)} className="col-span-3" />
+                    <Input id="subcategory" value={subcategory} onChange={(e) => setSubcategory(e.target.value)} className="col-span-3" placeholder="Opsional. Contoh: Panas, Dingin"/>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="costPrice" className="text-right">Harga Modal</Label>
-                    <Input id="costPrice" type="number" value={costPrice} onChange={(e) => setCostPrice(Number(e.target.value))} className="col-span-3" />
+                    <Input id="costPrice" type="number" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} className="col-span-3" placeholder="0"/>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="sellingPrice" className="text-right">Harga Jual</Label>
-                    <Input id="sellingPrice" type="number" value={sellingPrice} onChange={(e) => setSellingPrice(Number(e.target.value))} className="col-span-3" />
+                    <Input id="sellingPrice" type="number" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} className="col-span-3" placeholder="0"/>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="stock" className="text-right">Stok</Label>
-                    <Input id="stock" type="number" value={stock} onChange={(e) => setStock(Number(e.target.value))} className="col-span-3" />
+                    <Input id="stock" type="number" value={stock} onChange={(e) => setStock(e.target.value)} className="col-span-3" placeholder="0"/>
                 </div>
             </div>
             <DialogFooter>
@@ -152,8 +152,8 @@ const ProdukPage: FC = () => {
   const { toast } = useToast();
   const [sortOrder, setSortOrder] = useState('terlaris');
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
+  const fetchInitialData = async () => {
+        setLoading(true);
         try {
             let [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
 
@@ -164,17 +164,7 @@ const ProdukPage: FC = () => {
                 toast({ title: "Inisialisasi berhasil", description: "Data produk sampel telah ditambahkan." });
             }
             
-            const uniqueProductNames = new Set();
-            const uniqueProducts = productsData.filter(product => {
-                if (uniqueProductNames.has(product.name)) {
-                    return false;
-                } else {
-                    uniqueProductNames.add(product.name);
-                    return true;
-                }
-            });
-
-            setProducts(uniqueProducts);
+            setProducts(productsData);
             setSales(salesData);
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
@@ -183,6 +173,8 @@ const ProdukPage: FC = () => {
             setLoading(false);
         }
     }
+
+  useEffect(() => {
     fetchInitialData();
   }, [toast]);
   
@@ -219,7 +211,7 @@ const ProdukPage: FC = () => {
   const handleSaveProduct = async (productData: Product | Omit<Product, 'id'>) => {
     try {
         if ('id' in productData) {
-            await updateProduct(productData.id, productData);
+            await updateProduct(productData.id, productData as Product);
             setProducts(prev => prev.map(p => p.id === productData.id ? {...p, ...productData} as Product : p));
             toast({ title: "Produk diperbarui", description: `${productData.name} telah berhasil diperbarui.` });
         } else {
@@ -227,6 +219,7 @@ const ProdukPage: FC = () => {
             setProducts(prev => [...prev, newProduct]);
             toast({ title: "Produk ditambahkan", description: `${newProduct.name} telah berhasil ditambahkan.` });
         }
+        await fetchInitialData(); // Refresh data
     } catch (error) {
         toast({ title: "Error", description: "Gagal menyimpan produk.", variant: "destructive" });
         console.error(error);
@@ -389,3 +382,5 @@ const ProdukPage: FC = () => {
 };
 
 export default ProdukPage;
+
+    
