@@ -82,7 +82,7 @@ export async function getSales(): Promise<Sale[]> {
 export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promise<Sale> => {
     // 1. Prepare sale items for Firestore
     const itemsForFirestore = sale.items.map(item => {
-        const saleItem: any = {
+        const saleItem: SaleItem = {
             product: item.product, // Store the entire product object
             quantity: item.quantity,
             price: item.price, // This is the selling price before discount
@@ -150,15 +150,13 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
             for (const item of returnData.items) {
                 const productRef = doc(db, "products", item.productId);
                 const productDoc = await transaction.get(productRef);
-                if (!productDoc.exists()) {
-                    // If product doesn't exist, we might still proceed or throw error
-                    // For now, we'll log it and continue. Stock won't be updated.
+                if (productDoc.exists()) {
+                    const currentStock = productDoc.data().stock;
+                    const newStock = currentStock + item.quantity;
+                    transaction.update(productRef, { stock: newStock });
+                } else {
                     console.warn(`Product with ID ${item.productId} not found during return. Stock not updated.`);
-                    continue; 
                 }
-                const currentStock = productDoc.data().stock;
-                const newStock = currentStock + item.quantity;
-                transaction.update(productRef, { stock: newStock });
             }
 
             // 2. Save the new return document

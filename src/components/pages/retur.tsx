@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Return, Sale, ReturnItem } from '@/lib/types';
+import type { Return, Sale, ReturnItem, SaleItem } from '@/lib/types';
 import { PlusCircle, MinusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getReturns, addReturn, getSales, getProducts } from '@/lib/data-service';
@@ -106,7 +106,7 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
         <DialogContent className="max-w-2xl">
             <DialogHeader>
                 <DialogTitle>Tambah Retur Baru</DialogTitle>
-                <CardDescription>Pilih transaksi, lalu pilih produk yang akan dikembalikan.</CardDescription>
+                <DialogDescription>Pilih transaksi, lalu pilih produk yang akan dikembalikan.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -243,9 +243,9 @@ const ReturPage: FC = () => {
     return sales
         .map(sale => ({
             ...sale,
-            items: sale.items.map((item: any) => ({
+            items: sale.items.map((item: SaleItem) => ({
                 ...item,
-                product: item.product || { id: 'unknown', name: 'Produk Dihapus', category: '' }
+                product: item.product || { id: 'unknown', name: 'Produk Dihapus', category: '', costPrice: 0, sellingPrice: 0, stock: 0 }
             }))
         }))
         .sort((a, b) => b.date.getTime() - a.date.getTime());
