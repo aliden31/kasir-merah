@@ -40,12 +40,15 @@ export interface Expense {
   date: Date;
 }
 
+export interface FlashSaleProduct extends Product {
+  discountPrice: number;
+}
+
 export interface FlashSale {
-    id: string;
-    productName: string;
-    discountPrice: number;
-    startTime: Date;
-    endTime: Date;
+    id: string; // Will be 'main'
+    title: string;
+    isActive: boolean;
+    products: FlashSaleProduct[];
 }
 
 export interface Settings {
@@ -56,3 +59,5 @@ export interface Settings {
 }
 
 export type UserRole = 'admin' | 'kasir';
+
+    

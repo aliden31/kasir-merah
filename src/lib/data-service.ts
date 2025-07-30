@@ -148,21 +148,23 @@ export const addReturn = (item: Omit<Return, 'id'>) => {
 
 
 // FlashSale-specific functions
-export async function getFlashSales(): Promise<FlashSale[]> {
-    const flashSalesData = await getCollection<any>('flash-sales');
-    return flashSalesData.map(fs => ({
-        ...fs,
-        startTime: (fs.startTime as Timestamp).toDate(),
-        endTime: (fs.endTime as Timestamp).toDate(),
-    }));
-}
+export const getFlashSaleSettings = async (): Promise<FlashSale> => {
+    const docRef = doc(db, 'settings', 'flashSale');
+    const docSnap = await getDoc(docRef);
 
-export const addFlashSale = (sale: Omit<FlashSale, 'id'>) => {
-    return addDocument<FlashSale>('flash-sales', {
-        ...sale,
-        startTime: Timestamp.fromDate(sale.startTime),
-        endTime: Timestamp.fromDate(sale.endTime)
-    });
+    if (docSnap.exists()) {
+        return { id: 'main', ...docSnap.data() } as FlashSale;
+    } else {
+        const defaultSettings: FlashSale = { id: 'main', title: 'Flash Sale', isActive: false, products: [] };
+        await setDoc(docRef, defaultSettings);
+        return defaultSettings;
+    }
+};
+
+export const saveFlashSaleSettings = async (settings: FlashSale): Promise<void> => {
+    const { id, ...settingsData } = settings;
+    const docRef = doc(db, 'settings', 'flashSale');
+    await setDoc(docRef, settingsData, { merge: true });
 };
 
 // Settings-specific functions
@@ -187,4 +189,5 @@ export const saveSettings = async (settings: Partial<Settings>): Promise<void> =
     const docRef = doc(db, 'settings', 'main');
     await setDoc(docRef, settings, { merge: true });
 };
+
     

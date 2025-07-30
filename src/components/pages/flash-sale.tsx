@@ -12,102 +12,33 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { FlashSale, Product } from '@/lib/types';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { getFlashSales, addFlashSale, getProducts } from '@/lib/data-service';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getFlashSaleSettings, saveFlashSaleSettings, getProducts } from '@/lib/data-service';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Loader2 } from 'lucide-react';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 };
 
-const FlashSaleForm = ({ products, onSave, onOpenChange }: { products: Product[], onSave: (sale: Omit<FlashSale, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
-    const [productName, setProductName] = useState('');
-    const [discountPrice, setDiscountPrice] = useState(0);
-    const [startTime, setStartTime] = useState('');
-    const [endTime, setEndTime] = useState('');
-
-    const handleSubmit = () => {
-        if (!productName || !startTime || !endTime) {
-            alert('Harap isi semua kolom!');
-            return;
-        }
-        const newSale: Omit<FlashSale, 'id'> = {
-            productName,
-            discountPrice,
-            startTime: new Date(startTime),
-            endTime: new Date(endTime)
-        };
-        onSave(newSale);
-        onOpenChange(false);
-    }
-    
-    return (
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Buat Flash Sale Baru</DialogTitle>
-            </DialogHeader>
-             <div className="grid gap-4 py-4">
-                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="productName" className="text-right">Produk</Label>
-                    <Select onValueChange={setProductName}>
-                        <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Pilih produk" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {products.map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="discountPrice" className="text-right">Harga Diskon</Label>
-                    <Input id="discountPrice" type="number" value={discountPrice} onChange={(e) => setDiscountPrice(Number(e.target.value))} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="startTime" className="text-right">Waktu Mulai</Label>
-                    <Input id="startTime" type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="endTime" className="text-right">Waktu Selesai</Label>
-                    <Input id="endTime" type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="col-span-3" />
-                </div>
-            </div>
-            <DialogFooter>
-                 <DialogClose asChild>
-                    <Button type="button" variant="secondary">Batal</Button>
-                </DialogClose>
-                <Button onClick={handleSubmit}>Jadwalkan</Button>
-            </DialogFooter>
-        </DialogContent>
-    )
-}
-
 const FlashSalePage: FC = () => {
-  const [flashSales, setFlashSales] = useState<FlashSale[]>([]);
+  const [settings, setSettings] = useState<FlashSale | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isFormOpen, setFormOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchData = async () => {
         try {
-            const [flashSalesData, productsData] = await Promise.all([getFlashSales(), getProducts()]);
-            setFlashSales(flashSalesData);
+            const [flashSaleData, productsData] = await Promise.all([getFlashSaleSettings(), getProducts()]);
+            setSettings(flashSaleData);
             setProducts(productsData);
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
@@ -119,78 +50,148 @@ const FlashSalePage: FC = () => {
     fetchData();
   }, [toast]);
 
-  const handleSaveSale = async (saleData: Omit<FlashSale, 'id'>) => {
+  const handleSaveSettings = async () => {
+    if (!settings) return;
+    setIsSaving(true);
     try {
-        const newSale = await addFlashSale(saleData);
-        setFlashSales(prev => [...prev, newSale]);
-        toast({
-            title: "Flash Sale Dibuat",
-            description: `Flash sale untuk ${newSale.productName} telah dijadwalkan.`,
-        });
+      await saveFlashSaleSettings(settings);
+      toast({
+        title: "Pengaturan Disimpan",
+        description: "Pengaturan flash sale telah diperbarui.",
+      });
     } catch (error) {
-        toast({ title: "Error", description: "Gagal membuat flash sale.", variant: "destructive" });
-        console.error(error);
+      toast({ title: "Error", description: "Gagal menyimpan pengaturan.", variant: "destructive" });
+      console.error(error);
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const handleProductAdd = (productId: string) => {
+    if (!settings) return;
+    const productToAdd = products.find(p => p.id === productId);
+    if (productToAdd && !settings.products.some(p => p.id === productId)) {
+      const newProducts = [...settings.products, { ...productToAdd, discountPrice: productToAdd.sellingPrice }];
+      setSettings({ ...settings, products: newProducts });
+    }
+  };
+  
+  const handleProductRemove = (productId: string) => {
+    if (!settings) return;
+    const newProducts = settings.products.filter(p => p.id !== productId);
+    setSettings({ ...settings, products: newProducts });
   }
 
-  const getStatus = (sale: FlashSale) => {
-    const now = new Date();
-    if (now < sale.startTime) return <Badge variant="outline">Akan Datang</Badge>;
-    if (now >= sale.startTime && now <= sale.endTime) return <Badge className="bg-destructive text-destructive-foreground">Sedang Berlangsung</Badge>;
-    return <Badge variant="secondary">Selesai</Badge>;
+  const handleDiscountPriceChange = (productId: string, price: number) => {
+    if (!settings) return;
+    const newProducts = settings.products.map(p => 
+      p.id === productId ? { ...p, discountPrice: price } : p
+    );
+    setSettings({ ...settings, products: newProducts });
   }
 
-  if (loading) {
-      return <div>Memuat data flash sale...</div>;
+  if (loading || !settings) {
+    return <div>Memuat data flash sale...</div>;
   }
+
+  const availableProducts = products.filter(
+    p => !settings.products.some(sp => sp.id === p.id)
+  );
 
   return (
     <div className="space-y-6">
-       <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Manajemen Flash Sale</h1>
-          <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-            <DialogTrigger asChild>
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Buat Flash Sale
-                </Button>
-            </DialogTrigger>
-            <FlashSaleForm products={products} onSave={handleSaveSale} onOpenChange={setFormOpen}/>
-          </Dialog>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Manajemen Flash Sale</h1>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="flash-sale-status">Status Flash Sale</Label>
+            <Switch
+              id="flash-sale-status"
+              checked={settings.isActive}
+              onCheckedChange={(isChecked) => setSettings({ ...settings, isActive: isChecked })}
+            />
+          </div>
+          <Button onClick={handleSaveSettings} disabled={isSaving}>
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Simpan Pengaturan
+          </Button>
         </div>
+      </div>
 
       <Card>
         <CardHeader>
-            <CardTitle>Daftar Flash Sale</CardTitle>
-            <CardDescription>Kelola flash sale yang sedang berlangsung, akan datang, dan yang sudah selesai.</CardDescription>
+          <CardTitle>Pengaturan Umum</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nama Produk</TableHead>
-                <TableHead className="text-right">Harga Diskon</TableHead>
-                <TableHead>Waktu Mulai</TableHead>
-                <TableHead>Waktu Selesai</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {flashSales.length > 0 ? flashSales.map((sale) => (
-                <TableRow key={sale.id}>
-                  <TableCell className="font-medium">{sale.productName}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(sale.discountPrice)}</TableCell>
-                  <TableCell>{sale.startTime.toLocaleString('id-ID')}</TableCell>
-                  <TableCell>{sale.endTime.toLocaleString('id-ID')}</TableCell>
-                  <TableCell className="text-center">{getStatus(sale)}</TableCell>
-                </TableRow>
-              )) : (
+          <div className="grid gap-4">
+            <div>
+              <Label htmlFor="flash-sale-title">Judul Flash Sale</Label>
+              <Input
+                id="flash-sale-title"
+                placeholder="Contoh: Diskon Kilat Tengah Malam"
+                value={settings.title}
+                onChange={(e) => setSettings({ ...settings, title: e.target.value })}
+              />
+              <p className="text-sm text-muted-foreground mt-1">Judul ini akan ditampilkan kepada pelanggan selama periode flash sale.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Produk dalam Flash Sale</CardTitle>
+          <CardDescription>Tambah atau hapus produk yang akan didiskon selama flash sale.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 mb-4">
+            <Select onValueChange={handleProductAdd}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Pilih produk untuk ditambahkan..." />
+                </SelectTrigger>
+                <SelectContent>
+                    {availableProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            <Button variant="outline" disabled={!availableProducts.length}><PlusCircle className="mr-2 h-4 w-4"/> Tambah</Button>
+          </div>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24">Belum ada flash sale.</TableCell>
+                  <TableHead>Nama Produk</TableHead>
+                  <TableHead>Harga Asli</TableHead>
+                  <TableHead>Harga Diskon</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {settings.products.length > 0 ? settings.products.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell>{formatCurrency(product.sellingPrice)}</TableCell>
+                    <TableCell>
+                      <Input 
+                        type="number" 
+                        className="w-32"
+                        value={product.discountPrice} 
+                        onChange={(e) => handleDiscountPriceChange(product.id, Number(e.target.value))}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                       <Button variant="ghost" size="icon" onClick={() => handleProductRemove(product.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                       </Button>
+                    </TableCell>
+                  </TableRow>
+                )) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center h-24">Belum ada produk untuk flash sale.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -198,3 +199,5 @@ const FlashSalePage: FC = () => {
 };
 
 export default FlashSalePage;
+
+    
