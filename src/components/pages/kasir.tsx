@@ -317,19 +317,15 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
 
 
 interface KasirPageProps {
-  cart: SaleItem[];
-  addToCart: (product: Product, flashSalePrice?: number) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
-  cartItemCount: number;
   settings: Settings;
   flashSale: FlashSale;
   onDataNeedsRefresh: () => void;
 }
 
-const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearCart, cartItemCount, settings, flashSale, onDataNeedsRefresh }) => {
+const KasirPage: FC<KasirPageProps> = ({ settings, flashSale, onDataNeedsRefresh }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [discount, setDiscount] = useState(settings.defaultDiscount);
   const [transactionDate, setTransactionDate] = useState<Date>(new Date());
@@ -404,6 +400,48 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
   const filteredProducts = sortedProducts.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  const getFlashSalePrice = (productId: string): number | undefined => {
+    if (!flashSale.isActive) return undefined;
+    const productInSale = flashSale.products.find(p => p.id === productId);
+    return productInSale?.discountPrice;
+  };
+
+  const addToCart = (product: Product) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.product.id === product.id);
+      const flashSalePrice = getFlashSalePrice(product.id);
+      const price = flashSalePrice !== undefined ? flashSalePrice : product.sellingPrice;
+
+      if (existingItem) {
+        return prevCart.map((item) =>
+          item.product.id === product.id ? { ...item, quantity: item.quantity + 1, price: price } : item
+        );
+      }
+      return [...prevCart, { 
+          product: { id: product.id, name: product.name, category: product.category, subcategory: product.subcategory }, 
+          quantity: 1, 
+          price: price, 
+          costPriceAtSale: product.costPrice 
+        }];
+    });
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      setCart((prevCart) => prevCart.filter((item) => item.product.id !== productId));
+    } else {
+      setCart((prevCart) =>
+        prevCart.map((item) => (item.product.id === productId ? { ...item, quantity } : item))
+      );
+    }
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const discountAmount = (subtotal * discount) / 100;
@@ -466,13 +504,6 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
     }
   }
 
-
-  const getFlashSalePrice = (productId: string): number | undefined => {
-    if (!flashSale.isActive) return undefined;
-    const productInSale = flashSale.products.find(p => p.id === productId);
-    return productInSale?.discountPrice;
-  };
-
   const renderProductGrid = (isMobile = false) => (
     <Card className={`h-full flex flex-col shadow-none border-0 ${isMobile ? '' : 'lg:col-span-2'}`}>
       <CardHeader>
@@ -516,7 +547,7 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
               return (
                 <Card
                   key={product.id}
-                  onClick={() => addToCart(product, flashPrice)}
+                  onClick={() => addToCart(product)}
                   className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col p-2"
                 >
                   <div className="flex-grow flex flex-col text-center justify-center p-2">

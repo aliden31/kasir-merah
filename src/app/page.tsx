@@ -72,7 +72,6 @@ const defaultFlashSale: FlashSale = { id: 'main', title: '', isActive: false, pr
 
 export default function Home() {
   const [activeView, setActiveView] = useState<View>('dashboard');
-  const [cart, setCart] = useState<SaleItem[]>([]);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [flashSale, setFlashSale] = useState<FlashSale>(defaultFlashSale);
   const [userRole, setUserRole] = useState<UserRole>('admin');
@@ -110,33 +109,6 @@ export default function Home() {
     document.documentElement.className = settings.theme || 'default';
   }, [settings.theme]);
 
-  const addToCart = (product: Product, flashSalePrice?: number) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.product.id === product.id);
-      const price = flashSalePrice !== undefined ? flashSalePrice : product.sellingPrice;
-      if (existingItem) {
-        return prevCart.map((item) =>
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1, price: price } : item
-        );
-      }
-      return [...prevCart, { product, quantity: 1, price: price, costPriceAtSale: product.costPrice }];
-    });
-  };
-
-  const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      setCart((prevCart) => prevCart.filter((item) => item.product.id !== productId));
-    } else {
-      setCart((prevCart) =>
-        prevCart.map((item) => (item.product.id === productId ? { ...item, quantity } : item))
-      );
-    }
-  };
-
-  const clearCart = () => {
-    setCart([]);
-  };
-  
   const handleRoleChange = (isAdmin: boolean) => {
     const newRole = isAdmin ? 'admin' : 'kasir';
     setUserRole(newRole);
@@ -174,11 +146,6 @@ export default function Home() {
       case 'kasir':
         return <KasirPage 
           key={kasirDataVersion} // Re-mount component when data needs refresh
-          cart={cart}
-          addToCart={addToCart}
-          updateQuantity={updateQuantity}
-          clearCart={clearCart}
-          cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
           settings={settings}
           flashSale={flashSale}
           onDataNeedsRefresh={refreshKasirData}
