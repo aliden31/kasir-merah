@@ -61,6 +61,7 @@ const defaultSettings: AppSettings = {
   syncCostPrice: true, 
   theme: 'default',
   categories: [],
+  expenseCategories: [],
 };
 const defaultFlashSale: FlashSale = { id: 'main', title: '', isActive: false, products: [] };
 
@@ -240,8 +241,8 @@ export default function Home() {
         </Sidebar>
         <SidebarInset>
             <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-                <SidebarTrigger className="sm:hidden" />
-                <h1 className="text-xl font-semibold sm:hidden">{activeMenu?.label}</h1>
+                <SidebarTrigger />
+                <h1 className="text-xl font-semibold">{activeMenu?.label}</h1>
             </header>
             <main className="p-4 md:p-6">{renderView()}</main>
         </SidebarInset>
