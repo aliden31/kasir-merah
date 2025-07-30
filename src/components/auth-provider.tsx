@@ -23,12 +23,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setLoading(true);
       if (user) {
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
@@ -36,7 +33,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         if (userDoc.exists()) {
           setUserRole(userDoc.data().role as UserRole);
         } else {
-          setUserRole(null);
+          // This might happen if the user exists in Auth but not in Firestore.
+          // Handle as an incomplete profile or logout. For now, treat as no role.
+          setUserRole(null); 
         }
         setUser(user);
       } else {
@@ -48,22 +47,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (loading) return;
-
-    const isAuthPage = pathname === '/login';
-    const isAppPage = pathname.startsWith('/app');
-
-    if (!user && isAppPage) {
-      router.push('/login');
-    }
-
-    if (user && isAuthPage) {
-      router.push('/app');
-    }
-  }, [user, loading, pathname, router]);
-
 
   return (
     <AuthContext.Provider value={{ user, userRole, loading }}>

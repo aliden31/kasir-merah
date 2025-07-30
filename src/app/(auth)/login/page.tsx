@@ -22,7 +22,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      // Pengalihan sekarang ditangani oleh AuthProvider
+      // Pengalihan sekarang ditangani oleh AuthProvider dan RootPage
       toast({
         title: 'Login Berhasil',
         description: 'Selamat datang kembali!',
