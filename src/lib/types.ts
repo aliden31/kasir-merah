@@ -64,6 +64,7 @@ export interface Settings {
   storeName: string;
   defaultDiscount: number;
   syncCostPrice: boolean;
+  theme: 'default' | 'colorful';
 }
 
 export type UserRole = 'admin' | 'kasir';

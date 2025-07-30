@@ -43,6 +43,7 @@ import { getSettings, getFlashSaleSettings } from '@/lib/data-service';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 type View =
   | 'kasir'
@@ -54,7 +55,7 @@ type View =
   | 'flash-sale'
   | 'pengaturan';
 
-const defaultSettings: AppSettings = { storeName: 'Memuat...', defaultDiscount: 0, syncCostPrice: true };
+const defaultSettings: AppSettings = { storeName: 'Memuat...', defaultDiscount: 0, syncCostPrice: true, theme: 'default' };
 const defaultFlashSale: FlashSale = { id: 'main', title: '', isActive: false, products: [] };
 
 export default function Home() {
@@ -79,6 +80,10 @@ export default function Home() {
     fetchData();
   }, []);
   
+  useEffect(() => {
+    document.documentElement.className = settings.theme || 'default';
+  }, [settings.theme]);
+
   const addToCart = (product: Product, flashSalePrice?: number) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.product.id === product.id);
@@ -175,7 +180,7 @@ export default function Home() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-background">
+      <div className={cn("flex min-h-screen bg-background", settings.theme === 'colorful' && 'theme-colorful')}>
         <Sidebar>
           <SidebarHeader>
             <div className="flex items-center gap-2">

@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Settings } from '@/lib/types';
 import { saveSettings } from '@/lib/data-service';
 import { Loader2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface PengaturanPageProps {
   settings: Settings;
@@ -33,6 +34,7 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
     const [storeName, setStoreName] = useState(settings.storeName);
     const [defaultDiscount, setDefaultDiscount] = useState(settings.defaultDiscount);
     const [syncCostPrice, setSyncCostPrice] = useState(settings.syncCostPrice);
+    const [theme, setTheme] = useState(settings.theme || 'default');
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const { toast } = useToast();
@@ -41,12 +43,13 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
       setStoreName(settings.storeName);
       setDefaultDiscount(settings.defaultDiscount);
       setSyncCostPrice(settings.syncCostPrice);
+      setTheme(settings.theme || 'default');
     }, [settings]);
     
     const handleSaveSettings = async () => {
         setIsSaving(true);
         try {
-            const newSettings: Settings = { storeName, defaultDiscount, syncCostPrice };
+            const newSettings: Settings = { storeName, defaultDiscount, syncCostPrice, theme };
             await saveSettings(newSettings);
             onSettingsChange(newSettings);
             toast({
@@ -84,6 +87,38 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
         <p className="text-muted-foreground">
           Kelola pengaturan toko dan preferensi aplikasi Anda.
         </p>
+      </div>
+      <Separator />
+      <div className="grid md:grid-cols-3 gap-6">
+        <div className="md:col-span-1">
+          <h2 className="text-lg font-semibold">Tampilan</h2>
+          <p className="text-sm text-muted-foreground">Sesuaikan tampilan visual aplikasi.</p>
+        </div>
+        <div className="md:col-span-2">
+           <Card>
+            <CardContent className="pt-6">
+                <div className="space-y-2">
+                    <Label>Tema</Label>
+                    <RadioGroup value={theme} onValueChange={(value) => setTheme(value as 'default' | 'colorful')}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="default" id="theme-default" />
+                        <Label htmlFor="theme-default">Default</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="colorful" id="theme-colorful" />
+                        <Label htmlFor="theme-colorful">Colorful</Label>
+                      </div>
+                    </RadioGroup>
+                </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4">
+                 <Button onClick={handleSaveSettings} disabled={isSaving}>
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Simpan Perubahan
+                </Button>
+            </CardFooter>
+          </Card>
+        </div>
       </div>
       <Separator />
       <div className="grid md:grid-cols-3 gap-6">

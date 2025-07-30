@@ -204,11 +204,11 @@ export const getSettings = async (): Promise<Settings> => {
 
     if (docSnap.exists()) {
         // Merge with defaults to ensure new settings are present
-        const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0, syncCostPrice: true };
+        const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0, syncCostPrice: true, theme: 'default' };
         return { ...defaultSettings, ...docSnap.data() } as Settings;
     } else {
         // Return default settings if not found
-        const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0, syncCostPrice: true };
+        const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0, syncCostPrice: true, theme: 'default' };
         // Optionally, create the default settings document in Firestore
         await setDoc(docRef, defaultSettings);
         return defaultSettings;
