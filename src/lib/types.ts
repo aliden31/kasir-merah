@@ -55,6 +55,7 @@ export interface ReturnItem {
   product: {
       id: string;
       name: string;
+      subcategory?: string;
   };
   quantity: number;
   priceAtSale: number; // Selling price at the time of sale, before discount
@@ -64,7 +65,7 @@ export interface ReturnItem {
 export interface Return {
   id:string;
   saleId: string;
-  items: ReturnItem[];
+  items: Omit<ReturnItem, 'product'> & { product: { id: string; name: string } }[];
   reason: string;
   date: Date;
   totalRefund: number;

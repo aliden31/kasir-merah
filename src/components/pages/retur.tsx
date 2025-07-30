@@ -41,7 +41,6 @@ const formatCurrency = (amount: number) => {
 
 export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void, userRole: UserRole }) => {
     const [selectedSaleId, setSelectedSaleId] = useState<string>('');
-    const [reason, setReason] = useState('');
     const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
@@ -60,6 +59,7 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
                 product: {
                     id: saleItem.product.id,
                     name: saleItem.product.name,
+                    subcategory: saleItem.product.subcategory,
                 },
                 quantity: 1,
                 priceAtSale: saleItem.price,
@@ -101,11 +101,23 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
 
         setIsSaving(true);
         const totalRefund = itemsToReturn.reduce((acc, item) => acc + (item.priceAtSale * item.quantity), 0);
+        
+        const reasonFromSubcategories = itemsToReturn
+            .map(item => item.product.subcategory)
+            .filter(Boolean) // Filter out undefined/empty strings
+            .join(', ');
+
 
         const newReturn: Omit<Return, 'id'> = {
             saleId: selectedSaleId,
-            items: itemsToReturn,
-            reason,
+            items: itemsToReturn.map(({ product, ...rest }) => ({
+                ...rest,
+                product: {
+                    id: product.id,
+                    name: product.name,
+                }
+            })),
+            reason: reasonFromSubcategories,
             date: new Date(),
             totalRefund,
         };
@@ -200,11 +212,6 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
                                 </Card>
                             </div>
                         )}
-                       
-                        <div className="grid grid-cols-4 items-start gap-4">
-                            <Label htmlFor="reason" className="text-right pt-2">Alasan</Label>
-                            <Textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} className="col-span-3" placeholder="Alasan pengembalian barang..." />
-                        </div>
                     </>
                 )}
             </div>
@@ -237,7 +244,6 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
         setLoading(true);
         try {
             const returnsPromise = getReturns();
-            // Only fetch sales if user is admin, as kasir doesn't have permission
             const salesPromise = userRole === 'admin' ? getSales() : Promise.resolve([]);
             
             const [returnsData, salesData] = await Promise.all([returnsPromise, salesPromise]);
@@ -255,8 +261,8 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
   }, [toast, userRole]);
 
   const salesMap = useMemo(() => {
-    const sortedSales = sales.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return new Map(sortedSales.map((sale, index) => [sale.id, sortedSales.length - index]));
+    const sortedSales = sales.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return new Map(sortedSales.map((sale, index) => [sale.id, index + 1]));
   }, [sales]);
   
   const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
