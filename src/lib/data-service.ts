@@ -1,6 +1,5 @@
 
 
-
 import { db } from './firebase';
 import {
   collection,
@@ -15,6 +14,8 @@ import {
   getDoc,
   setDoc,
   runTransaction,
+  DocumentReference,
+  DocumentData,
 } from 'firebase/firestore';
 import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog } from './types';
 import { placeholderProducts } from './placeholder-data';
@@ -117,6 +118,20 @@ export const getSales = async (): Promise<Sale[]> => {
 export const getSaleById = (id: string) => getDocumentById<Sale>('sales', id);
 
 export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promise<Sale> => {
+    // 1. First, read all the necessary product documents outside the transaction.
+    const productRefs = sale.items.map(item => doc(db, 'products', item.product.id));
+    const productDocs = await Promise.all(productRefs.map(ref => getDoc(ref)));
+
+    const productsData: Record<string, Product> = {};
+    for (const doc of productDocs) {
+        if (doc.exists()) {
+            productsData[doc.id] = { id: doc.id, ...doc.data() } as Product;
+        } else {
+            throw new Error(`Product with ID ${doc.id} not found.`);
+        }
+    }
+
+    // 2. Now, run the transaction with only write operations.
     return runTransaction(db, async (transaction) => {
         const saleDataForFirestore = {
             ...sale,
@@ -139,17 +154,18 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
 
         for (const item of sale.items) {
             const productRef = doc(db, "products", item.product.id);
-            const productDoc = await transaction.get(productRef);
-            if (!productDoc.exists()) {
-                throw new Error(`Product with ID ${item.product.id} not found.`);
+            const productData = productsData[item.product.id];
+            if (!productData) {
+                 throw new Error(`Product with ID ${item.product.id} not found during transaction.`);
             }
-            const newStock = productDoc.data().stock - item.quantity;
+            const newStock = productData.stock - item.quantity;
             transaction.update(productRef, { stock: newStock });
         }
         
         return { ...sale, id: saleRef.id };
     });
 }
+
 
 export const updateSale = async (originalSale: Sale, updatedSale: Sale): Promise<void> => {
     return runTransaction(db, async (transaction) => {
@@ -387,3 +403,5 @@ export const clearData = async (dataToClear: Record<DataType, boolean>): Promise
     await batch.commit();
 };
 
+
+    
