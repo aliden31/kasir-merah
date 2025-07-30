@@ -199,8 +199,14 @@ export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return>
             });
         });
 
-        const newReturn = await getDocumentById<Return>(newReturnRef.path.substring(newReturnRef.path.indexOf('/') + 1), newReturnRef.id);
-        return newReturn!;
+        const newReturnDoc = await getDoc(newReturnRef);
+        const newReturnData = newReturnDoc.data();
+        Object.keys(newReturnData!).forEach(key => {
+            if (newReturnData![key] instanceof Timestamp) {
+                newReturnData![key] = newReturnData![key].toDate();
+            }
+        });
+        return { id: newReturnDoc.id, ...newReturnData } as Return;
 
     } catch (e) {
         console.error("Return transaction failed: ", e);
@@ -275,3 +281,29 @@ export const saveSettings = async (settings: Partial<Settings>): Promise<void> =
     const docRef = doc(db, 'settings', 'main');
     await setDoc(docRef, settings, { merge: true });
 };
+
+// Danger Zone functions
+type DataType = 'products' | 'sales' | 'returns' | 'expenses';
+
+export const clearData = async (dataToClear: Record<DataType, boolean>): Promise<void> => {
+    const collectionsToDelete = Object.entries(dataToClear)
+        .filter(([, shouldDelete]) => shouldDelete)
+        .map(([collectionName]) => collectionName);
+
+    if (collectionsToDelete.length === 0) {
+        return;
+    }
+
+    const batch = writeBatch(db);
+
+    for (const collectionName of collectionsToDelete) {
+        const querySnapshot = await getDocs(collection(db, collectionName));
+        querySnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+    }
+
+    await batch.commit();
+};
+
+    

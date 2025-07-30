@@ -20,9 +20,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Settings, ExpenseCategory, SubCategory } from '@/lib/types';
-import { saveSettings } from '@/lib/data-service';
+import { saveSettings, clearData } from '@/lib/data-service';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -38,6 +40,12 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
     const [newSubCategoryNames, setNewSubCategoryNames] = useState<Record<string, string>>({});
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [dataToDelete, setDataToDelete] = useState({
+        products: false,
+        sales: false,
+        returns: false,
+        expenses: false,
+    });
     const { toast } = useToast();
 
     useEffect(() => {
@@ -127,19 +135,27 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
         handleSaveSettings(updatedSettings);
     };
 
-
-    const handleDeleteDatabase = () => {
+    const handleClearData = async () => {
         setIsDeleting(true);
-        // Simulate a database deletion
-        setTimeout(() => {
+        try {
+            await clearData(dataToDelete);
             toast({
-                variant: "destructive",
-                title: "Database Dihapus",
-                description: "Semua data telah berhasil dihapus secara permanen.",
+                title: "Data Dihapus",
+                description: "Data yang dipilih telah berhasil dihapus.",
             });
+            setDataToDelete({ products: false, sales: false, returns: false, expenses: false });
+        } catch (error) {
+             toast({
+                title: "Gagal Menghapus Data",
+                description: "Terjadi kesalahan saat menghapus data.",
+                variant: "destructive",
+            });
+        } finally {
             setIsDeleting(false);
-        }, 2000);
-    }
+        }
+    };
+
+    const isDeleteButtonDisabled = !Object.values(dataToDelete).some(Boolean) || isDeleting;
 
     const updateLocalSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
       setLocalSettings(prev => ({ ...prev, [key]: value }));
@@ -313,29 +329,49 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
             <Card className="border-destructive">
                 <CardHeader>
                     <CardTitle>Hapus Data</CardTitle>
-                    <CardDescription>Tindakan ini akan menghapus semua data Anda secara permanen. Harap berhati-hati karena tindakan ini tidak dapat dibatalkan.</CardDescription>
+                    <CardDescription>Pilih data spesifik yang ingin Anda hapus secara permanen. Tindakan ini tidak dapat dibatalkan.</CardDescription>
                 </CardHeader>
                 <CardFooter className="flex justify-start">
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive">Hapus Seluruh Database</Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Apakah Anda benar-benar yakin?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Tindakan ini tidak dapat diurungkan. Ini akan menghapus semua data produk, penjualan, pengeluaran, dan retur Anda secara permanen.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteDatabase} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Ya, Hapus Semuanya
-                            </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="destructive">Hapus Data Tertentu</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                             <DialogHeader>
+                                <DialogTitle>Hapus Data Secara Permanen</DialogTitle>
+                                <DialogDescription>
+                                    Pilih jenis data yang ingin Anda hapus. Tindakan ini tidak dapat diurungkan. Kategori pengeluaran tidak akan terhapus.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id="delete-products" checked={dataToDelete.products} onCheckedChange={(checked) => setDataToDelete(prev => ({...prev, products: !!checked}))} />
+                                    <Label htmlFor="delete-products" className="font-semibold">Data Produk</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id="delete-sales" checked={dataToDelete.sales} onCheckedChange={(checked) => setDataToDelete(prev => ({...prev, sales: !!checked}))} />
+                                    <Label htmlFor="delete-sales" className="font-semibold">Riwayat Penjualan</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id="delete-returns" checked={dataToDelete.returns} onCheckedChange={(checked) => setDataToDelete(prev => ({...prev, returns: !!checked}))} />
+                                    <Label htmlFor="delete-returns" className="font-semibold">Data Retur</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id="delete-expenses" checked={dataToDelete.expenses} onCheckedChange={(checked) => setDataToDelete(prev => ({...prev, expenses: !!checked}))} />
+                                    <Label htmlFor="delete-expenses" className="font-semibold">Data Pengeluaran</Label>
+                                </div>
+                            </div>
+                             <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="secondary" disabled={isDeleting}>Batal</Button>
+                                </DialogClose>
+                                <Button variant="destructive" onClick={handleClearData} disabled={isDeleteButtonDisabled}>
+                                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Ya, Hapus Data Terpilih
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </CardFooter>
             </Card>
         </div>
@@ -345,3 +381,5 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
 };
 
 export default PengaturanPage;
+
+    
