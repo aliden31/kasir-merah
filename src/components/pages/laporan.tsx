@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { FC } from 'react';
@@ -11,7 +10,7 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, isWithinInterval } from 'date-fns';
-import type { Sale, Expense, Product, UserRole } from '@/lib/types';
+import type { Sale, Expense, Product, UserRole, SaleItem } from '@/lib/types';
 import { getSales, getExpenses, getProducts } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 
@@ -80,10 +79,11 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         const totalSales = filteredSales.reduce((sum, sale) => sum + sale.finalTotal, 0);
         
         const totalCostOfGoods = filteredSales.reduce((totalCost, sale) => {
-            const saleCost = sale.items.reduce((itemCost, item) => {
+            const saleCost = sale.items.reduce((itemCost, item: SaleItem & {product: any}) => {
                 const productId = typeof item.product === 'string' ? item.product : item.product.id;
                 const product = products.find(p => p.id === productId);
-                return itemCost + (product ? product.costPrice * item.quantity : 0);
+                const costPrice = item.costPriceAtSale ?? (product ? product.costPrice : 0);
+                return itemCost + (costPrice * item.quantity);
             }, 0);
             return totalCost + saleCost;
         }, 0);
@@ -99,10 +99,11 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
         const { filteredSales, filteredExpenses } = filteredData;
 
         const salesWithDetails = filteredSales.map(sale => {
-            const totalPokok = sale.items.reduce((acc, item) => {
+            const totalPokok = sale.items.reduce((acc, item: SaleItem & {product: any}) => {
                 const productId = typeof item.product === 'string' ? item.product : item.product.id;
                 const product = products.find(p => p.id === productId);
-                return acc + (product ? product.costPrice * item.quantity : 0);
+                const costPrice = item.costPriceAtSale ?? (product ? product.costPrice : 0);
+                return acc + (costPrice * item.quantity);
             }, 0);
             const labaKotor = sale.subtotal - totalPokok;
             return {
@@ -128,9 +129,9 @@ const LaporanPage: FC<LaporanPageProps> = ({ onNavigate }) => {
 
         // Sales Section
         csvContent += "No Transaksi,Tanggal,Dept,Kode Pel,Nama Pelanggan,Sub Total,Total Pokok,Laba Kotor,Biaya Msk Total (+) Diskon,Biaya Lain,Laba Jual\n";
-        salesWithDetails.forEach(sale => {
+        salesWithDetails.forEach((sale, index) => {
             const row = [
-                `TRX-${format(sale.date, "yyyyMMdd")}`,
+                `trx-${String(index + 1).padStart(4, '0')}`,
                 format(sale.date, "yyyy-MM-dd"),
                 "UTM",
                 "PL0001", // Placeholder

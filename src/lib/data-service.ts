@@ -12,7 +12,7 @@ import {
   getDoc,
   setDoc,
 } from 'firebase/firestore';
-import type { Product, Sale, Return, Expense, FlashSale, Settings } from './types';
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem } from './types';
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -77,14 +77,24 @@ export async function getSales(): Promise<Sale[]> {
     }));
 }
 
-export const addSale = async (sale: Omit<Sale, 'id'>): Promise<Sale> => {
-    // 1. Convert product objects to simple IDs for storing in Firestore
+export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promise<Sale> => {
+    // 1. Prepare sale items for Firestore
+    const itemsForFirestore = sale.items.map(item => {
+        const saleItem: any = {
+            product: item.product.id, // Store only product ID
+            quantity: item.quantity,
+            price: item.price,
+        };
+        // If sync is enabled, store the current cost price.
+        if (settings.syncCostPrice) {
+            saleItem.costPriceAtSale = item.product.costPrice;
+        }
+        return saleItem;
+    });
+
     const saleDataForFirestore = {
         ...sale,
-        items: sale.items.map(item => ({
-            ...item,
-            product: item.product.id // Store only product ID
-        })),
+        items: itemsForFirestore,
         date: Timestamp.fromDate(sale.date)
     };
 
@@ -161,19 +171,20 @@ export const getSettings = async (): Promise<Settings> => {
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-        return docSnap.data() as Settings;
+        // Merge with defaults to ensure new settings are present
+        const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0, syncCostPrice: true };
+        return { ...defaultSettings, ...docSnap.data() } as Settings;
     } else {
         // Return default settings if not found
-        const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0 };
+        const defaultSettings: Settings = { storeName: 'Toko Cepat', defaultDiscount: 0, syncCostPrice: true };
         // Optionally, create the default settings document in Firestore
         await setDoc(docRef, defaultSettings);
         return defaultSettings;
     }
 };
 
-export const saveSettings = async (settings: Settings): Promise<void> => {
+export const saveSettings = async (settings: Partial<Settings>): Promise<void> => {
     const docRef = doc(db, 'settings', 'main');
     await setDoc(docRef, settings, { merge: true });
 };
-
     

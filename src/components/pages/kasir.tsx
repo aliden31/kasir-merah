@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { SaleItem, Product } from '@/lib/types';
+import type { SaleItem, Product, Settings } from '@/lib/types';
 import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
@@ -30,14 +30,14 @@ interface KasirPageProps {
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   cartItemCount: number;
-  defaultDiscount: number;
+  settings: Settings;
 }
 
 
-const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearCart, cartItemCount, defaultDiscount }) => {
+const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearCart, cartItemCount, settings }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [discount, setDiscount] = useState(defaultDiscount);
+  const [discount, setDiscount] = useState(settings.defaultDiscount);
   const [transactionDate, setTransactionDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
   const [carouselApi, setCarouselApi] = React.useState<CarouselApi>()
@@ -46,8 +46,8 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
   const { toast } = useToast();
 
   useEffect(() => {
-    setDiscount(defaultDiscount);
-  }, [defaultDiscount]);
+    setDiscount(settings.defaultDiscount);
+  }, [settings.defaultDiscount]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -106,13 +106,13 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
     };
 
     try {
-        await addSale(newSale);
+        await addSale(newSale, settings);
         toast({
           title: "Pembayaran Berhasil",
           description: `Total pembayaran ${formatCurrency(total)} telah berhasil diproses.`,
         });
         clearCart();
-        setDiscount(defaultDiscount);
+        setDiscount(settings.defaultDiscount);
         // re-fetch products to update stock
         const productsData = await getProducts();
         setProducts(productsData);

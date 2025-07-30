@@ -54,10 +54,12 @@ type View =
   | 'flash-sale'
   | 'pengaturan';
 
+const defaultSettings: AppSettings = { storeName: 'Memuat...', defaultDiscount: 0, syncCostPrice: true };
+
 export default function Home() {
   const [activeView, setActiveView] = useState<View>('kasir');
   const [cart, setCart] = useState<SaleItem[]>([]);
-  const [settings, setSettings] = useState<AppSettings>({ storeName: 'Memuat...', defaultDiscount: 0 });
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [userRole, setUserRole] = useState<UserRole>('admin');
   const { toast } = useToast();
 
@@ -132,7 +134,7 @@ export default function Home() {
           updateQuantity={updateQuantity}
           clearCart={clearCart}
           cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-          defaultDiscount={settings.defaultDiscount}
+          settings={settings}
         />;
       case 'produk':
         return <ProdukPage />;
@@ -155,7 +157,7 @@ export default function Home() {
           updateQuantity={updateQuantity}
           clearCart={clearCart}
           cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-          defaultDiscount={settings.defaultDiscount}
+          settings={settings}
         />;
     }
   };

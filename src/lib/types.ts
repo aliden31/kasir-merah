@@ -11,6 +11,7 @@ export interface SaleItem {
   product: Product; // On client side, this is a full object.
   quantity: number;
   price: number;
+  costPriceAtSale?: number; // Cost price at the time of sale
 }
 
 export interface Sale {
@@ -51,6 +52,7 @@ export interface Settings {
   id?: string; // id is 'main'
   storeName: string;
   defaultDiscount: number;
+  syncCostPrice: boolean;
 }
 
 export type UserRole = 'admin' | 'kasir';

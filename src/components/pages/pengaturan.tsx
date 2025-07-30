@@ -32,6 +32,7 @@ interface PengaturanPageProps {
 const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange }) => {
     const [storeName, setStoreName] = useState(settings.storeName);
     const [defaultDiscount, setDefaultDiscount] = useState(settings.defaultDiscount);
+    const [syncCostPrice, setSyncCostPrice] = useState(settings.syncCostPrice);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const { toast } = useToast();
@@ -39,12 +40,13 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
     useEffect(() => {
       setStoreName(settings.storeName);
       setDefaultDiscount(settings.defaultDiscount);
+      setSyncCostPrice(settings.syncCostPrice);
     }, [settings]);
     
     const handleSaveSettings = async () => {
         setIsSaving(true);
         try {
-            const newSettings = { storeName, defaultDiscount };
+            const newSettings: Settings = { storeName, defaultDiscount, syncCostPrice };
             await saveSettings(newSettings);
             onSettingsChange(newSettings);
             toast({
@@ -114,18 +116,24 @@ const PengaturanPage: FC<PengaturanPageProps> = ({ settings, onSettingsChange })
       <Separator />
        <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-1">
-          <h2 className="text-lg font-semibold">Tampilan</h2>
-          <p className="text-sm text-muted-foreground">Sesuaikan tampilan aplikasi kasir Anda.</p>
+          <h2 className="text-lg font-semibold">Preferensi</h2>
+          <p className="text-sm text-muted-foreground">Atur perilaku aplikasi.</p>
         </div>
         <div className="md:col-span-2">
            <Card>
             <CardContent className="pt-6">
                  <div className="flex items-center space-x-2">
-                    <Switch id="dark-mode" disabled />
-                    <Label htmlFor="dark-mode">Mode Gelap (Dark Mode)</Label>
+                    <Switch id="sync-cost-price" checked={syncCostPrice} onCheckedChange={setSyncCostPrice} />
+                    <Label htmlFor="sync-cost-price">Sinkronisasi Harga Modal</Label>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Fitur ganti tema sedang dalam pengembangan.</p>
+                <p className="text-xs text-muted-foreground mt-2">Jika aktif, harga modal saat ini akan dicatat pada setiap penjualan baru untuk perhitungan laba yang akurat.</p>
             </CardContent>
+             <CardFooter className="border-t px-6 py-4">
+                 <Button onClick={handleSaveSettings} disabled={isSaving}>
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Simpan Perubahan
+                </Button>
+            </CardFooter>
           </Card>
         </div>
       </div>
