@@ -1,76 +1,68 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check user role
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    // Helper function to get user's role from the 'users' collection
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
 
-    // Admins can do anything
-    function isAdmin() {
-      return getUserRole() == 'admin';
-    }
-
-    // Kasir can perform their specific tasks
-    function isKasir() {
-      return getUserRole() == 'kasir';
-    }
-
-    // Any authenticated user
-    function isAuthenticated() {
-      return request.auth != null;
+    // Helper function to check if a user has a specific role
+    function isUserRole(role) {
+      let userRole = getUserRole(request.auth.uid);
+      return request.auth != null && userRole == role;
     }
     
-    // Users: Can read their own data. Only admins can create/update/delete users.
+    // Users collection: only admins can manage users, but users can see their own data
     match /users/{userId} {
-      allow read: if isAuthenticated() && request.auth.uid == userId;
-      allow write: if isAdmin();
+      allow read: if request.auth.uid == userId || isUserRole('admin');
+      allow write: if isUserRole('admin');
     }
 
-    // Products: Admins can do anything. Kasir can only read.
+    // Products: Admins can manage, anyone authenticated can read
     match /products/{productId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read: if request.auth != null;
+      allow write: if isUserRole('admin');
     }
-    
-    // Sales: Admins can do anything. Kasir can only create. Update is tricky due to stock logic, so we allow it for now but it's handled in transactions.
+
+    // Sales: Admin can read/update, Kasir can only create
     match /sales/{saleId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated();
-      allow update: if isAdmin(); // Kasir updates via transaction, rule allows authenticated write
-      allow delete: if isAdmin();
+      allow read, update: if isUserRole('admin');
+      allow create: if isUserRole('admin') || isUserRole('kasir');
+      // Delete is disallowed to maintain history
+      allow delete: if false;
     }
 
-    // Returns: Admins can do anything. Kasir can only create.
+    // Returns: Admin can read, Kasir can only create
     match /returns/{returnId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated();
-      allow delete: if isAdmin();
+      allow read: if isUserRole('admin');
+      allow create: if isUserRole('admin') || isUserRole('kasir');
+      allow update, delete: if false; // Returns should be immutable
     }
-    
-    // Expenses: Admins can do anything. Kasir can create.
+
+    // Expenses: Admin can read, Kasir can only create
     match /expenses/{expenseId} {
-       allow read: if isAdmin();
-       allow create: if isAuthenticated();
-       allow delete: if isAdmin();
+        allow read: if isUserRole('admin');
+        allow create: if isUserRole('admin') || isUserRole('kasir');
+        allow update, delete: if false; // Expenses should be immutable
     }
 
-    // Settings: Admins can change settings. Kasir can only read.
+    // Settings: Only admins can read/write
     match /settings/{settingId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+        allow read, write: if isUserRole('admin');
+    }
+
+    // Stock Opname Logs: Only admins can read/write
+    match /stockOpnameLogs/{logId} {
+        allow read, write: if isUserRole('admin');
     }
     
-    // Stock Opname Logs: Only admins can read/write.
-    match /stockOpnameLogs/{logId} {
-        allow read, write: if isAdmin();
-    }
-
-    // Activity Logs: Only admins can read/write.
-     match /activityLogs/{logId} {
-        allow read, write: if isAdmin();
+    // Activity Logs: Admins can read/delete, any authenticated user can create them
+    match /activityLogs/{logId} {
+        allow read, delete: if isUserRole('admin');
+        allow create: if request.auth != null;
     }
   }
 }
