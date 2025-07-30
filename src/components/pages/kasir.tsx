@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { SaleItem, Product, Settings, FlashSale, Sale, Expense, Return, ReturnItem, UserRole } from '@/lib/types';
+import type { SaleItem, Product, Settings, FlashSale, Sale, Expense, Return, UserRole } from '@/lib/types';
 import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap, Undo2, Wallet, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -25,281 +25,14 @@ import { addSale, getSales, addReturn, addExpense } from '@/lib/data-service';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '../ui/skeleton';
+import { ReturnForm } from './retur';
+import { ExpenseForm } from './pengeluaran';
+
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
-
-const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void, userRole: UserRole }) => {
-    const [selectedSaleId, setSelectedSaleId] = useState<string>('');
-    const [reason, setReason] = useState('');
-    const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
-    const [isSaving, setIsSaving] = useState(false);
-    const { toast } = useToast();
-    
-    const selectedSale = useMemo(() => sales.find(s => s.id === selectedSaleId), [selectedSaleId, sales]);
-
-    useEffect(() => {
-        setItemsToReturn([]);
-    }, [selectedSaleId]);
-
-    const handleAddProductToReturn = (productId: string) => {
-        if (!selectedSale) return;
-        const saleItem = selectedSale.items.find(item => item.product.id === productId);
-        if (saleItem && !itemsToReturn.find(item => item.productId === productId)) {
-            setItemsToReturn(prev => [...prev, {
-                productId: saleItem.product.id,
-                productName: saleItem.product.name,
-                quantity: 1,
-                priceAtSale: saleItem.price,
-                costPriceAtSale: saleItem.costPriceAtSale,
-            }]);
-        }
-    };
-    
-    const updateReturnQuantity = (productId: string, quantity: number) => {
-        const saleItem = selectedSale?.items.find(item => item.product.id === productId);
-        const maxQuantity = saleItem?.quantity || 0;
-
-        if (quantity <= 0) {
-             setItemsToReturn(prev => prev.filter(item => item.productId !== productId));
-             return;
-        }
-
-        if (quantity > maxQuantity) {
-            toast({
-                variant: "destructive",
-                title: "Jumlah Melebihi Pembelian",
-                description: `Jumlah retur tidak boleh melebihi jumlah pembelian (${maxQuantity})`,
-            });
-            quantity = maxQuantity;
-        }
-
-        setItemsToReturn(prev => prev.map(item => item.productId === productId ? { ...item, quantity } : item));
-    }
-
-    const handleSubmit = async () => {
-        if (!selectedSaleId || itemsToReturn.length === 0) {
-            toast({ variant: "destructive", title: "Input Tidak Lengkap", description: "Pilih transaksi dan produk yang akan diretur." });
-            return;
-        }
-        setIsSaving(true);
-        const totalRefund = itemsToReturn.reduce((acc, item) => acc + (item.priceAtSale * item.quantity), 0);
-        const newReturn: Omit<Return, 'id'> = {
-            saleId: selectedSaleId,
-            items: itemsToReturn,
-            reason,
-            date: new Date(),
-            totalRefund,
-        };
-        await onSave(newReturn);
-        setIsSaving(false);
-        onOpenChange(false);
-    }
-    
-    const availableProductsForReturn = selectedSale?.items.filter(
-        saleItem => !itemsToReturn.some(returnItem => returnItem.productId === saleItem.product.id)
-    ) || [];
-    
-    const sortedSales = useMemo(() => sales.sort((a,b) => b.date.getTime() - a.date.getTime()), [sales]);
-    const salesMap = useMemo(() => new Map(sortedSales.map((sale, index) => [sale.id, sortedSales.length - index])), [sortedSales]);
-
-    return (
-        <DialogContent className="max-w-2xl">
-            <DialogHeader>
-                <DialogTitle>Tambah Retur Baru</DialogTitle>
-                <DialogDescription>Pilih transaksi, lalu pilih produk yang akan dikembalikan.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="saleId" className="text-right">Transaksi</Label>
-                    <Select onValueChange={setSelectedSaleId} value={selectedSaleId}>
-                        <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Pilih ID Transaksi..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {sortedSales.map((sale, index) => (
-                                <SelectItem key={sale.id} value={sale.id}>
-                                    trx {String(salesMap.get(sale.id)).padStart(4, '0')} - {sale.date.toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                {selectedSale && (
-                    <>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right">Tambah Produk</Label>
-                            <div className="col-span-3">
-                                <Select onValueChange={handleAddProductToReturn} disabled={availableProductsForReturn.length === 0} value="">
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Pilih produk untuk diretur..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {availableProductsForReturn.map((item, index) => (
-                                            <SelectItem key={`${item.product.id}-${index}`} value={item.product.id}>
-                                                {item.product.name} (Dibeli: {item.quantity})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        {itemsToReturn.length > 0 && (
-                            <div className="col-span-4">
-                                <Card>
-                                    <CardContent className="p-4 max-h-48 overflow-y-auto">
-                                    <h4 className="font-semibold mb-2">Produk yang akan diretur:</h4>
-                                     <div className="space-y-4">
-                                        {itemsToReturn.map(item => (
-                                            <div key={item.productId} className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="font-medium">{item.productName}</p>
-                                                    <p className="text-sm text-muted-foreground">{formatCurrency(item.priceAtSale)}</p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.productId, item.quantity - 1)}>
-                                                        <MinusCircle className="h-4 w-4" />
-                                                    </Button>
-                                                    <Input type="number" className="w-16 h-8 text-center" value={item.quantity} onChange={(e) => updateReturnQuantity(item.productId, Number(e.target.value))} />
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.productId, item.quantity + 1)}>
-                                                        <PlusCircle className="h-4 w-4" />
-                                                    </Button>
-                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => updateReturnQuantity(item.productId, 0)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                     </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        )}
-                        <div className="grid grid-cols-4 items-start gap-4">
-                            <Label htmlFor="reason" className="text-right pt-2">Alasan</Label>
-                            <Textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} className="col-span-3" placeholder="Alasan pengembalian barang..." />
-                        </div>
-                    </>
-                )}
-            </div>
-            <DialogFooter>
-                 <DialogClose asChild>
-                    <Button type="button" variant="secondary" disabled={isSaving}>Batal</Button>
-                </DialogClose>
-                <Button onClick={handleSubmit} disabled={isSaving || itemsToReturn.length === 0 || !selectedSaleId}>
-                    {isSaving ? 'Menyimpan...' : 'Simpan Retur'}
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-    )
-}
-
-const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => Promise<void>, onOpenChange: (open: boolean) => void, settings: Settings }) => {
-    const [amount, setAmount] = useState<number | ''>('');
-    const [category, setCategory] = useState('');
-    const [subcategory, setSubcategory] = useState('');
-    const [date, setDate] = useState<Date>(new Date());
-    const [isSaving, setIsSaving] = useState(false);
-
-    const selectedCategory = useMemo(() => {
-        return (settings.expenseCategories || []).find(c => c.name === category);
-    }, [category, settings.expenseCategories]);
-
-    useEffect(() => {
-        setSubcategory('');
-    }, [category]);
-    
-    const handleSubmit = async () => {
-        if (amount === '' || amount <= 0 || !category) {
-            return;
-        }
-         if (selectedCategory?.subcategories?.length && !subcategory) {
-            return;
-        }
-
-        setIsSaving(true);
-        const name = `${category}${subcategory ? ` - ${subcategory}` : ''}`;
-        const newExpense: Omit<Expense, 'id'> = { name, amount: Number(amount), category, subcategory, date };
-        await onSave(newExpense);
-        onOpenChange(false);
-        setAmount('');
-        setCategory('');
-        setSubcategory('');
-        setDate(new Date());
-        setIsSaving(false);
-    }
-    
-    const isSaveDisabled = isSaving || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
-    
-    return (
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Catat Pengeluaran Baru</DialogTitle>
-            </DialogHeader>
-             <div className="grid gap-4 py-4">
-                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="category" className="text-right">Kategori</Label>
-                    <Select onValueChange={(value) => setCategory(value as any)} value={category}>
-                        <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Pilih kategori" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {(settings.expenseCategories || []).map(cat => (
-                                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                 {selectedCategory && selectedCategory.subcategories.length > 0 && (
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="subcategory" className="text-right">Sub-Kategori</Label>
-                        <Select onValueChange={(value) => setSubcategory(value)} value={subcategory}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Pilih sub-kategori" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {selectedCategory.subcategories.map(sub => (
-                                    <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                )}
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="amount" className="text-right">Jumlah</Label>
-                    <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))} className="col-span-3" placeholder="0" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="date" className="text-right">Tanggal</Label>
-                     <Popover>
-                        <PopoverTrigger asChild>
-                        <Button variant={"outline"} className="col-span-3 justify-start text-left font-normal">
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(date, "PPP", { locale: id })}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={date} onSelect={(selectedDate) => selectedDate && setDate(selectedDate)} initialFocus />
-                        </PopoverContent>
-                    </Popover>
-                </div>
-            </div>
-            <DialogFooter>
-                 <DialogClose asChild>
-                    <Button type="button" variant="secondary" disabled={isSaving}>Batal</Button>
-                </DialogClose>
-                <Button onClick={handleSubmit} disabled={isSaveDisabled}>
-                    {isSaving ? 'Menyimpan...' : 'Simpan'}
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-    )
-}
-
 
 interface KasirPageProps {
   settings: Settings;
@@ -485,6 +218,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
     try {
         await addExpense(expenseData, userRole);
         toast({ title: "Pengeluaran Disimpan", description: `Pengeluaran telah berhasil disimpan.` });
+        onDataNeedsRefresh();
     } catch(error) {
         toast({ title: "Error", description: "Gagal menyimpan pengeluaran.", variant: "destructive" });
         console.error(error);

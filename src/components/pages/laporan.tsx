@@ -211,10 +211,11 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
 
         const totalSubTotal = salesWithDetails.reduce((acc, sale) => acc + sale.subtotal, 0);
         const totalDiscount = salesWithDetails.reduce((acc, sale) => acc + (sale.subtotal * sale.discount / 100), 0);
-        const totalPokokBersih = salesWithDetails.reduce((acc, sale) => acc + sale.totalPokok, 0) - totalCostOfReturnedGoods;
+        const totalPokokKotor = salesWithDetails.reduce((acc, sale) => acc + sale.totalPokok, 0);
         const totalPengeluaran = filteredExpenses.reduce((acc, exp) => acc + exp.amount, 0);
         
         const penjualanBersih = totalSubTotal - totalDiscount - totalReturnsValue;
+        const totalPokokBersih = totalPokokKotor - totalCostOfReturnedGoods;
         const labaKotor = penjualanBersih - totalPokokBersih;
         const labaBersih = labaKotor - totalPengeluaran;
         
