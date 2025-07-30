@@ -6,8 +6,6 @@ import { Toaster } from '@/components/ui/toaster';
 import AuthProvider, { useAuth } from '@/components/auth-provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import LoginPage from './(auth)/login/page';
-import AppPage from './app/page';
 
 function AppContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -15,7 +13,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (loading) return; // Wait for auth state to be determined
+    if (loading) return; 
 
     const isAuthRoute = pathname === '/login';
 
@@ -69,3 +67,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    
