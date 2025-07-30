@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { SaleItem, Product, Settings, FlashSale, Sale } from '@/lib/types';
-import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap } from 'lucide-react';
+import type { SaleItem, Product, Settings, FlashSale, Sale, Expense, Return } from '@/lib/types';
+import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap, Undo2, Wallet } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -22,9 +22,262 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { getProducts, addSale, getSales } from '@/lib/data-service';
+import { getProducts, addSale, getSales, getReturns, addReturn, getExpenses, addExpense } from '@/lib/data-service';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+};
+
+// ReturnForm Component (copied from retur.tsx)
+const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
+    const [selectedSaleId, setSelectedSaleId] = useState<string>('');
+    const [reason, setReason] = useState('');
+    const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
+    const { toast } = useToast();
+    
+    const selectedSale = useMemo(() => sales.find(s => s.id === selectedSaleId), [selectedSaleId, sales]);
+
+    useEffect(() => {
+        setItemsToReturn([]);
+    }, [selectedSaleId]);
+
+    const handleAddProductToReturn = (productId: string) => {
+        if (!selectedSale) return;
+        const saleItem = selectedSale.items.find(item => item.product.id === productId);
+        if (saleItem && !itemsToReturn.find(item => item.productId === productId)) {
+            setItemsToReturn(prev => [...prev, {
+                productId: saleItem.product.id,
+                productName: saleItem.product.name,
+                quantity: 1,
+                priceAtSale: saleItem.price,
+                costPriceAtSale: saleItem.costPriceAtSale,
+            }]);
+        }
+    };
+    
+    const updateReturnQuantity = (productId: string, quantity: number) => {
+        const saleItem = selectedSale?.items.find(item => item.product.id === productId);
+        const maxQuantity = saleItem?.quantity || 0;
+
+        if (quantity <= 0) {
+             setItemsToReturn(prev => prev.filter(item => item.productId !== productId));
+             return;
+        }
+
+        if (quantity > maxQuantity) {
+            toast({
+                variant: "destructive",
+                title: "Jumlah Melebihi Pembelian",
+                description: `Jumlah retur tidak boleh melebihi jumlah pembelian (${maxQuantity})`,
+            });
+            quantity = maxQuantity;
+        }
+
+        setItemsToReturn(prev => prev.map(item => item.productId === productId ? { ...item, quantity } : item));
+    }
+
+    const handleSubmit = async () => {
+        if (!selectedSaleId || itemsToReturn.length === 0) {
+            toast({ variant: "destructive", title: "Input Tidak Lengkap", description: "Pilih transaksi dan produk yang akan diretur." });
+            return;
+        }
+        setIsSaving(true);
+        const totalRefund = itemsToReturn.reduce((acc, item) => acc + (item.priceAtSale * item.quantity), 0);
+        const newReturn: Omit<Return, 'id'> = {
+            saleId: selectedSaleId,
+            items: itemsToReturn,
+            reason,
+            date: new Date(),
+            totalRefund,
+        };
+        await onSave(newReturn);
+        setIsSaving(false);
+        onOpenChange(false);
+    }
+    
+    const availableProductsForReturn = selectedSale?.items.filter(
+        saleItem => !itemsToReturn.some(returnItem => returnItem.productId === saleItem.product.id)
+    ) || [];
+    
+    const sortedSales = useMemo(() => sales.sort((a,b) => b.date.getTime() - a.date.getTime()), [sales]);
+    const salesMap = useMemo(() => new Map(sortedSales.map((sale, index) => [sale.id, sortedSales.length - index])), [sortedSales]);
+
+    return (
+        <DialogContent className="max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>Tambah Retur Baru</DialogTitle>
+                <DialogDescription>Pilih transaksi, lalu pilih produk yang akan dikembalikan.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="saleId" className="text-right">Transaksi</Label>
+                    <Select onValueChange={setSelectedSaleId} value={selectedSaleId}>
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Pilih ID Transaksi..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {sortedSales.map((sale, index) => (
+                                <SelectItem key={sale.id} value={sale.id}>
+                                    trx {String(salesMap.get(sale.id)).padStart(4, '0')} - {sale.date.toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                {selectedSale && (
+                    <>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right">Tambah Produk</Label>
+                            <div className="col-span-3">
+                                <Select onValueChange={handleAddProductToReturn} disabled={availableProductsForReturn.length === 0} value="">
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Pilih produk untuk diretur..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableProductsForReturn.map((item, index) => (
+                                            <SelectItem key={`${item.product.id}-${index}`} value={item.product.id}>
+                                                {item.product.name} (Dibeli: {item.quantity})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        {itemsToReturn.length > 0 && (
+                            <div className="col-span-4">
+                                <Card>
+                                    <CardContent className="p-4 max-h-48 overflow-y-auto">
+                                    <h4 className="font-semibold mb-2">Produk yang akan diretur:</h4>
+                                     <div className="space-y-4">
+                                        {itemsToReturn.map(item => (
+                                            <div key={item.productId} className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-medium">{item.productName}</p>
+                                                    <p className="text-sm text-muted-foreground">{formatCurrency(item.priceAtSale)}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.productId, item.quantity - 1)}>
+                                                        <MinusCircle className="h-4 w-4" />
+                                                    </Button>
+                                                    <Input type="number" className="w-16 h-8 text-center" value={item.quantity} onChange={(e) => updateReturnQuantity(item.productId, Number(e.target.value))} />
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.productId, item.quantity + 1)}>
+                                                        <PlusCircle className="h-4 w-4" />
+                                                    </Button>
+                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => updateReturnQuantity(item.productId, 0)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                     </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+                        <div className="grid grid-cols-4 items-start gap-4">
+                            <Label htmlFor="reason" className="text-right pt-2">Alasan</Label>
+                            <Textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} className="col-span-3" placeholder="Alasan pengembalian barang..." />
+                        </div>
+                    </>
+                )}
+            </div>
+            <DialogFooter>
+                 <DialogClose asChild>
+                    <Button type="button" variant="secondary" disabled={isSaving}>Batal</Button>
+                </DialogClose>
+                <Button onClick={handleSubmit} disabled={isSaving || itemsToReturn.length === 0 || !selectedSaleId}>
+                    {isSaving ? 'Menyimpan...' : 'Simpan Retur'}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    )
+}
+
+// ExpenseForm Component (copied from pengeluaran.tsx)
+const ExpenseForm = ({ onSave, onOpenChange }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
+    const [name, setName] = useState('');
+    const [amount, setAmount] = useState<number | ''>('');
+    const [category, setCategory] = useState<'Operasional' | 'Gaji' | 'Pemasaran' | 'Lainnya'>('Lainnya');
+    const [date, setDate] = useState<Date>(new Date());
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSubmit = async () => {
+        if (!name || amount === '' || amount <= 0) {
+            return;
+        }
+        setIsSaving(true);
+        const newExpense: Omit<Expense, 'id'> = { name, amount: Number(amount), category, date };
+        await onSave(newExpense);
+        onOpenChange(false);
+        // Reset form
+        setName('');
+        setAmount('');
+        setCategory('Lainnya');
+        setDate(new Date());
+        setIsSaving(false);
+    }
+    
+    return (
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Catat Pengeluaran Baru</DialogTitle>
+            </DialogHeader>
+             <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">Nama</Label>
+                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+                </div>
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="category" className="text-right">Kategori</Label>
+                    <Select onValueChange={(value) => setCategory(value as any)} defaultValue={category}>
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Pilih kategori" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Operasional">Operasional</SelectItem>
+                            <SelectItem value="Gaji">Gaji</SelectItem>
+                            <SelectItem value="Pemasaran">Pemasaran</SelectItem>
+                            <SelectItem value="Lainnya">Lainnya</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="amount" className="text-right">Jumlah</Label>
+                    <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))} className="col-span-3" placeholder="0" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="date" className="text-right">Tanggal</Label>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                        <Button variant={"outline"} className="col-span-3 justify-start text-left font-normal">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {format(date, "PPP", { locale: id })}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={date} onSelect={(selectedDate) => selectedDate && setDate(selectedDate)} initialFocus />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+            </div>
+            <DialogFooter>
+                 <DialogClose asChild>
+                    <Button type="button" variant="secondary" disabled={isSaving}>Batal</Button>
+                </DialogClose>
+                <Button onClick={handleSubmit} disabled={isSaving || !name || amount === '' || amount <= 0}>
+                    {isSaving ? 'Menyimpan...' : 'Simpan'}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    )
+}
+
 
 interface KasirPageProps {
   cart: SaleItem[];
@@ -46,27 +299,31 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
   const [carouselApi, setCarouselApi] = React.useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = React.useState(0)
   const [sortOrder, setSortOrder] = useState('terlaris');
+  const [isReturnFormOpen, setReturnFormOpen] = useState(false);
+  const [isExpenseFormOpen, setExpenseFormOpen] = useState(false);
 
   const { toast } = useToast();
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+        const [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
+        setProducts(productsData);
+        setSales(salesData);
+    } catch (error) {
+        toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
+    } finally {
+        setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setDiscount(settings.defaultDiscount);
   }, [settings.defaultDiscount]);
 
   useEffect(() => {
-    const fetchData = async () => {
-        try {
-            const [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
-            setProducts(productsData);
-            setSales(salesData);
-        } catch (error) {
-            toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
-        } finally {
-            setLoading(false);
-        }
-    };
     fetchData();
-  }, [toast]);
+  }, []);
 
   React.useEffect(() => {
     if (!carouselApi) {
@@ -113,10 +370,6 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const discountAmount = (subtotal * discount) / 100;
   const total = subtotal - discountAmount;
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
-  };
   
   const handlePayment = async () => {
     if (cart.length === 0) {
@@ -145,14 +398,36 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
         clearCart();
         setDiscount(settings.defaultDiscount);
         // re-fetch products to update stock and sales for sorting
-        const [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
-        setProducts(productsData);
-        setSales(salesData);
+        await fetchData();
     } catch (error) {
         toast({ title: "Error", description: "Gagal menyimpan transaksi.", variant: "destructive" });
         console.error(error);
     }
   }
+
+  const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
+    try {
+        await addReturn(itemData);
+        toast({ title: "Retur Disimpan", description: "Data retur baru telah berhasil disimpan." });
+        // Refetch products to show updated stock
+        await fetchData();
+    } catch(error) {
+        const errorMessage = error instanceof Error ? error.message : "Gagal menyimpan data retur.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        console.error(error);
+    }
+  }
+
+  const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
+    try {
+        await addExpense(expenseData);
+        toast({ title: "Pengeluaran Disimpan", description: `Pengeluaran telah berhasil disimpan.` });
+    } catch(error) {
+        toast({ title: "Error", description: "Gagal menyimpan pengeluaran.", variant: "destructive" });
+        console.error(error);
+    }
+  }
+
 
   const getFlashSalePrice = (productId: string): number | undefined => {
     if (!flashSale.isActive) return undefined;
@@ -238,7 +513,7 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
   const renderCartView = (isMobile = false) => (
      <Card className={`h-full flex flex-col shadow-none border-0 ${isMobile ? '' : 'lg:col-span-1'}`}>
         <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-2">
                 {isMobile && (
                     <Button variant="outline" size="sm" onClick={() => carouselApi?.scrollPrev()}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -248,9 +523,27 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
                 <CardTitle>Keranjang</CardTitle>
                 <Badge variant="outline">{cartItemCount} Item</Badge>
             </div>
+            <div className="flex gap-2">
+                <Dialog open={isReturnFormOpen} onOpenChange={setReturnFormOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full">
+                            <Undo2 className="mr-2 h-4 w-4" /> Retur
+                        </Button>
+                    </DialogTrigger>
+                    <ReturnForm sales={sales} onSave={handleSaveReturn} onOpenChange={setReturnFormOpen} />
+                </Dialog>
+                <Dialog open={isExpenseFormOpen} onOpenChange={setExpenseFormOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full">
+                            <Wallet className="mr-2 h-4 w-4" /> Pengeluaran
+                        </Button>
+                    </DialogTrigger>
+                    <ExpenseForm onSave={handleSaveExpense} onOpenChange={setExpenseFormOpen}/>
+                </Dialog>
+            </div>
         </CardHeader>
         <CardContent className="flex-grow">
-            <ScrollArea className={isMobile ? "h-[calc(100vh-24rem)]" : "h-full lg:h-[calc(100vh-25rem)]"}>
+            <ScrollArea className={isMobile ? "h-[calc(100vh-28rem)]" : "h-full lg:h-[calc(100vh-29rem)]"}>
             {cart.length === 0 ? (
                 <div className="text-center text-muted-foreground py-10 flex flex-col items-center justify-center h-full">
                   <ShoppingCart className="h-10 w-10 mb-4 text-muted-foreground/50"/>

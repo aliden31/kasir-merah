@@ -38,10 +38,11 @@ const formatCurrency = (amount: number) => {
 };
 
 
-const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
+const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
     const [selectedSaleId, setSelectedSaleId] = useState<string>('');
     const [reason, setReason] = useState('');
     const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
     
     const selectedSale = useMemo(() => sales.find(s => s.id === selectedSaleId), [selectedSaleId, sales]);
@@ -80,14 +81,13 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
                 title: "Jumlah Melebihi Pembelian",
                 description: `Jumlah retur tidak boleh melebihi jumlah pembelian (${maxQuantity})`,
             });
-            setItemsToReturn(prev => prev.map(item => item.productId === productId ? { ...item, quantity: maxQuantity } : item));
-            return;
+            quantity = maxQuantity;
         }
 
         setItemsToReturn(prev => prev.map(item => item.productId === productId ? { ...item, quantity } : item));
     }
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!selectedSaleId || itemsToReturn.length === 0) {
             toast({
                 variant: "destructive",
@@ -97,6 +97,7 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
             return;
         }
 
+        setIsSaving(true);
         const totalRefund = itemsToReturn.reduce((acc, item) => acc + (item.priceAtSale * item.quantity), 0);
 
         const newReturn: Omit<Return, 'id'> = {
@@ -106,7 +107,8 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
             date: new Date(),
             totalRefund,
         };
-        onSave(newReturn);
+        await onSave(newReturn);
+        setIsSaving(false);
         onOpenChange(false);
     }
     
@@ -164,7 +166,7 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
                         {itemsToReturn.length > 0 && (
                             <div className="col-span-4">
                                 <Card>
-                                    <CardContent className="p-4">
+                                    <CardContent className="p-4 max-h-48 overflow-y-auto">
                                     <h4 className="font-semibold mb-2">Produk yang akan diretur:</h4>
                                      <div className="space-y-4">
                                         {itemsToReturn.map(item => (
@@ -207,9 +209,11 @@ const ReturnForm = ({ sales, onSave, onOpenChange }: { sales: Sale[], onSave: (i
             </div>
             <DialogFooter>
                  <DialogClose asChild>
-                    <Button type="button" variant="secondary">Batal</Button>
+                    <Button type="button" variant="secondary" disabled={isSaving}>Batal</Button>
                 </DialogClose>
-                <Button onClick={handleSubmit} disabled={itemsToReturn.length === 0 || !selectedSaleId}>Simpan Retur</Button>
+                <Button onClick={handleSubmit} disabled={isSaving || itemsToReturn.length === 0 || !selectedSaleId}>
+                    {isSaving ? 'Menyimpan...' : 'Simpan Retur'}
+                </Button>
             </DialogFooter>
         </DialogContent>
     )
@@ -252,7 +256,9 @@ const ReturPage: FC = () => {
             title: "Retur Disimpan",
             description: "Data retur baru telah berhasil disimpan.",
         });
-        // Optionally re-fetch products to show updated stock, or update locally for performance
+        // Refetch sales data to ensure consistency, though stock is updated via transaction
+        const salesData = await getSales();
+        setSales(salesData);
     } catch(error) {
         const errorMessage = error instanceof Error ? error.message : "Gagal menyimpan data retur.";
         toast({ title: "Error", description: errorMessage, variant: "destructive" });
@@ -266,11 +272,14 @@ const ReturPage: FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Manajemen Retur</h1>
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <div>
+            <h1 className="text-2xl font-bold">Manajemen Retur</h1>
+            <p className="text-muted-foreground">Kelola pengembalian barang dari pelanggan.</p>
+        </div>
         <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
             <DialogTrigger asChild>
-                <Button>
+                <Button className="w-full md:w-auto">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Catat Retur
                 </Button>
