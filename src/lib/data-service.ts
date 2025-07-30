@@ -239,7 +239,7 @@ export const updateSale = async (originalSale: Sale, updatedSaleData: Sale): Pro
         transaction.update(saleRef, {
             ...saleDataForUpdate,
             items: cleanedItems,
-            date: Timestamp.fromDate(updatedSaleData.date),
+            date: Timestamp.fromDate(new Date(updatedSaleData.date)),
         });
     });
 };
@@ -393,27 +393,31 @@ export const addStockOpnameLog = async (
 };
 
 export const batchUpdateStockToZero = async (products: Product[]): Promise<void> => {
-  return runTransaction(db, async (transaction) => {
-    const logCollection = collection(db, 'stockOpnameLogs');
-    for (const product of products) {
-      // Update product stock
-      const productRef = doc(db, "products", product.id);
-      transaction.update(productRef, { stock: 0 });
-
-      // Create log entry
-      const logData: Omit<StockOpnameLog, 'id'> = {
-        productId: product.id,
-        productName: product.name,
-        previousStock: product.stock,
-        newStock: 0,
-        date: new Date(),
-        notes: "Diatur ke 0 secara massal",
-      };
-      const logRef = doc(logCollection);
-      transaction.set(logRef, { ...logData, date: Timestamp.fromDate(logData.date) });
-    }
-  });
-}
+    return runTransaction(db, async (transaction) => {
+      // READ phase: Pre-fetch all product data if needed for validation, though not strictly necessary for this operation.
+      // This is a WRITE-only transaction, which is simpler.
+  
+      // WRITE phase
+      const logCollectionRef = collection(db, 'stockOpnameLogs');
+      for (const product of products) {
+        const productRef = doc(db, "products", product.id);
+        transaction.update(productRef, { stock: 0 });
+  
+        const logData: Omit<StockOpnameLog, 'id'> = {
+          productId: product.id,
+          productName: product.name,
+          previousStock: product.stock,
+          newStock: 0,
+          date: new Date(),
+          notes: "Diatur ke 0 secara massal",
+        };
+  
+        const logDocRef = doc(logCollectionRef);
+        // Ensure date is a Timestamp for Firestore
+        transaction.set(logDocRef, { ...logData, date: Timestamp.fromDate(logData.date) });
+      }
+    });
+  };
 
 
 // Danger Zone functions
@@ -439,3 +443,4 @@ export const clearData = async (dataToClear: Record<DataType, boolean>): Promise
 
     await batch.commit();
 };
+

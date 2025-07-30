@@ -50,7 +50,10 @@ const EditSaleForm = ({ sale, onSave, onOpenChange }: { sale: Sale, onSave: () =
     const { toast } = useToast();
 
     useEffect(() => {
-        setEditedSale(JSON.parse(JSON.stringify(sale))); // Deep copy to avoid direct mutation
+        // Deep copy to avoid direct mutation and ensure date is a JS Date object
+        const saleCopy = JSON.parse(JSON.stringify(sale));
+        saleCopy.date = new Date(saleCopy.date);
+        setEditedSale(saleCopy);
     }, [sale]);
 
     const updateItemQuantity = (productId: string, newQuantity: number) => {
@@ -232,10 +235,11 @@ const PenjualanPage: FC = () => {
         try {
             const [salesData, productsData] = await Promise.all([getSales(), getProducts()]);
             const salesWithDisplayId = salesData
-                .sort((a, b) => b.date.getTime() - a.date.getTime())
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                 .map((sale, index) => ({
                     ...sale,
                     displayId: salesData.length - index,
+                    date: new Date(sale.date), // Ensure date is a JS Date object
                     items: sale.items.map((item: any) => ({
                         ...item,
                         product: item.product || { id: item.product, name: 'Produk Tidak Ditemukan', category: '' }
@@ -297,7 +301,7 @@ const PenjualanPage: FC = () => {
                                 <AccordionTrigger>
                                     <div className="flex justify-between items-center w-full pr-4 text-sm">
                                         <span className="font-semibold text-primary">ID: trx {String(sale.displayId).padStart(4, '0')}</span>
-                                        <Badge variant="outline">{sale.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</Badge>
+                                        <Badge variant="outline">{new Date(sale.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</Badge>
                                         <span className="font-bold text-base">{formatCurrency(sale.finalTotal)}</span>
                                     </div>
                                 </AccordionTrigger>
