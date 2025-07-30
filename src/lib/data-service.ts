@@ -137,7 +137,12 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
         const saleDataForFirestore = {
             ...sale,
             items: sale.items.map(item => ({
-                product: item.product,
+                product: {
+                    id: item.product.id,
+                    name: item.product.name,
+                    category: item.product.category,
+                    subcategory: item.product.subcategory || '',
+                },
                 quantity: item.quantity,
                 price: item.price,
                 costPriceAtSale: item.product.costPrice,
@@ -166,63 +171,78 @@ export const addSale = async (sale: Omit<Sale, 'id'>, settings: Settings): Promi
 }
 
 
-export const updateSale = async (originalSale: Sale, updatedSale: Sale): Promise<void> => {
-    // 1. Calculate stock differences and gather all needed product IDs
-    const stockChanges: Record<string, number> = {};
-    const productIds = new Set<string>();
-
-    originalSale.items.forEach(item => {
-        stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) + item.quantity;
-        productIds.add(item.product.id);
-    });
-
-    updatedSale.items.forEach(item => {
-        stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) - item.quantity;
-        productIds.add(item.product.id);
-    });
-    
-    // 2. Read all product documents that will be affected BEFORE the transaction
-    const productRefs = Array.from(productIds).map(id => doc(db, "products", id));
-    const productDocs = await Promise.all(productRefs.map(ref => getDoc(ref)));
-    
-    const existingProducts: Record<string, DocumentData> = {};
-    productDocs.forEach(docSnap => {
-        if(docSnap.exists()){
-            existingProducts[docSnap.id] = docSnap.data();
-        }
-    });
-
-    // 3. Run the transaction with only write operations
+export const updateSale = async (originalSale: Sale, updatedSaleData: Sale): Promise<void> => {
     return runTransaction(db, async (transaction) => {
-        const saleRef = doc(db, "sales", originalSale.id);
+        // 1. Calculate stock changes based on item differences
+        const stockChanges: Record<string, number> = {};
+        const allProductIds = new Set<string>();
 
-        // Update product stocks
+        originalSale.items.forEach(item => {
+            stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) + item.quantity;
+            allProductIds.add(item.product.id);
+        });
+
+        updatedSaleData.items.forEach(item => {
+            stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) - item.quantity;
+            allProductIds.add(item.product.id);
+        });
+
+        // 2. READ phase: Get all product documents involved in the transaction
+        const productRefs: DocumentReference[] = [];
+        const productPromises = [];
+        for (const productId of allProductIds) {
+            const productRef = doc(db, "products", productId);
+            productRefs.push(productRef);
+            productPromises.push(transaction.get(productRef));
+        }
+        const productSnapshots = await Promise.all(productPromises);
+
+        const productsData: Record<string, Product> = {};
+        productSnapshots.forEach(snap => {
+            if (snap.exists()) {
+                productsData[snap.id] = { id: snap.id, ...snap.data() } as Product;
+            }
+        });
+
+
+        // 3. WRITE phase: Update stocks and the sale document
         for (const productId in stockChanges) {
             const change = stockChanges[productId];
-            if (change === 0) continue; // No change, no need to update
+            if (change === 0) continue;
 
-            const productData = existingProducts[productId];
-            // If product doesn't exist, we can't update its stock. Log a warning and continue.
-            // This prevents the transaction from failing if a product was deleted.
+            const productData = productsData[productId];
             if (!productData) {
                 console.warn(`Product with ID ${productId} not found during sale update. Stock not updated.`);
-                continue;
+                continue; // Skip if product was deleted
             }
 
             const productRef = doc(db, "products", productId);
             const newStock = productData.stock + change;
             transaction.update(productRef, { stock: newStock });
         }
+
+        // Prepare updated sale document for Firestore
+        const { id, displayId, ...saleDataForUpdate } = updatedSaleData;
+        const cleanedItems = saleDataForUpdate.items.map(item => ({
+            product: {
+                id: item.product.id,
+                name: item.product.name,
+                category: item.product.category,
+                subcategory: item.product.subcategory || '',
+            },
+            quantity: item.quantity,
+            price: item.price,
+            costPriceAtSale: item.costPriceAtSale,
+        }));
         
-        // Update the sale document itself
-        const { id, displayId, ...saleDataToUpdate } = updatedSale;
-        
+        const saleRef = doc(db, "sales", originalSale.id);
         transaction.update(saleRef, {
-            ...saleDataToUpdate,
-            date: Timestamp.fromDate(updatedSale.date)
+            ...saleDataForUpdate,
+            items: cleanedItems,
+            date: Timestamp.fromDate(updatedSaleData.date),
         });
     });
-}
+};
 
 
 // Expense-specific functions
@@ -374,6 +394,7 @@ export const addStockOpnameLog = async (
 
 export const batchUpdateStockToZero = async (products: Product[]): Promise<void> => {
   return runTransaction(db, async (transaction) => {
+    const logCollection = collection(db, 'stockOpnameLogs');
     for (const product of products) {
       // Update product stock
       const productRef = doc(db, "products", product.id);
@@ -388,7 +409,7 @@ export const batchUpdateStockToZero = async (products: Product[]): Promise<void>
         date: new Date(),
         notes: "Diatur ke 0 secara massal",
       };
-      const logRef = doc(collection(db, 'stockOpnameLogs'));
+      const logRef = doc(logCollection);
       transaction.set(logRef, { ...logData, date: Timestamp.fromDate(logData.date) });
     }
   });

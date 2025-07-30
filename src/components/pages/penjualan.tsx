@@ -88,7 +88,8 @@ const EditSaleForm = ({ sale, onSave, onOpenChange }: { sale: Sale, onSave: () =
         onSave(); // Callback to refresh data on the main page
         onOpenChange(false);
       } catch (error) {
-        toast({ title: "Error", description: "Gagal memperbarui transaksi.", variant: "destructive" });
+        const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui transaksi.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
       } finally {
         setIsSaving(false);
       }
@@ -345,5 +346,3 @@ const PenjualanPage: FC = () => {
 };
 
 export default PenjualanPage;
-
-    

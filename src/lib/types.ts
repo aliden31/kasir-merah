@@ -28,7 +28,12 @@ export interface Product {
 }
 
 export interface SaleItem {
-  product: Product;
+  product: {
+    id: string;
+    name: string;
+    category: string;
+    subcategory?: string;
+  };
   quantity: number;
   price: number; // This is the selling price before discount
   costPriceAtSale: number; // Cost price at the time of sale
@@ -63,6 +68,7 @@ export interface Return {
 
 export interface Expense {
   id: string;
+  name: string;
   amount: number;
   category: string;
   subcategory?: string;
