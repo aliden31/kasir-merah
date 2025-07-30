@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
   DialogFooter,
   DialogClose,
@@ -28,7 +29,7 @@ import type { Return, Sale, ReturnItem, SaleItem } from '@/lib/types';
 import { PlusCircle, MinusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getReturns, addReturn, getSales, getProducts } from '@/lib/data-service';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -56,7 +57,8 @@ const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetai
                 productId: productInSale.product.id,
                 productName: productInSale.product.name,
                 quantity: 1,
-                priceAtSale: productInSale.price
+                priceAtSale: productInSale.price,
+                costPriceAtSale: productInSale.costPriceAtSale
             }]);
         }
     };
