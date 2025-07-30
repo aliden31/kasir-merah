@@ -9,7 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import { login } from '@/lib/auth-service';
 import { Loader2, LogIn } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -23,7 +22,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push('/app');
+      // Pengalihan sekarang ditangani oleh AuthProvider
       toast({
         title: 'Login Berhasil',
         description: 'Selamat datang kembali!',

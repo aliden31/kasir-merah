@@ -28,19 +28,18 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
       if (user) {
-        // User is signed in
-        setUser(user);
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
+        
         if (userDoc.exists()) {
-          setUserRole(userDoc.data().role);
+          setUserRole(userDoc.data().role as UserRole);
         } else {
-            // Handle case where user exists in Auth but not in Firestore
-            setUserRole(null);
+          setUserRole(null);
         }
+        setUser(user);
       } else {
-        // User is signed out
         setUser(null);
         setUserRole(null);
       }
@@ -56,12 +55,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     const isAuthPage = pathname === '/login';
     const isAppPage = pathname.startsWith('/app');
 
-    // If user is not logged in and is trying to access a protected app page
     if (!user && isAppPage) {
       router.push('/login');
     }
 
-    // If user is logged in and is on an auth page
     if (user && isAuthPage) {
       router.push('/app');
     }
