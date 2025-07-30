@@ -199,5 +199,3 @@ const FlashSalePage: FC = () => {
 };
 
 export default FlashSalePage;
-
-    

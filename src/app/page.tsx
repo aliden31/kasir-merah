@@ -38,8 +38,8 @@ import PengeluaranPage from '@/components/pages/pengeluaran';
 import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
-import { SaleItem, Product, Settings as AppSettings, UserRole } from '@/lib/types';
-import { getSettings } from '@/lib/data-service';
+import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale } from '@/lib/types';
+import { getSettings, getFlashSaleSettings } from '@/lib/data-service';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
@@ -55,31 +55,36 @@ type View =
   | 'pengaturan';
 
 const defaultSettings: AppSettings = { storeName: 'Memuat...', defaultDiscount: 0, syncCostPrice: true };
+const defaultFlashSale: FlashSale = { id: 'main', title: '', isActive: false, products: [] };
 
 export default function Home() {
   const [activeView, setActiveView] = useState<View>('kasir');
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [flashSale, setFlashSale] = useState<FlashSale>(defaultFlashSale);
   const [userRole, setUserRole] = useState<UserRole>('admin');
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchData = async () => {
       const appSettings = await getSettings();
       setSettings(appSettings);
+      const flashSaleSettings = await getFlashSaleSettings();
+      setFlashSale(flashSaleSettings);
     };
-    fetchSettings();
+    fetchData();
   }, []);
-
-  const addToCart = (product: Product) => {
+  
+  const addToCart = (product: Product, flashSalePrice?: number) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.product.id === product.id);
+      const price = flashSalePrice !== undefined ? flashSalePrice : product.sellingPrice;
       if (existingItem) {
         return prevCart.map((item) =>
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.product.id === product.id ? { ...item, quantity: item.quantity + 1, price: price } : item
         );
       }
-      return [...prevCart, { product, quantity: 1, price: product.sellingPrice }];
+      return [...prevCart, { product, quantity: 1, price: price }];
     });
   };
 
@@ -135,6 +140,7 @@ export default function Home() {
           clearCart={clearCart}
           cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
           settings={settings}
+          flashSale={flashSale}
         />;
       case 'produk':
         return <ProdukPage />;
@@ -158,6 +164,7 @@ export default function Home() {
           clearCart={clearCart}
           cartItemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
           settings={settings}
+          flashSale={flashSale}
         />;
     }
   };

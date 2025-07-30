@@ -189,5 +189,3 @@ export const saveSettings = async (settings: Partial<Settings>): Promise<void> =
     const docRef = doc(db, 'settings', 'main');
     await setDoc(docRef, settings, { merge: true });
 };
-
-    

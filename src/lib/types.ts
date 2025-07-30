@@ -59,5 +59,3 @@ export interface Settings {
 }
 
 export type UserRole = 'admin' | 'kasir';
-
-    
