@@ -41,13 +41,16 @@ const FlashSalePage: FC<FlashSalePageProps> = ({ onSettingsSave }) => {
 
   useEffect(() => {
     const fetchData = async () => {
+        setLoading(true);
         try {
             const [flashSaleData, productsData] = await Promise.all([getFlashSaleSettings(), getProducts()]);
-            setSettings(flashSaleData);
-            setProducts(productsData);
+            setSettings(flashSaleData || { id: 'main', title: 'Flash Sale', isActive: false, products: [] });
+            setProducts(productsData || []);
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
             console.error(error);
+            setSettings({ id: 'main', title: 'Flash Sale', isActive: false, products: [] });
+            setProducts([]);
         } finally {
             setLoading(false);
         }
