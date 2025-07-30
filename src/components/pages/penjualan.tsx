@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { FC } from 'react';
@@ -85,16 +86,18 @@ const PenjualanPage: FC = () => {
         const fetchData = async () => {
             try {
                 const [salesData, productsData] = await Promise.all([getSales(), getProducts()]);
-                const salesWithProductDetails = salesData.map(sale => ({
-                    ...sale,
-                    items: sale.items.map((item: any) => {
-                        const productDetail = productsData.find(p => p.id === item.product);
-                        return {
-                            ...item,
-                            product: productDetail || { id: item.product, name: 'Produk Tidak Ditemukan' }
-                        };
-                    })
-                }));
+                const salesWithProductDetails = salesData
+                    .sort((a, b) => b.date.getTime() - a.date.getTime()) // Sort sales by date descending
+                    .map(sale => ({
+                        ...sale,
+                        items: sale.items.map((item: any) => {
+                            const productDetail = productsData.find(p => p.id === item.product);
+                            return {
+                                ...item,
+                                product: productDetail || { id: item.product, name: 'Produk Tidak Ditemukan' }
+                            };
+                        })
+                    }));
                 setSales(salesWithProductDetails);
                 setProducts(productsData);
             } catch (error) {
@@ -121,11 +124,11 @@ const PenjualanPage: FC = () => {
         </TabsList>
         <TabsContent value="riwayat" className="mt-4">
              <Accordion type="single" collapsible className="w-full">
-                {sales.map((sale: Sale) => (
+                {sales.map((sale: Sale, index) => (
                     <AccordionItem value={sale.id} key={sale.id}>
                         <AccordionTrigger>
                             <div className="flex justify-between w-full pr-4">
-                                <span>ID Transaksi: {sale.id}</span>
+                                <span>ID Transaksi: trx {String(sales.length - index).padStart(3, '0')}</span>
                                 <span className="text-muted-foreground">{sale.date.toLocaleDateString('id-ID')}</span>
                                 <span className="font-semibold">{formatCurrency(sale.finalTotal)}</span>
                             </div>
@@ -142,8 +145,8 @@ const PenjualanPage: FC = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sale.items.map((item, index) => (
-                                        <TableRow key={index}>
+                                    {sale.items.map((item, itemIndex) => (
+                                        <TableRow key={itemIndex}>
                                             <TableCell>{item.product.name}</TableCell>
                                             <TableCell className="text-right">{item.quantity}</TableCell>
                                             <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
@@ -172,3 +175,4 @@ const PenjualanPage: FC = () => {
 };
 
 export default PenjualanPage;
+
