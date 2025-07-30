@@ -87,20 +87,34 @@ export default function AppPage() {
   const { toast } = useToast();
 
   const refreshAllData = async () => {
+    if (!userRole) return;
     setIsLoading(true);
     try {
-      const [appSettings, flashSaleSettings, productsData] = await Promise.all([
-        getSettings(),
-        getFlashSaleSettings(),
-        getProducts(),
-      ]);
-      setSettings(appSettings);
-      setFlashSale(flashSaleSettings);
-      setProducts(productsData);
+      // Admins fetch everything.
+      if (userRole === 'admin') {
+        const [appSettings, flashSaleSettings, productsData] = await Promise.all([
+          getSettings(),
+          getFlashSaleSettings(),
+          getProducts(),
+        ]);
+        setSettings(appSettings);
+        setFlashSale(flashSaleSettings);
+        setProducts(productsData);
+      } else { // Cashiers only fetch what they are allowed to read.
+        const [flashSaleSettings, productsData] = await Promise.all([
+          getFlashSaleSettings(),
+          getProducts(),
+        ]);
+        // For cashiers, we use default settings to avoid permission errors
+        setSettings({ ...defaultSettings, storeName: 'Kasir' }); 
+        setFlashSale(flashSaleSettings);
+        setProducts(productsData);
+      }
     } catch (error) {
+      console.error(error);
       toast({
         title: "Gagal memuat data",
-        description: "Terjadi kesalahan saat memuat data aplikasi.",
+        description: "Terjadi kesalahan saat memuat data aplikasi. Periksa koneksi dan izin Anda.",
         variant: "destructive",
       });
     } finally {
@@ -113,7 +127,7 @@ export default function AppPage() {
     if (user) {
         refreshAllData();
     }
-  }, [user]);
+  }, [user, userRole]);
   
   useEffect(() => {
     if (settings.theme === 'dark') {

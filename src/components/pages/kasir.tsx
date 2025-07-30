@@ -46,7 +46,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
   const [sales, setSales] = useState<Sale[]>([]);
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [discount, setDiscount] = useState(settings.defaultDiscount);
+  const [discount, setDiscount] = useState(settings.defaultDiscount || 0);
   const [transactionDate, setTransactionDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [carouselApi, setCarouselApi] = React.useState<CarouselApi>()
@@ -74,7 +74,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
   }, []);
   
   useEffect(() => {
-    setDiscount(settings.defaultDiscount);
+    setDiscount(settings.defaultDiscount || 0);
   }, [settings.defaultDiscount]);
 
 
@@ -194,7 +194,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
           description: `Total pembayaran ${formatCurrency(total)} telah berhasil diproses.`,
         });
         clearCart();
-        setDiscount(settings.defaultDiscount);
+        setDiscount(settings.defaultDiscount || 0);
         onDataNeedsRefresh();
     } catch (error) {
         toast({ title: "Error", description: "Gagal menyimpan transaksi.", variant: "destructive" });
