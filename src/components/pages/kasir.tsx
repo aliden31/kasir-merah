@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { SaleItem, Product, Settings, FlashSale, Sale, Expense, Return } from '@/lib/types';
-import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap, Undo2, Wallet } from 'lucide-react';
+import type { SaleItem, Product, Settings, FlashSale, Sale, Expense, Return, ReturnItem } from '@/lib/types';
+import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap, Undo2, Wallet, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -481,16 +481,7 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
                   onClick={() => addToCart(product, flashPrice)}
                   className="cursor-pointer hover:shadow-lg transition-shadow group flex flex-col p-2"
                 >
-                    <div className="aspect-square w-full relative mb-2">
-                       <Image
-                         src={`https://placehold.co/200x200.png`}
-                         data-ai-hint={`${product.category}`}
-                         alt={product.name}
-                         fill
-                         className="rounded-md object-cover"
-                       />
-                    </div>
-                  <div className="flex-grow flex flex-col text-center">
+                  <div className="flex-grow flex flex-col text-center justify-center p-2">
                     <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
                     {flashPrice !== undefined ? (
                       <div className="mt-1">
@@ -554,38 +545,30 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
                 <div className="space-y-4">
                 {cart.map((item) => (
                     <div key={item.product.id} className="flex items-center gap-4">
-                    <Image
-                        src={`https://placehold.co/100x100.png`}
-                        data-ai-hint={`${item.product.category}`}
-                        alt={item.product.name}
-                        width={64}
-                        height={64}
-                        className="rounded-md object-cover"
-                    />
-                    <div className="flex-grow">
-                        <p className="font-semibold text-sm">{item.product.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatCurrency(item.price)}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                        >
-                            <MinusCircle className="h-4 w-4" />
-                        </Button>
-                        <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                        >
-                            <PlusCircle className="h-4 w-4" />
-                        </Button>
+                        <div className="flex-grow">
+                            <p className="font-semibold text-sm">{item.product.name}</p>
+                            <p className="text-xs text-muted-foreground">{formatCurrency(item.price)}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                            >
+                                <MinusCircle className="h-4 w-4" />
+                            </Button>
+                            <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                            >
+                                <PlusCircle className="h-4 w-4" />
+                            </Button>
+                            </div>
                         </div>
-                    </div>
-                    <p className="font-semibold text-sm">{formatCurrency(item.price * item.quantity)}</p>
+                        <p className="font-semibold text-sm">{formatCurrency(item.price * item.quantity)}</p>
                     </div>
                 ))}
                 </div>
@@ -699,5 +682,3 @@ const KasirPage: FC<KasirPageProps> = ({ cart, addToCart, updateQuantity, clearC
 };
 
 export default KasirPage;
-
-    
