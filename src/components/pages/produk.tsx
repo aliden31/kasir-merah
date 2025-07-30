@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { getProducts, addProduct, updateProduct, deleteProduct } from '@/lib/data-service';
+import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts } from '@/lib/data-service';
 
 
 const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
@@ -110,7 +110,13 @@ const ProdukPage: FC = () => {
   useEffect(() => {
     const fetchProducts = async () => {
         try {
-            const productsData = await getProducts();
+            let productsData = await getProducts();
+            if (productsData.length === 0) {
+                toast({ title: "Database produk kosong", description: "Menginisialisasi dengan data sampel..." });
+                await addPlaceholderProducts();
+                productsData = await getProducts(); // Refetch after adding placeholders
+                toast({ title: "Inisialisasi berhasil", description: "Data produk sampel telah ditambahkan." });
+            }
             setProducts(productsData);
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data produk.", variant: "destructive" });

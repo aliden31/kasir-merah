@@ -11,6 +11,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import type { Product, Sale, Return, Expense, FlashSale, SaleItem } from './types';
+import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
 async function getCollection<T>(collectionName: string): Promise<T[]> {
@@ -38,6 +39,21 @@ export const getProducts = () => getCollection<Product>('products');
 export const addProduct = (product: Omit<Product, 'id'>) => addDocument<Product>('products', product);
 export const updateProduct = (id: string, product: Partial<Product>) => updateDocument<Product>('products', id, product);
 export const deleteProduct = (id: string) => deleteDocument('products', id);
+export const addPlaceholderProducts = async () => {
+    const batch = writeBatch(db);
+    const productsCollection = collection(db, 'products');
+    
+    placeholderProducts.forEach(product => {
+        // Create a new document reference for each placeholder product without specifying an ID
+        const docRef = doc(productsCollection); 
+        // We omit the 'id' field from the placeholder product data
+        const { id, ...productData } = product;
+        batch.set(docRef, productData);
+    });
+
+    await batch.commit();
+}
+
 
 // Sale-specific functions
 export async function getSales(): Promise<Sale[]> {
