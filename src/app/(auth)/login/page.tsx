@@ -74,6 +74,9 @@ export default function LoginPage() {
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
             Masuk
           </Button>
+          <p className="pt-4 text-xs text-muted-foreground uppercase tracking-wider">
+            COPYRIGHT BY ALI DEDEN NURYADIN
+          </p>
         </CardFooter>
       </form>
     </Card>
