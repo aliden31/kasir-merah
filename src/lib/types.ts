@@ -23,13 +23,21 @@ export interface Sale {
   date: Date;
 }
 
-export interface Return {
-  id: string;
-  saleId: string;
+export interface ReturnItem {
+  productId: string;
   productName: string;
   quantity: number;
+  priceAtSale: number;
+  costPriceAtSale?: number;
+}
+
+export interface Return {
+  id:string;
+  saleId: string;
+  items: ReturnItem[];
   reason: string;
   date: Date;
+  totalRefund: number;
 }
 
 export interface Expense {

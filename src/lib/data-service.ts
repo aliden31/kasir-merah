@@ -11,8 +11,9 @@ import {
   Timestamp,
   getDoc,
   setDoc,
+  runTransaction,
 } from 'firebase/firestore';
-import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem } from './types';
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem } from './types';
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -139,11 +140,40 @@ export async function getReturns(): Promise<Return[]> {
     }));
 }
 
-export const addReturn = (item: Omit<Return, 'id'>) => {
-    return addDocument<Return>('returns', {
-        ...item,
-        date: Timestamp.fromDate(item.date)
-    });
+export const addReturn = async (returnData: Omit<Return, 'id'>): Promise<Return> => {
+    try {
+        // Use a transaction to ensure atomicity
+        const newReturnRef = doc(collection(db, 'returns'));
+        
+        await runTransaction(db, async (transaction) => {
+            // 1. Update stock for each returned item
+            for (const item of returnData.items) {
+                const productRef = doc(db, "products", item.productId);
+                const productDoc = await transaction.get(productRef);
+                if (!productDoc.exists()) {
+                    // If product doesn't exist, we might still proceed or throw error
+                    // For now, we'll log it and continue. Stock won't be updated.
+                    console.warn(`Product with ID ${item.productId} not found during return. Stock not updated.`);
+                    continue; 
+                }
+                const currentStock = productDoc.data().stock;
+                const newStock = currentStock + item.quantity;
+                transaction.update(productRef, { stock: newStock });
+            }
+
+            // 2. Save the new return document
+            transaction.set(newReturnRef, {
+                ...returnData,
+                date: Timestamp.fromDate(returnData.date)
+            });
+        });
+
+        return { ...returnData, id: newReturnRef.id };
+
+    } catch (e) {
+        console.error("Return transaction failed: ", e);
+        throw new Error("Gagal memproses retur. Silakan coba lagi.");
+    }
 };
 
 

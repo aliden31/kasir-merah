@@ -1,7 +1,8 @@
+
 'use client';
 
 import type { FC } from 'react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -23,63 +24,171 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Return } from '@/lib/types';
-import { PlusCircle } from 'lucide-react';
+import type { Return, Sale, SaleItem, ReturnItem, Product } from '@/lib/types';
+import { PlusCircle, MinusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getReturns, addReturn } from '@/lib/data-service';
+import { getReturns, addReturn, getSales, getProducts } from '@/lib/data-service';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+};
 
 
-const ReturnForm = ({ onSave, onOpenChange }: { onSave: (item: Omit<Return, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
-    const [saleId, setSaleId] = useState('');
-    const [productName, setProductName] = useState('');
-    const [quantity, setQuantity] = useState(1);
+const ReturnForm = ({ salesWithDetails, onSave, onOpenChange }: { salesWithDetails: Sale[], onSave: (item: Omit<Return, 'id'>) => void, onOpenChange: (open: boolean) => void }) => {
+    const [selectedSaleId, setSelectedSaleId] = useState<string>('');
     const [reason, setReason] = useState('');
+    const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
     
-    const handleSubmit = () => {
-        if (!saleId || !productName) {
-            alert('ID Transaksi dan Nama Produk harus diisi!');
+    const selectedSale = useMemo(() => salesWithDetails.find(s => s.id === selectedSaleId), [selectedSaleId, salesWithDetails]);
+
+    const handleAddProductToReturn = (productId: string) => {
+        const productInSale = selectedSale?.items.find(item => item.product.id === productId);
+        if (productInSale && !itemsToReturn.find(item => item.productId === productId)) {
+            setItemsToReturn(prev => [...prev, {
+                productId: productInSale.product.id,
+                productName: productInSale.product.name,
+                quantity: 1,
+                priceAtSale: productInSale.price,
+                costPriceAtSale: productInSale.costPriceAtSale
+            }]);
+        }
+    };
+    
+    const updateReturnQuantity = (productId: string, quantity: number) => {
+        const productInSale = selectedSale?.items.find(item => item.product.id === productId);
+        const maxQuantity = productInSale?.quantity || 0;
+
+        if (quantity <= 0) {
+             setItemsToReturn(prev => prev.filter(item => item.productId !== productId));
+             return;
+        }
+
+        if (quantity > maxQuantity) {
+            alert(`Jumlah retur tidak boleh melebihi jumlah pembelian (${maxQuantity})`);
             return;
         }
+
+        setItemsToReturn(prev => prev.map(item => item.productId === productId ? { ...item, quantity } : item));
+    }
+
+    const handleSubmit = () => {
+        if (!selectedSaleId || itemsToReturn.length === 0) {
+            alert('Pilih transaksi dan produk yang akan diretur.');
+            return;
+        }
+
+        const totalRefund = itemsToReturn.reduce((acc, item) => acc + (item.priceAtSale * item.quantity), 0);
+
         const newReturn: Omit<Return, 'id'> = {
-            saleId,
-            productName,
-            quantity,
+            saleId: selectedSaleId,
+            items: itemsToReturn,
             reason,
             date: new Date(),
+            totalRefund,
         };
         onSave(newReturn);
         onOpenChange(false);
     }
-    
+
+    const availableProductsForReturn = selectedSale?.items.filter(
+        saleItem => !itemsToReturn.some(returnItem => returnItem.productId === saleItem.product.id)
+    ) || [];
+
     return (
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
             <DialogHeader>
                 <DialogTitle>Tambah Retur Baru</DialogTitle>
+                <CardDescription>Pilih transaksi, lalu pilih produk yang akan dikembalikan.</CardDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="saleId" className="text-right">ID Transaksi</Label>
-                    <Input id="saleId" value={saleId} onChange={(e) => setSaleId(e.target.value)} className="col-span-3" placeholder="Contoh: trx-12345" />
+                    <Label htmlFor="saleId" className="text-right">Transaksi</Label>
+                    <Select onValueChange={setSelectedSaleId}>
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Pilih ID Transaksi..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {salesWithDetails.map(sale => (
+                                <SelectItem key={sale.id} value={sale.id}>
+                                    trx {sale.id.substring(0, 8)}... - {sale.date.toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="productName" className="text-right">Nama Produk</Label>
-                    <Input id="productName" value={productName} onChange={(e) => setProductName(e.target.value)} className="col-span-3" placeholder="Nama produk yang diretur" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="quantity" className="text-right">Jumlah</Label>
-                    <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="col-span-3" min="1" />
-                </div>
-                <div className="grid grid-cols-4 items-start gap-4">
-                    <Label htmlFor="reason" className="text-right pt-2">Alasan</Label>
-                    <Textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} className="col-span-3" placeholder="Alasan pengembalian barang..." />
-                </div>
+
+                {selectedSale && (
+                    <>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right">Tambah Produk</Label>
+                            <div className="col-span-3">
+                                <Select onValueChange={handleAddProductToReturn} disabled={availableProductsForReturn.length === 0}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Pilih produk untuk diretur..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableProductsForReturn.map(item => (
+                                            <SelectItem key={item.product.id} value={item.product.id}>
+                                                {item.product.name} (Dibeli: {item.quantity})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {itemsToReturn.length > 0 && (
+                            <div className="col-span-4">
+                                <Card>
+                                    <CardContent className="p-4">
+                                    <h4 className="font-semibold mb-2">Produk yang akan diretur:</h4>
+                                     <div className="space-y-4">
+                                        {itemsToReturn.map(item => (
+                                            <div key={item.productId} className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-medium">{item.productName}</p>
+                                                    <p className="text-sm text-muted-foreground">{formatCurrency(item.priceAtSale)}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.productId, item.quantity - 1)}>
+                                                        <MinusCircle className="h-4 w-4" />
+                                                    </Button>
+                                                    <Input 
+                                                        type="number" 
+                                                        className="w-16 h-8 text-center" 
+                                                        value={item.quantity}
+                                                        onChange={(e) => updateReturnQuantity(item.productId, Number(e.target.value))}
+                                                    />
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.productId, item.quantity + 1)}>
+                                                        <PlusCircle className="h-4 w-4" />
+                                                    </Button>
+                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => updateReturnQuantity(item.productId, 0)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                     </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+                       
+                        <div className="grid grid-cols-4 items-start gap-4">
+                            <Label htmlFor="reason" className="text-right pt-2">Alasan</Label>
+                            <Textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} className="col-span-3" placeholder="Alasan pengembalian barang..." />
+                        </div>
+                    </>
+                )}
             </div>
             <DialogFooter>
                  <DialogClose asChild>
                     <Button type="button" variant="secondary">Batal</Button>
                 </DialogClose>
-                <Button onClick={handleSubmit}>Simpan Retur</Button>
+                <Button onClick={handleSubmit} disabled={itemsToReturn.length === 0}>Simpan Retur</Button>
             </DialogFooter>
         </DialogContent>
     )
@@ -87,23 +196,27 @@ const ReturnForm = ({ onSave, onOpenChange }: { onSave: (item: Omit<Return, 'id'
 
 const ReturPage: FC = () => {
   const [returns, setReturns] = useState<Return[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchReturns = async () => {
+    const fetchData = async () => {
         try {
-            const returnsData = await getReturns();
+            const [returnsData, salesData, productsData] = await Promise.all([getReturns(), getSales(), getProducts()]);
             setReturns(returnsData.sort((a,b) => b.date.getTime() - a.date.getTime()));
+            setSales(salesData);
+            setProducts(productsData);
         } catch (error) {
-            toast({ title: "Error", description: "Gagal memuat data retur.", variant: "destructive" });
+            toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
             console.error(error);
         } finally {
             setLoading(false);
         }
     };
-    fetchReturns();
+    fetchData();
   }, [toast]);
   
   const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
@@ -114,11 +227,28 @@ const ReturPage: FC = () => {
             title: "Retur Disimpan",
             description: "Data retur baru telah berhasil disimpan.",
         });
+        // Optional: re-fetch products to see updated stock
+        const updatedProducts = await getProducts();
+        setProducts(updatedProducts);
     } catch(error) {
         toast({ title: "Error", description: "Gagal menyimpan data retur.", variant: "destructive" });
         console.error(error);
     }
   }
+  
+  const salesWithDetails = useMemo(() => {
+    return sales.map(sale => ({
+        ...sale,
+        items: sale.items.map((item: any) => {
+            const productDetail = products.find(p => p.id === (item.product.id || item.product));
+            return {
+                ...item,
+                product: productDetail || { id: item.product, name: 'Produk Dihapus', category: '' }
+            };
+        })
+    })).sort((a,b) => b.date.getTime() - a.date.getTime());
+  }, [sales, products]);
+
 
   if (loading) {
       return <div>Memuat data retur...</div>
@@ -135,7 +265,7 @@ const ReturPage: FC = () => {
                     Catat Retur
                 </Button>
             </DialogTrigger>
-            <ReturnForm onSave={handleSaveReturn} onOpenChange={setFormOpen} />
+            <ReturnForm salesWithDetails={salesWithDetails} onSave={handleSaveReturn} onOpenChange={setFormOpen} />
         </Dialog>
       </div>
 
@@ -145,34 +275,44 @@ const ReturPage: FC = () => {
             <CardDescription>Daftar semua pengembalian barang dari pelanggan.</CardDescription>
         </CardHeader>
         <CardContent>
-            <Table>
-                <TableHeader>
-                <TableRow>
-                    <TableHead className="w-[150px]">Tanggal</TableHead>
-                    <TableHead>ID Transaksi</TableHead>
-                    <TableHead>Nama Produk</TableHead>
-                    <TableHead>Alasan</TableHead>
-                    <TableHead className="text-right">Jumlah</TableHead>
-                </TableRow>
-                </TableHeader>
-                <TableBody>
-                {returns.length > 0 ? returns.map((item) => (
-                    <TableRow key={item.id}>
-                    <TableCell>{item.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
-                    <TableCell className="font-mono text-muted-foreground">{item.saleId}</TableCell>
-                    <TableCell className="font-medium">{item.productName}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.reason}</TableCell>
-                    <TableCell className="text-right font-medium">{item.quantity}</TableCell>
-                    </TableRow>
-                )) : (
+            <ScrollArea className="h-[calc(100vh-20rem)]">
+                <Table>
+                    <TableHeader className="sticky top-0 bg-background">
                     <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
-                            Belum ada data retur.
-                        </TableCell>
+                        <TableHead className="w-[150px]">Tanggal</TableHead>
+                        <TableHead>ID Transaksi</TableHead>
+                        <TableHead>Item Diretur</TableHead>
+                        <TableHead>Alasan</TableHead>
+                        <TableHead className="text-right">Total Refund</TableHead>
                     </TableRow>
-                )}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                    {returns.length > 0 ? returns.map((item) => (
+                        <TableRow key={item.id}>
+                        <TableCell>{item.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
+                        <TableCell className="font-mono text-muted-foreground">trx...{item.saleId.slice(-6)}</TableCell>
+                        <TableCell>
+                            <ul className="list-disc pl-4 text-sm">
+                                {item.items.map(product => (
+                                    <li key={product.productId}>
+                                        <span className="font-medium">{product.productName}</span> x {product.quantity}
+                                    </li>
+                                ))}
+                            </ul>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{item.reason}</TableCell>
+                        <TableCell className="text-right font-medium text-destructive">{formatCurrency(item.totalRefund)}</TableCell>
+                        </TableRow>
+                    )) : (
+                        <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">
+                                Belum ada data retur.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                    </TableBody>
+                </Table>
+            </ScrollArea>
         </CardContent>
       </Card>
     </div>
