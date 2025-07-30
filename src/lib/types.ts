@@ -25,6 +25,7 @@ export interface Product {
   stock: number;
   category: string;
   subcategory?: string;
+  salesCount?: number;
 }
 
 export interface SaleItem {

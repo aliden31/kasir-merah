@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { FC } from 'react';
@@ -117,7 +118,7 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
         saleItem => !itemsToReturn.some(returnItem => returnItem.product.id === saleItem.product.id)
     ) || [];
     
-    const sortedSales = useMemo(() => sales.sort((a,b) => b.date.getTime() - a.date.getTime()), [sales]);
+    const sortedSales = useMemo(() => sales.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [sales]);
     const salesMap = useMemo(() => new Map(sortedSales.map((sale, index) => [sale.id, sortedSales.length - index])), [sortedSales]);
 
     return (
@@ -136,7 +137,7 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
                         <SelectContent>
                             {sortedSales.map((sale) => (
                                 <SelectItem key={sale.id} value={sale.id}>
-                                    trx {String(salesMap.get(sale.id)).padStart(4, '0')} - {sale.date.toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
+                                    trx {String(salesMap.get(sale.id)).padStart(4, '0')} - {new Date(sale.date).toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -235,8 +236,13 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [returnsData, salesData] = await Promise.all([getReturns(), getSales()]);
-            setReturns(returnsData.sort((a,b) => b.date.getTime() - a.date.getTime()));
+            const returnsPromise = getReturns();
+            // Only fetch sales if user is admin, as kasir doesn't have permission
+            const salesPromise = userRole === 'admin' ? getSales() : Promise.resolve([]);
+            
+            const [returnsData, salesData] = await Promise.all([returnsPromise, salesPromise]);
+
+            setReturns(returnsData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
             setSales(salesData);
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
@@ -246,10 +252,10 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
         }
     };
     fetchData();
-  }, [toast]);
+  }, [toast, userRole]);
 
   const salesMap = useMemo(() => {
-    const sortedSales = sales.sort((a,b) => b.date.getTime() - a.date.getTime());
+    const sortedSales = sales.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return new Map(sortedSales.map((sale, index) => [sale.id, sortedSales.length - index]));
   }, [sales]);
   
@@ -261,7 +267,7 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
             description: "Data retur baru telah berhasil disimpan.",
         });
         const [returnsData, salesData] = await Promise.all([getReturns(), getSales()]);
-        setReturns(returnsData.sort((a,b) => b.date.getTime() - a.date.getTime()));
+        setReturns(returnsData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         setSales(salesData);
         onDataChange();
     } catch(error) {
@@ -313,7 +319,7 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
                     <TableBody>
                     {returns.length > 0 ? returns.map((item) => (
                         <TableRow key={item.id}>
-                        <TableCell>{item.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
+                        <TableCell>{new Date(item.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
                         <TableCell className="font-mono text-muted-foreground">
                             trx {salesMap.has(item.saleId) ? String(salesMap.get(item.saleId)).padStart(4, '0') : `...${item.saleId.slice(-6)}`}
                         </TableCell>

@@ -160,7 +160,10 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
     const fetchInitialData = async () => {
         setLoading(true);
         try {
-            let [productsData, salesData] = await Promise.all([getProducts(), getSales()]);
+            const productsDataPromise = getProducts();
+            const salesDataPromise = userRole === 'admin' ? getSales() : Promise.resolve([]);
+
+            let [productsData, salesData] = await Promise.all([productsDataPromise, salesDataPromise]);
 
             if (productsData.length === 0) {
                 toast({ title: "Database produk kosong", description: "Menginisialisasi dengan data sampel..." });
@@ -208,7 +211,7 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
 
   useEffect(() => {
     fetchInitialData();
-  }, [toast]);
+  }, [toast, userRole]);
   
   const sortedProducts = useMemo(() => {
     const productsWithSales = products.map(product => {
@@ -221,7 +224,7 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
     return [...productsWithSales].sort((a, b) => {
         switch (sortOrder) {
             case 'terlaris':
-                return b.salesCount - a.salesCount;
+                return (b.salesCount || 0) - (a.salesCount || 0);
             case 'nama-az':
                 return a.name.localeCompare(b.name);
             case 'nama-za':
@@ -364,7 +367,7 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
                         <TableCell className="text-right">{formatCurrency(product.costPrice)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(product.sellingPrice)}</TableCell>
                         <TableCell className="text-right">{product.stock}</TableCell>
-                        <TableCell className="text-right font-medium">{(product as any).salesCount || 0}</TableCell>
+                        <TableCell className="text-right font-medium">{product.salesCount || 0}</TableCell>
                         <TableCell className="text-right">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

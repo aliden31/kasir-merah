@@ -227,9 +227,24 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
   });
 
   const fetchInitialData = async () => {
+    setLoading(true);
     try {
-        const [expensesData, settingsData] = await Promise.all([getExpenses(), getSettings()]);
-        setExpenses(expensesData.sort((a,b) => b.date.getTime() - a.date.getTime()));
+        const expensesPromise = getExpenses();
+        // Admins fetch settings from the DB, cashiers use a default object
+        const settingsPromise = userRole === 'admin' 
+            ? getSettings() 
+            : Promise.resolve({ 
+                expenseCategories: [
+                    { id: 'exp-cat-1', name: 'Operasional', subcategories: [] },
+                    { id: 'exp-cat-2', name: 'Gaji', subcategories: [] },
+                    { id: 'exp-cat-3', name: 'Pemasaran', subcategories: [] },
+                    { id: 'exp-cat-4', name: 'Lainnya', subcategories: [] },
+                ]
+            } as Settings);
+
+        const [expensesData, settingsData] = await Promise.all([expensesPromise, settingsPromise]);
+        
+        setExpenses(expensesData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         setSettings(settingsData);
     } catch (error) {
         toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive"});
@@ -241,13 +256,13 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
   
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [userRole]);
   
   const filteredExpenses = useMemo(() => {
     if (!date?.from || !date.to) return expenses;
     const toDate = endOfDay(date.to);
     const interval = { start: startOfDay(date.from), end: toDate };
-    return expenses.filter(expense => isWithinInterval(expense.date, interval));
+    return expenses.filter(expense => isWithinInterval(new Date(expense.date), interval));
   }, [expenses, date]);
 
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id'>) => {
@@ -385,5 +400,3 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
 
 PengeluaranPage.displayName = 'PengeluaranPage';
 export default PengeluaranPage;
-
-    
