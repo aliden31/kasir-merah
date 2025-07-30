@@ -216,10 +216,19 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
         // Reset subcategory when category changes
         setSubcategory('');
     }, [category]);
+    
+    useEffect(() => {
+        // Set name based on category and subcategory
+        let newName = category;
+        if (subcategory) {
+            newName = `${category} - ${subcategory}`;
+        }
+        setName(newName);
+    }, [category, subcategory]);
 
 
     const handleSubmit = async () => {
-        if (!name || amount === '' || amount <= 0 || !category) {
+        if (amount === '' || amount <= 0 || !category) {
             return;
         }
          if (selectedCategory?.subcategories?.length && !subcategory) {
@@ -239,7 +248,7 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
         setIsSaving(false);
     }
     
-    const isSaveDisabled = isSaving || !name || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
+    const isSaveDisabled = isSaving || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
     
     return (
         <DialogContent>
@@ -247,10 +256,6 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
                 <DialogTitle>Catat Pengeluaran Baru</DialogTitle>
             </DialogHeader>
              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">Nama</Label>
-                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="Contoh: Beli Air Galon" />
-                </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="category" className="text-right">Kategori</Label>
                     <Select onValueChange={(value) => setCategory(value as any)} value={category}>

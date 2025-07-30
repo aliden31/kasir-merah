@@ -78,12 +78,13 @@ const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
     );
 };
 
-const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => void, onOpenChange: (open: boolean) => void, settings: Settings }) => {
+const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id' | 'date'> & { date?: Date }) => Promise<void>, onOpenChange: (open: boolean) => void, settings: Settings }) => {
     const [name, setName] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
     const [category, setCategory] = useState('');
     const [subcategory, setSubcategory] = useState('');
     const [date, setDate] = useState<Date>(new Date());
+    const [isSaving, setIsSaving] = useState(false);
     
     const selectedCategory = useMemo(() => {
         return (settings.expenseCategories || []).find(c => c.name === category);
@@ -93,15 +94,26 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
         // Reset subcategory when category changes
         setSubcategory('');
     }, [category]);
+    
+    useEffect(() => {
+        // Set name based on category and subcategory
+        let newName = category;
+        if (subcategory) {
+            newName = `${category} - ${subcategory}`;
+        }
+        setName(newName);
+    }, [category, subcategory]);
 
-    const handleSubmit = () => {
-        if (!name || amount === '' || amount <= 0 || !category) {
+
+    const handleSubmit = async () => {
+        if (amount === '' || amount <= 0 || !category) {
             return;
         }
         if (selectedCategory?.subcategories?.length && !subcategory) {
              // Optional: Add toast notification for validation
             return;
         }
+        setIsSaving(true);
         const newExpense: Omit<Expense, 'id'> = {
             name,
             amount: Number(amount),
@@ -109,11 +121,16 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
             subcategory,
             date,
         };
-        onSave(newExpense);
+        await onSave(newExpense);
         onOpenChange(false);
+        setAmount('');
+        setCategory('');
+        setSubcategory('');
+        setDate(new Date());
+        setIsSaving(false);
     }
     
-    const isSaveDisabled = !name || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
+    const isSaveDisabled = isSaving || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
     
     return (
         <DialogContent>
@@ -121,10 +138,6 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
                 <DialogTitle>Catat Pengeluaran Baru</DialogTitle>
             </DialogHeader>
              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">Nama</Label>
-                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="Contoh: Beli Air Galon"/>
-                </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="category" className="text-right">Kategori</Label>
                     <Select onValueChange={(value) => setCategory(value)} value={category}>
@@ -189,9 +202,9 @@ const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omi
             </div>
             <DialogFooter>
                  <DialogClose asChild>
-                    <Button type="button" variant="secondary">Batal</Button>
+                    <Button type="button" variant="secondary" disabled={isSaving}>Batal</Button>
                 </DialogClose>
-                <Button onClick={handleSubmit} disabled={isSaveDisabled}>Simpan</Button>
+                <Button onClick={handleSubmit} disabled={isSaveDisabled}>{isSaving ? 'Menyimpan...' : 'Simpan'}</Button>
             </DialogFooter>
         </DialogContent>
     )
