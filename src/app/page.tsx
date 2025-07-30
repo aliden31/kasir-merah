@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -23,6 +24,7 @@ import {
   Zap,
   Settings,
   Store,
+  Users,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -36,8 +38,11 @@ import PengeluaranPage from '@/components/pages/pengeluaran';
 import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
-import { SaleItem, Product, Settings as AppSettings } from '@/lib/types';
+import { SaleItem, Product, Settings as AppSettings, UserRole } from '@/lib/types';
 import { getSettings } from '@/lib/data-service';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
 
 type View =
   | 'kasir'
@@ -53,6 +58,8 @@ export default function Home() {
   const [activeView, setActiveView] = useState<View>('kasir');
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [settings, setSettings] = useState<AppSettings>({ storeName: 'Memuat...', defaultDiscount: 0 });
+  const [userRole, setUserRole] = useState<UserRole>('admin');
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -87,17 +94,32 @@ export default function Home() {
   const clearCart = () => {
     setCart([]);
   };
+  
+  const handleRoleChange = (isAdmin: boolean) => {
+    const newRole = isAdmin ? 'admin' : 'kasir';
+    setUserRole(newRole);
+    // Jika role kasir, dan halaman aktif tidak diizinkan, kembalikan ke halaman kasir
+    if (newRole === 'kasir' && !['kasir', 'pengeluaran', 'retur'].includes(activeView)) {
+        setActiveView('kasir');
+    }
+    toast({
+        title: "Peran Diubah",
+        description: `Anda sekarang masuk sebagai ${newRole}.`,
+    });
+  };
 
-  const menuItems = [
-    { id: 'kasir', label: 'Kasir', icon: LayoutGrid },
-    { id: 'produk', label: 'Produk', icon: Package },
-    { id: 'penjualan', label: 'Riwayat Penjualan', icon: ScrollText },
-    { id: 'retur', label: 'Retur', icon: Undo2 },
-    { id: 'pengeluaran', label: 'Pengeluaran', icon: Wallet },
-    { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart },
-    { id: 'flash-sale', label: 'Flash Sale', icon: Zap },
-    { id: 'pengaturan', label: 'Pengaturan', icon: Settings },
+  const allMenuItems = [
+    { id: 'kasir', label: 'Kasir', icon: LayoutGrid, roles: ['admin', 'kasir'] },
+    { id: 'produk', label: 'Produk', icon: Package, roles: ['admin'] },
+    { id: 'penjualan', label: 'Riwayat Penjualan', icon: ScrollText, roles: ['admin'] },
+    { id: 'retur', label: 'Retur', icon: Undo2, roles: ['admin', 'kasir'] },
+    { id: 'pengeluaran', label: 'Pengeluaran', icon: Wallet, roles: ['admin', 'kasir'] },
+    { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
+    { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
+    { id: 'pengaturan', label: 'Pengaturan', icon: Settings, roles: ['admin'] },
   ];
+
+  const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
   
   const activeMenu = menuItems.find(item => item.id === activeView);
 
@@ -170,15 +192,21 @@ export default function Home() {
           </SidebarContent>
           <Separator />
           <SidebarFooter>
-            <div className="flex items-center gap-3 p-2">
-              <Avatar className="h-9 w-9">
-                <AvatarImage src="https://placehold.co/100x100" alt="Avatar" />
-                <AvatarFallback>TC</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-semibold">Kasir</p>
-                <p className="text-xs text-muted-foreground">kasir@tokocepat.com</p>
-              </div>
+            <div className="flex flex-col gap-4 p-2">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src="https://placehold.co/100x100" alt="Avatar" />
+                    <AvatarFallback>TC</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-semibold">{userRole === 'admin' ? 'Admin' : 'Kasir'}</p>
+                    <p className="text-xs text-muted-foreground">{userRole}@tokocepat.com</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Switch id="role-switch" checked={userRole === 'admin'} onCheckedChange={handleRoleChange} />
+                    <Label htmlFor="role-switch">Mode Admin</Label>
+                </div>
             </div>
           </SidebarFooter>
         </Sidebar>
@@ -193,3 +221,4 @@ export default function Home() {
     </SidebarProvider>
   );
 }
+

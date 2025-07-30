@@ -52,3 +52,5 @@ export interface Settings {
   storeName: string;
   defaultDiscount: number;
 }
+
+export type UserRole = 'admin' | 'kasir';
