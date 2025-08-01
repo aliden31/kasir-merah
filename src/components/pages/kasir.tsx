@@ -42,13 +42,31 @@ interface KasirPageProps {
   onDataNeedsRefresh: () => void;
   userRole: UserRole;
   sales: Sale[];
+  cart: SaleItem[];
+  setCart: React.Dispatch<React.SetStateAction<SaleItem[]>>;
+  discount: number;
+  setDiscount: React.Dispatch<React.SetStateAction<number>>;
+  transactionDate: Date;
+  setTransactionDate: React.Dispatch<React.SetStateAction<Date>>;
+  cartItemCount: number;
 }
 
-const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, products, onDataNeedsRefresh, userRole, sales }) => {
-  const [cart, setCart] = useState<SaleItem[]>([]);
+const KasirPage: FC<KasirPageProps> = React.memo(({ 
+  settings, 
+  flashSale, 
+  products, 
+  onDataNeedsRefresh, 
+  userRole, 
+  sales,
+  cart,
+  setCart,
+  discount,
+  setDiscount,
+  transactionDate,
+  setTransactionDate,
+  cartItemCount
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [discount, setDiscount] = useState(settings.defaultDiscount || 0);
-  const [transactionDate, setTransactionDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [carouselApi, setCarouselApi] = React.useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = React.useState(0)
@@ -57,11 +75,6 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
   const [isExpenseFormOpen, setExpenseFormOpen] = useState(false);
 
   const { toast } = useToast();
-
-  useEffect(() => {
-    setDiscount(settings.defaultDiscount || 0);
-  }, [settings.defaultDiscount]);
-
 
   React.useEffect(() => {
     if (!carouselApi) {
@@ -143,8 +156,6 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
   const clearCart = () => {
     setCart([]);
   };
-
-  const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
 
   const { subtotal, discountAmount, total } = useMemo(() => {
     const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);

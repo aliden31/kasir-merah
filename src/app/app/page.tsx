@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -14,6 +14,7 @@ import {
   SidebarTrigger,
   SidebarInset,
   useSidebar,
+  SidebarMenuBadge,
 } from '@/components/ui/sidebar';
 import {
   LayoutGrid,
@@ -90,7 +91,19 @@ function AppPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const refreshAllData = async () => {
+  // Cart state lifted from KasirPage
+  const [cart, setCart] = useState<SaleItem[]>([]);
+  const [discount, setDiscount] = useState(settings.defaultDiscount || 0);
+  const [transactionDate, setTransactionDate] = useState<Date>(new Date());
+  
+  useEffect(() => {
+    setDiscount(settings.defaultDiscount || 0);
+  }, [settings.defaultDiscount]);
+
+  const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
+
+
+  const refreshAllData = async (shouldKeepCart = false) => {
     if (!userRole) return;
     setIsLoading(true);
     try {
@@ -122,6 +135,10 @@ function AppPageContent() {
       setProducts(productsData);
       setSales(salesData);
       setReturns(returnsData);
+
+      if (!shouldKeepCart) {
+          setCart([]);
+      }
 
     } catch (error) {
       console.error(error);
@@ -221,9 +238,16 @@ function AppPageContent() {
           settings={settings}
           flashSale={flashSale}
           products={products}
-          onDataNeedsRefresh={refreshAllData}
+          onDataNeedsRefresh={() => refreshAllData(true)}
           userRole={userRole!}
           sales={sales}
+          cart={cart}
+          setCart={setCart}
+          discount={discount}
+          setDiscount={setDiscount}
+          transactionDate={transactionDate}
+          setTransactionDate={setTransactionDate}
+          cartItemCount={cartItemCount}
         />;
       case 'produk':
         return <ProdukPage onDataChange={refreshAllData} userRole={userRole!} />;
@@ -248,9 +272,16 @@ function AppPageContent() {
           settings={settings}
           flashSale={flashSale}
           products={products}
-          onDataNeedsRefresh={refreshAllData}
+          onDataNeedsRefresh={() => refreshAllData(true)}
           userRole={userRole!}
           sales={sales}
+          cart={cart}
+          setCart={setCart}
+          discount={discount}
+          setDiscount={setDiscount}
+          transactionDate={transactionDate}
+          setTransactionDate={setTransactionDate}
+          cartItemCount={cartItemCount}
         /> : <DashboardPage onNavigate={handleNavigate} />;
     }
   };
@@ -284,6 +315,9 @@ function AppPageContent() {
                     <item.icon />
                     <span>{item.label}</span>
                   </SidebarMenuButton>
+                  {item.id === 'kasir' && cartItemCount > 0 && (
+                      <SidebarMenuBadge>{cartItemCount}</SidebarMenuBadge>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
