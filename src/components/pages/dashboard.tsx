@@ -14,6 +14,7 @@ import { id as localeId } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 type View =
   | 'dashboard'
@@ -151,7 +152,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
     return (
         <div className="space-y-6">
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
+                <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('penjualan')}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Penjualan Hari Ini</CardTitle>
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -171,7 +172,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
                          <p className="text-xs text-muted-foreground">Perkiraan laba bersih hari ini</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('penjualan')}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Item Terjual</CardTitle>
                         <ShoppingCart className="h-4 w-4 text-muted-foreground" />
@@ -181,7 +182,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
                         <p className="text-xs text-muted-foreground">Total item terjual hari ini</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('produk')}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Produk Terlaris</CardTitle>
                         <Package className="h-4 w-4 text-muted-foreground" />
