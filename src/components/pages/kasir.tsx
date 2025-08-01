@@ -313,7 +313,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
                             <Wallet className="mr-2 h-4 w-4" /> Pengeluaran
                         </Button>
                     </DialogTrigger>
-                    <ExpenseForm onSave={handleSaveExpense} onOpenChange={setExpenseFormOpen} settings={settings}/>
+                    <ExpenseForm onSave={handleSaveExpense} onOpenChange={setExpenseFormOpen} userRole={userRole}/>
                 </Dialog>
             </div>
         </CardHeader>

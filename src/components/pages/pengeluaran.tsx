@@ -84,13 +84,11 @@ export const ExpenseForm = ({
     expense,
     onSave, 
     onOpenChange, 
-    settings,
     userRole
 }: { 
     expense?: Expense;
     onSave: (data: Omit<Expense, 'id'> | Expense) => Promise<void>, 
     onOpenChange: (open: boolean) => void, 
-    settings: Settings,
     userRole: UserRole,
 }) => {
     const [name, setName] = useState('');
@@ -99,8 +97,19 @@ export const ExpenseForm = ({
     const [subcategory, setSubcategory] = useState('');
     const [date, setDate] = useState<Date>(new Date());
     const [isSaving, setIsSaving] = useState(false);
+    const [settings, setSettings] = useState<Settings | null>(null);
     
     useEffect(() => {
+        const fetchFormSettings = async () => {
+            try {
+                const settingsData = await getSettings();
+                setSettings(settingsData);
+            } catch (e) {
+                console.error("Failed to fetch settings for expense form", e);
+            }
+        };
+        fetchFormSettings();
+
         if (expense) {
             setName(expense.name);
             setAmount(expense.amount);
@@ -117,8 +126,8 @@ export const ExpenseForm = ({
     }, [expense]);
 
     const selectedCategory = useMemo(() => {
-        return (settings.expenseCategories || []).find(c => c.name === category);
-    }, [category, settings.expenseCategories]);
+        return (settings?.expenseCategories || []).find(c => c.name === category);
+    }, [category, settings?.expenseCategories]);
 
     useEffect(() => {
         if (!expense) {
@@ -135,7 +144,7 @@ export const ExpenseForm = ({
         }
         setIsSaving(true);
         const expenseData: Omit<Expense, 'id'> = {
-            name: subcategory || category, // Use subcategory as name if available, otherwise category
+            name: subcategory || category,
             amount: Number(amount),
             category,
             subcategory,
@@ -152,8 +161,12 @@ export const ExpenseForm = ({
         setIsSaving(false);
     }
     
-    const isSaveDisabled = isSaving || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
+    const isSaveDisabled = isSaving || !settings || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
     
+    if (!settings) {
+        return <DialogContent><div>Memuat kategori...</div></DialogContent>
+    }
+
     return (
         <DialogContent>
             <DialogHeader>
@@ -238,7 +251,6 @@ interface PengeluaranPageProps {
 
 const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
@@ -251,13 +263,8 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-        const [expensesData, settingsData] = await Promise.all([
-          getExpenses(), 
-          getSettings()
-        ]);
-        
+        const expensesData = await getExpenses();
         setExpenses(expensesData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        setSettings(settingsData);
     } catch (error) {
         toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive"});
         console.error(error);
@@ -298,7 +305,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
     setFormOpen(true);
   }
 
-  if (loading || !settings) {
+  if (loading) {
     return <div>Memuat data pengeluaran...</div>;
   }
     
@@ -354,7 +361,6 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
                     expense={editingExpense} 
                     onSave={handleSaveExpense} 
                     onOpenChange={setFormOpen} 
-                    settings={settings}
                     userRole={userRole}
                 />
             </Dialog>
