@@ -198,11 +198,11 @@ function AppPageContent() {
   }
 
   const allMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, roles: ['admin'] },
+    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, roles: ['admin', 'kasir'] },
     { id: 'kasir', label: 'Kasir', icon: LayoutGrid, roles: ['admin', 'kasir'] },
-    { id: 'produk', label: 'Produk', icon: Package, roles: ['admin', 'kasir'] },
-    { id: 'stok-opname', label: 'Stok Opname', icon: ClipboardList, roles: ['admin', 'kasir'] },
-    { id: 'penjualan', label: 'Riwayat Penjualan', icon: ScrollText, roles: ['admin', 'kasir'] },
+    { id: 'produk', label: 'Produk', icon: Package, roles: ['admin'] },
+    { id: 'stok-opname', label: 'Stok Opname', icon: ClipboardList, roles: ['admin'] },
+    { id: 'penjualan', label: 'Riwayat Penjualan', icon: ScrollText, roles: ['admin'] },
     { id: 'retur', label: 'Retur', icon: Undo2, roles: ['admin', 'kasir'] },
     { id: 'pengeluaran', label: 'Pengeluaran', icon: Wallet, roles: ['admin', 'kasir'] },
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
