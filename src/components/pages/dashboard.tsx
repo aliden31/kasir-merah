@@ -162,7 +162,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
                         <p className="text-xs text-muted-foreground">Total penjualan bersih hari ini</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('laporan')}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Laba Hari Ini</CardTitle>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
