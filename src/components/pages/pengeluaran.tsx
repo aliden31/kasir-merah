@@ -28,7 +28,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Expense, Settings, UserRole } from '@/lib/types';
+import type { Expense, Settings, UserRole, SubCategory } from '@/lib/types';
 import { PlusCircle, Calendar as CalendarIcon, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getExpenses, addExpense, getSettings, updateExpense } from '@/lib/data-service';
@@ -97,6 +97,7 @@ export const ExpenseForm = ({
     const [date, setDate] = useState<Date>(new Date());
     const [isSaving, setIsSaving] = useState(false);
     const [settings, setSettings] = useState<Settings | null>(null);
+    const [selectedSubCategory, setSelectedSubCategory] = useState<string>('');
     
     useEffect(() => {
         const fetchFormSettings = async () => {
@@ -119,8 +120,25 @@ export const ExpenseForm = ({
             setAmount('');
             setCategory('');
             setDate(new Date());
+            setSelectedSubCategory('');
         }
     }, [expense]);
+    
+    useEffect(() => {
+        if (selectedSubCategory && selectedSubCategory !== 'lainnya') {
+            setName(selectedSubCategory);
+        } else if (selectedSubCategory === 'lainnya') {
+            setName('');
+        }
+    }, [selectedSubCategory]);
+
+    const activeSubcategories = useMemo(() => {
+        return settings?.expenseCategories?.find(c => c.name === category)?.subcategories || [];
+    }, [category, settings]);
+    
+    const showSubCategoryInput = activeSubcategories.length > 0;
+    const showFreeTextInput = selectedSubCategory === 'lainnya' || !showSubCategoryInput;
+
 
     const handleSubmit = async () => {
         if (amount === '' || amount <= 0 || !category || !name) {
@@ -170,16 +188,39 @@ export const ExpenseForm = ({
                         </SelectContent>
                     </Select>
                 </div>
-                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">Deskripsi</Label>
-                    <Input 
-                        id="name" 
-                        value={name} 
-                        onChange={(e) => setName(e.target.value)} 
-                        className="col-span-3"
-                        placeholder="Deskripsi pengeluaran"
-                    />
-                </div>
+                 
+                 {showSubCategoryInput && (
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="subcategory" className="text-right">Deskripsi</Label>
+                        <Select onValueChange={setSelectedSubCategory} value={selectedSubCategory}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Pilih deskripsi" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {activeSubcategories.map(sub => (
+                                    <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
+                                ))}
+                                <SelectItem value="lainnya">Lainnya...</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                 )}
+
+                 {showFreeTextInput && (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">
+                           {showSubCategoryInput ? 'Deskripsi Lain' : 'Deskripsi'}
+                        </Label>
+                        <Input 
+                            id="name" 
+                            value={name} 
+                            onChange={(e) => setName(e.target.value)} 
+                            className="col-span-3"
+                            placeholder="Deskripsi pengeluaran"
+                        />
+                    </div>
+                 )}
+
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="amount" className="text-right">Jumlah</Label>
                     <Input 
@@ -415,3 +456,4 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
 
 PengeluaranPage.displayName = 'PengeluaranPage';
 export default PengeluaranPage;
+
