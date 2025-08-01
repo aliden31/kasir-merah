@@ -68,10 +68,10 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         const totalReturnValue = returnsToday.reduce((sum, ret) => sum + ret.totalRefund, 0);
 
         const totalCostOfGoodsSold = salesToday.reduce((sum, sale) => 
-            sum + sale.items.reduce((itemSum, item) => itemSum + (item.costPriceAtSale * item.quantity), 0), 0);
+            sum + sale.items.reduce((itemSum, item) => itemSum + ((item.costPriceAtSale || 0) * item.quantity), 0), 0);
         
         const totalCostOfReturnedGoods = returnsToday.reduce((sum, ret) =>
-            sum + ret.items.reduce((itemSum, item) => itemSum + (item.costPriceAtSale * item.quantity), 0), 0);
+            sum + ret.items.reduce((itemSum, item) => itemSum + ((item.costPriceAtSale || 0) * item.quantity), 0), 0);
 
         const netRevenue = totalRevenue - totalReturnValue;
         const netCOGS = totalCostOfGoodsSold - totalCostOfReturnedGoods;

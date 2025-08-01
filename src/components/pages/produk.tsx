@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts, getProductById, getSales, getSettings } from '@/lib/data-service';
+import { getProducts, addProduct, updateProduct, deleteProduct, addPlaceholderProducts, getSales } from '@/lib/data-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ProdukPageProps {
@@ -249,20 +249,9 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
     }
   }
 
-  const handleOpenForm = async (productId?: string) => {
-      if (productId) {
-        try {
-            const product = await getProductById(productId);
-            if (product) {
-                setEditingProduct(product);
-            } else {
-                 toast({ title: "Error", description: "Produk tidak ditemukan.", variant: "destructive" });
-                 return;
-            }
-        } catch (error) {
-            toast({ title: "Error", description: "Gagal mengambil data produk.", variant: "destructive" });
-            return;
-        }
+  const handleOpenForm = (product?: Product) => {
+      if (product) {
+        setEditingProduct(product);
       } else {
         setEditingProduct(undefined);
       }
@@ -330,7 +319,7 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
                         <TableRow key={product.id}>
                         <TableCell
                             className="font-medium cursor-pointer hover:underline"
-                            onClick={() => handleOpenForm(product.id)}
+                            onClick={() => handleOpenForm(product)}
                         >
                             {product.name}
                         </TableCell>
@@ -352,7 +341,7 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => handleOpenForm(product.id)}>
+                                    <DropdownMenuItem onClick={() => handleOpenForm(product)}>
                                         <Edit className="mr-2 h-4 w-4" />
                                         <span>Edit</span>
                                     </DropdownMenuItem>
