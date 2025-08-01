@@ -13,6 +13,7 @@ import {
   SidebarFooter,
   SidebarTrigger,
   SidebarInset,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   LayoutGrid,
@@ -45,7 +46,7 @@ import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
 import ActivityLogPage from '@/components/pages/activity-log';
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings } from '@/lib/types';
-import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings } from '@/lib/data-service';
+import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings, getSales, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -76,13 +77,16 @@ const defaultSettings: AppSettings = {
 };
 const defaultFlashSale: FlashSale = { id: 'main', title: '', isActive: false, products: [] };
 
-export default function AppPage() {
+function AppPageContent() {
   const { user, userRole, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { setOpenMobile } = useSidebar();
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [flashSale, setFlashSale] = useState<FlashSale>(defaultFlashSale);
   const [products, setProducts] = useState<Product[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
+  const [returns, setReturns] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -90,30 +94,35 @@ export default function AppPage() {
     if (!userRole) return;
     setIsLoading(true);
     try {
+      const settingsPromise = getSettings();
+      const flashSalePromise = getFlashSaleSettings();
+      const productsPromise = getProducts();
       const publicSettingsPromise = getPublicSettings();
-      
-      // Admins fetch everything.
-      if (userRole === 'admin') {
-        const [publicSettings, appSettings, flashSaleSettings, productsData] = await Promise.all([
-          publicSettingsPromise,
-          getSettings(),
-          getFlashSaleSettings(),
-          getProducts(),
-        ]);
-        setSettings({ ...appSettings, defaultDiscount: publicSettings.defaultDiscount });
-        setFlashSale(flashSaleSettings);
-        setProducts(productsData);
-      } else { // Cashiers only fetch what they are allowed to read.
-        const [publicSettings, flashSaleSettings, productsData] = await Promise.all([
-          publicSettingsPromise,
-          getFlashSaleSettings(),
-          getProducts(),
-        ]);
-        // For cashiers, we use default settings to avoid permission errors but merge public settings
-        setSettings({ ...defaultSettings, storeName: 'Kasir', defaultDiscount: publicSettings.defaultDiscount }); 
-        setFlashSale(flashSaleSettings);
-        setProducts(productsData);
-      }
+      const salesPromise = getSales();
+      const returnsPromise = getReturns();
+
+      const [
+        appSettings, 
+        flashSaleSettings, 
+        productsData, 
+        publicSettings,
+        salesData,
+        returnsData
+      ] = await Promise.all([
+        settingsPromise, 
+        flashSalePromise, 
+        productsPromise,
+        publicSettingsPromise,
+        salesPromise,
+        returnsPromise
+      ]);
+
+      setSettings({ ...appSettings, defaultDiscount: publicSettings.defaultDiscount });
+      setFlashSale(flashSaleSettings);
+      setProducts(productsData);
+      setSales(salesData);
+      setReturns(returnsData);
+
     } catch (error) {
       console.error(error);
       toast({
@@ -174,9 +183,9 @@ export default function AppPage() {
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, roles: ['admin'] },
     { id: 'kasir', label: 'Kasir', icon: LayoutGrid, roles: ['admin', 'kasir'] },
-    { id: 'produk', label: 'Produk', icon: Package, roles: ['admin'] },
-    { id: 'stok-opname', label: 'Stok Opname', icon: ClipboardList, roles: ['admin'] },
-    { id: 'penjualan', label: 'Riwayat Penjualan', icon: ScrollText, roles: ['admin'] },
+    { id: 'produk', label: 'Produk', icon: Package, roles: ['admin', 'kasir'] },
+    { id: 'stok-opname', label: 'Stok Opname', icon: ClipboardList, roles: ['admin', 'kasir'] },
+    { id: 'penjualan', label: 'Riwayat Penjualan', icon: ScrollText, roles: ['admin', 'kasir'] },
     { id: 'retur', label: 'Retur', icon: Undo2, roles: ['admin', 'kasir'] },
     { id: 'pengeluaran', label: 'Pengeluaran', icon: Wallet, roles: ['admin', 'kasir'] },
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
@@ -188,6 +197,11 @@ export default function AppPage() {
   const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(userRole));
   
   const activeMenu = menuItems.find(item => item.id === activeView);
+
+  const handleNavigate = (view: View) => {
+    setActiveView(view);
+    setOpenMobile(false);
+  }
 
   const renderView = () => {
     if (isLoading || authLoading) {
@@ -201,7 +215,7 @@ export default function AppPage() {
     }
     switch (activeView) {
       case 'dashboard':
-        return <DashboardPage onNavigate={setActiveView} />;
+        return <DashboardPage onNavigate={handleNavigate} />;
       case 'kasir':
         return <KasirPage 
           settings={settings}
@@ -209,6 +223,7 @@ export default function AppPage() {
           products={products}
           onDataNeedsRefresh={refreshAllData}
           userRole={userRole!}
+          sales={sales}
         />;
       case 'produk':
         return <ProdukPage onDataChange={refreshAllData} userRole={userRole!} />;
@@ -221,7 +236,7 @@ export default function AppPage() {
       case 'pengeluaran':
         return <PengeluaranPage userRole={userRole!} />;
       case 'laporan':
-        return <LaporanPage onNavigate={setActiveView} />;
+        return <LaporanPage onNavigate={handleNavigate} />;
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':
@@ -235,7 +250,8 @@ export default function AppPage() {
           products={products}
           onDataNeedsRefresh={refreshAllData}
           userRole={userRole!}
-        /> : <DashboardPage onNavigate={setActiveView} />;
+          sales={sales}
+        /> : <DashboardPage onNavigate={handleNavigate} />;
     }
   };
 
@@ -244,7 +260,6 @@ export default function AppPage() {
   }
 
   return (
-    <SidebarProvider>
       <div className={cn("flex min-h-screen bg-background")}>
         <Sidebar>
           <SidebarHeader>
@@ -262,7 +277,7 @@ export default function AppPage() {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
-                    onClick={() => setActiveView(item.id as View)}
+                    onClick={() => handleNavigate(item.id as View)}
                     isActive={activeView === item.id}
                     tooltip={item.label}
                   >
@@ -301,6 +316,14 @@ export default function AppPage() {
             <main className="p-4 md:p-6">{renderView()}</main>
         </SidebarInset>
       </div>
-    </SidebarProvider>
   );
+}
+
+
+export default function AppPage() {
+  return (
+    <SidebarProvider>
+      <AppPageContent />
+    </SidebarProvider>
+  )
 }

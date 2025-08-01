@@ -39,11 +39,28 @@ const formatCurrency = (amount: number) => {
 };
 
 
-export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: Sale[], onSave: (item: Omit<Return, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void, userRole: UserRole }) => {
+export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: Omit<Return, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void, userRole: UserRole }) => {
+    const [sales, setSales] = useState<Sale[]>([]);
+    const [loading, setLoading] = useState(true);
     const [selectedSaleId, setSelectedSaleId] = useState<string>('');
     const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchSales = async () => {
+            setLoading(true);
+            try {
+                const salesData = await getSales();
+                setSales(salesData);
+            } catch (error) {
+                toast({ title: "Error", description: "Gagal memuat riwayat transaksi.", variant: "destructive"});
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchSales();
+    }, [toast]);
     
     const selectedSale = useMemo(() => sales.find(s => s.id === selectedSaleId), [selectedSaleId, sales]);
 
@@ -147,7 +164,7 @@ export const ReturnForm = ({ sales, onSave, onOpenChange, userRole }: { sales: S
                             <SelectValue placeholder="Pilih ID Transaksi..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {sortedSales.map((sale) => (
+                            {loading ? <SelectItem value="loading" disabled>Memuat transaksi...</SelectItem> : sortedSales.map((sale) => (
                                 <SelectItem key={sale.id} value={sale.id}>
                                     trx {String(salesMap.get(sale.id)).padStart(4, '0')} - {new Date(sale.date).toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
                                 </SelectItem>
@@ -298,7 +315,7 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
                     Catat Retur
                 </Button>
             </DialogTrigger>
-            <ReturnForm sales={sales} onSave={handleSaveReturn} onOpenChange={setFormOpen} userRole={userRole} />
+            <ReturnForm onSave={handleSaveReturn} onOpenChange={setFormOpen} userRole={userRole} />
         </Dialog>
       </div>
 

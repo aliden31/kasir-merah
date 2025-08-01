@@ -22,7 +22,7 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { addSale, getSales, addReturn, addExpense } from '@/lib/data-service';
+import { addSale, addReturn, addExpense } from '@/lib/data-service';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -41,10 +41,10 @@ interface KasirPageProps {
   products: Product[];
   onDataNeedsRefresh: () => void;
   userRole: UserRole;
+  sales: Sale[];
 }
 
-const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, products, onDataNeedsRefresh, userRole }) => {
-  const [sales, setSales] = useState<Sale[]>([]);
+const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, products, onDataNeedsRefresh, userRole, sales }) => {
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [discount, setDiscount] = useState(settings.defaultDiscount || 0);
@@ -58,22 +58,6 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
 
   const { toast } = useToast();
 
-  const fetchSalesData = async () => {
-    setLoading(true);
-    try {
-        const salesData = await getSales();
-        setSales(salesData);
-    } catch (error) {
-        toast({ title: "Error", description: "Gagal memuat data penjualan.", variant: "destructive" });
-    } finally {
-        setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSalesData();
-  }, []);
-  
   useEffect(() => {
     setDiscount(settings.defaultDiscount || 0);
   }, [settings.defaultDiscount]);
@@ -215,13 +199,9 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
     }
   }
 
-  const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'date'> & { date?: Date }) => {
+  const handleSaveExpense = async (expenseData: Omit<Expense, 'id'>) => {
     try {
-        const finalExpenseData: Omit<Expense, 'id'> = {
-            ...expenseData,
-            date: expenseData.date || new Date(),
-        };
-        await addExpense(finalExpenseData, userRole);
+        await addExpense(expenseData, userRole);
         toast({ title: "Pengeluaran Disimpan", description: `Pengeluaran telah berhasil disimpan.` });
         onDataNeedsRefresh();
     } catch(error) {
@@ -325,7 +305,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
                             <Undo2 className="mr-2 h-4 w-4" /> Retur
                         </Button>
                     </DialogTrigger>
-                    <ReturnForm sales={sales} onSave={handleSaveReturn} onOpenChange={setReturnFormOpen} userRole={userRole} />
+                    <ReturnForm onSave={handleSaveReturn} onOpenChange={setReturnFormOpen} userRole={userRole} />
                 </Dialog>
                 <Dialog open={isExpenseFormOpen} onOpenChange={setExpenseFormOpen}>
                     <DialogTrigger asChild>
