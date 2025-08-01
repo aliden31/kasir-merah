@@ -46,7 +46,7 @@ const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3
 
 const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
     const expensesByCategory = expenses.reduce((acc, expense) => {
-        const key = expense.subcategory || expense.category;
+        const key = expense.name || expense.category;
         acc[key] = (acc[key] || 0) + expense.amount;
         return acc;
     }, {} as Record<string, number>);
@@ -94,7 +94,6 @@ export const ExpenseForm = ({
     const [name, setName] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
     const [category, setCategory] = useState('');
-    const [subcategory, setSubcategory] = useState('');
     const [date, setDate] = useState<Date>(new Date());
     const [isSaving, setIsSaving] = useState(false);
     const [settings, setSettings] = useState<Settings | null>(null);
@@ -114,40 +113,25 @@ export const ExpenseForm = ({
             setName(expense.name);
             setAmount(expense.amount);
             setCategory(expense.category);
-            setSubcategory(expense.subcategory || '');
             setDate(new Date(expense.date));
         } else {
             setName('');
             setAmount('');
             setCategory('');
-            setSubcategory('');
             setDate(new Date());
         }
     }, [expense]);
 
-    const selectedCategory = useMemo(() => {
-        return (settings?.expenseCategories || []).find(c => c.name === category);
-    }, [category, settings?.expenseCategories]);
-
-    useEffect(() => {
-        if (!expense) {
-            setSubcategory('');
-        }
-    }, [category, expense]);
-
     const handleSubmit = async () => {
-        if (amount === '' || amount <= 0 || !category) {
+        if (amount === '' || amount <= 0 || !category || !name) {
             return;
         }
-        if (selectedCategory?.subcategories?.length && !subcategory) {
-            return;
-        }
+        
         setIsSaving(true);
         const expenseData: Omit<Expense, 'id'> = {
-            name: subcategory || category,
+            name: name,
             amount: Number(amount),
             category,
-            subcategory,
             date,
         };
 
@@ -161,7 +145,7 @@ export const ExpenseForm = ({
         setIsSaving(false);
     }
     
-    const isSaveDisabled = isSaving || !settings || amount === '' || amount <= 0 || !category || (!!selectedCategory?.subcategories?.length && !subcategory);
+    const isSaveDisabled = isSaving || !settings || amount === '' || amount <= 0 || !category || !name;
     
     if (!settings) {
         return <DialogContent><div>Memuat kategori...</div></DialogContent>
@@ -186,21 +170,16 @@ export const ExpenseForm = ({
                         </SelectContent>
                     </Select>
                 </div>
-                {selectedCategory && selectedCategory.subcategories.length > 0 && (
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="subcategory" className="text-right">Deskripsi</Label>
-                        <Select onValueChange={(value) => setSubcategory(value)} value={subcategory}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Pilih deskripsi" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {selectedCategory.subcategories.map(sub => (
-                                    <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                )}
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">Deskripsi</Label>
+                    <Input 
+                        id="name" 
+                        value={name} 
+                        onChange={(e) => setName(e.target.value)} 
+                        className="col-span-3"
+                        placeholder="Deskripsi pengeluaran"
+                    />
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="amount" className="text-right">Jumlah</Label>
                     <Input 
@@ -384,7 +363,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
                             <TableHeader>
                             <TableRow>
                                 <TableHead>Tanggal</TableHead>
-                                <TableHead>Nama Pengeluaran</TableHead>
+                                <TableHead>Deskripsi</TableHead>
                                 <TableHead>Kategori</TableHead>
                                 <TableHead className="text-right">Jumlah</TableHead>
                                 <TableHead className="text-right">Aksi</TableHead>
@@ -397,7 +376,6 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
                                 <TableCell className="font-medium">{expense.name}</TableCell>
                                 <TableCell>
                                     {expense.category}
-                                    {expense.subcategory && <span className="text-muted-foreground text-xs"> / {expense.subcategory}</span>}
                                 </TableCell>
                                 <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
                                 <TableCell className="text-right">
