@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { FC } from 'react';
@@ -37,7 +38,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Edit, Loader2, MinusCircle, PlusCircle, Trash2 } from 'lucide-react';
+import { Edit, Loader2, MinusCircle, PlusCircle, Trash2, Calendar as CalendarIcon } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 
 const formatCurrency = (amount: number) => {
@@ -64,20 +69,25 @@ const EditSaleForm = ({ sale, onSave, onOpenChange, userRole }: { sale: Sale, on
 
         updatedItems = updatedItems.filter(item => item.quantity > 0);
         
-        recalculateTotals(updatedItems, editedSale.discount);
+        recalculateTotals(updatedItems, editedSale.discount, editedSale.date);
     };
 
     const handleDiscountChange = (newDiscount: number) => {
         if (!editedSale) return;
         if (newDiscount < 0) newDiscount = 0;
         if (newDiscount > 100) newDiscount = 100;
-        recalculateTotals(editedSale.items, newDiscount);
+        recalculateTotals(editedSale.items, newDiscount, editedSale.date);
     };
 
-    const recalculateTotals = (items: SaleItem[], discount: number) => {
+    const handleDateChange = (newDate: Date | undefined) => {
+        if (!editedSale || !newDate) return;
+        recalculateTotals(editedSale.items, editedSale.discount, newDate);
+    }
+
+    const recalculateTotals = (items: SaleItem[], discount: number, date: Date) => {
         const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
         const finalTotal = subtotal * (1 - discount / 100);
-        setEditedSale(prev => prev ? { ...prev, items, subtotal, discount, finalTotal } : null);
+        setEditedSale(prev => prev ? { ...prev, items, subtotal, discount, finalTotal, date } : null);
     };
     
     const handleSubmit = async () => {
@@ -131,6 +141,28 @@ const EditSaleForm = ({ sale, onSave, onOpenChange, userRole }: { sale: Sale, on
                 </ScrollArea>
                 <Separator />
                 <div className="w-full space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                        <Label htmlFor="transactionDate">Tanggal Transaksi</Label>
+                         <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className="w-[180px] justify-start text-left font-normal h-8"
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {format(editedSale.date, "PPP", { locale: id })}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={editedSale.date}
+                                onSelect={handleDateChange}
+                                initialFocus
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                     <div className="flex justify-between">
                         <span>Subtotal</span>
                         <span>{formatCurrency(editedSale.subtotal)}</span>
