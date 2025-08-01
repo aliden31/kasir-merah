@@ -39,7 +39,7 @@ import { id } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
@@ -115,6 +115,7 @@ export const ExpenseForm = ({
             setAmount(expense.amount);
             setCategory(expense.category);
             setDate(new Date(expense.date));
+            setSelectedSubCategory(expense.subcategory || '');
         } else {
             setName('');
             setAmount('');
@@ -151,6 +152,7 @@ export const ExpenseForm = ({
             amount: Number(amount),
             category,
             date,
+            subcategory: selectedSubCategory,
         };
 
         if (expense?.id) {
@@ -456,4 +458,3 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
 
 PengeluaranPage.displayName = 'PengeluaranPage';
 export default PengeluaranPage;
-

@@ -302,8 +302,17 @@ export const updateExpense = async (id: string, expenseData: Partial<Omit<Expens
 
 // Return-specific functions
 export async function getReturns(): Promise<Return[]> {
-    return getCollection<Return>('returns');
+    const returnsData = await getCollection<any>('returns');
+    return returnsData.map((ret: any) => ({
+        ...ret,
+        date: ret.date,
+        items: ret.items.map((item: any) => ({
+            ...item,
+            product: item.product || { id: 'unknown', name: 'Produk Dihapus' }
+        }))
+    }));
 }
+
 
 export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole): Promise<Return> => {
     let newReturn: Return | null = null;

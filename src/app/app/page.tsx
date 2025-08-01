@@ -45,7 +45,7 @@ import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
 import ActivityLogPage from '@/components/pages/activity-log';
-import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings } from '@/lib/types';
+import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings, Sale, Return } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings, getSales, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -85,8 +85,8 @@ function AppPageContent() {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [flashSale, setFlashSale] = useState<FlashSale>(defaultFlashSale);
   const [products, setProducts] = useState<Product[]>([]);
-  const [sales, setSales] = useState<any[]>([]);
-  const [returns, setReturns] = useState<any[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [returns, setReturns] = useState<Return[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 

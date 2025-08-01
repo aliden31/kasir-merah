@@ -49,9 +49,9 @@ interface ProdukPageProps {
 
 const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
     const [name, setName] = useState(product?.name || '');
-    const [costPrice, setCostPrice] = useState(product?.costPrice ?? '');
-    const [sellingPrice, setSellingPrice] = useState(product?.sellingPrice ?? '');
-    const [stock, setStock] = useState(product?.stock ?? '');
+    const [costPrice, setCostPrice] = useState<number | ''>(product?.costPrice ?? '');
+    const [sellingPrice, setSellingPrice] = useState<number | ''>(product?.sellingPrice ?? '');
+    const [stock, setStock] = useState<number | ''>(product?.stock ?? '');
     const [category, setCategory] = useState(product?.category || '');
     const [subcategory, setSubcategory] = useState(product?.subcategory || '');
     const [isSaving, setIsSaving] = useState(false);
@@ -172,35 +172,6 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
                 toast({ title: "Inisialisasi berhasil", description: "Data produk sampel telah ditambahkan." });
                 onDataChange();
             }
-
-            const productMap = new Map<string, Product[]>();
-            productsData.forEach(p => {
-                const key = p.name.toLowerCase().trim();
-                if (!productMap.has(key)) {
-                    productMap.set(key, []);
-                }
-                productMap.get(key)!.push(p);
-            });
-
-            let duplicatesFound = false;
-            if (userRole === 'admin') {
-                for (const products of productMap.values()) {
-                    if (products.length > 1) {
-                        duplicatesFound = true;
-                        const productsToDelete = products.slice(1);
-                        for (const p of productsToDelete) {
-                            await deleteProduct(p.id, userRole);
-                        }
-                    }
-                }
-            }
-
-
-            if (duplicatesFound) {
-                 toast({ title: "Produk Ganda Dihapus", description: "Beberapa produk ganda telah dihapus secara otomatis." });
-                 productsData = await getProducts();
-                 onDataChange();
-            }
             
             setProducts(productsData);
             setSales(salesData);
@@ -214,7 +185,7 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
 
   useEffect(() => {
     fetchInitialData();
-  }, [toast, userRole]);
+  }, [userRole]);
   
   const sortedProducts = useMemo(() => {
     const productsWithSales = products.map(product => {
