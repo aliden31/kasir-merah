@@ -4,10 +4,10 @@
 import type { FC } from 'react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, ShoppingCart, Package, TrendingUp, Users, Clock } from 'lucide-react';
+import { DollarSign, ShoppingCart, Package, TrendingUp, Users, Clock, Wallet } from 'lucide-react';
 import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Bar } from 'recharts';
-import type { Sale, Return, Product } from '@/lib/types';
-import { getSales, getReturns, getProducts } from '@/lib/data-service';
+import type { Sale, Return, Product, Expense } from '@/lib/types';
+import { getSales, getReturns, getProducts, getExpenses } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
@@ -38,6 +38,7 @@ const formatCurrency = (amount: number) => {
 const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [returns, setReturns] = useState<Return[]>([]);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
@@ -45,9 +46,10 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [salesData, returnsData] = await Promise.all([getSales(), getReturns()]);
+                const [salesData, returnsData, expensesData] = await Promise.all([getSales(), getReturns(), getExpenses()]);
                 setSales(salesData);
                 setReturns(returnsData);
+                setExpenses(expensesData);
             } catch (error) {
                 toast({ title: "Error", description: "Gagal memuat data dashboard.", variant: "destructive" });
             } finally {
@@ -64,9 +66,11 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
 
         const salesToday = sales.filter(s => isWithinInterval(s.date, interval));
         const returnsToday = returns.filter(r => isWithinInterval(r.date, interval));
+        const expensesToday = expenses.filter(e => isWithinInterval(e.date, interval));
 
         const totalRevenue = salesToday.reduce((sum, sale) => sum + sale.finalTotal, 0);
         const totalReturnValue = returnsToday.reduce((sum, ret) => sum + ret.totalRefund, 0);
+        const totalExpenses = expensesToday.reduce((sum, exp) => sum + exp.amount, 0);
 
         const totalCostOfGoodsSold = salesToday.reduce((sum, sale) => 
             sum + sale.items.reduce((itemSum, item) => itemSum + ((item.costPriceAtSale || 0) * item.quantity), 0), 0);
@@ -76,7 +80,8 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
 
         const netRevenue = totalRevenue - totalReturnValue;
         const netCOGS = totalCostOfGoodsSold - totalCostOfReturnedGoods;
-        const profit = netRevenue - netCOGS;
+        const grossProfit = netRevenue - netCOGS;
+        const profit = grossProfit - totalExpenses;
         
         const itemsSoldCount = salesToday.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
         
@@ -98,8 +103,8 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
             }
         }
         
-        return { netRevenue, profit, itemsSoldCount, bestSellingProduct };
-    }, [sales, returns]);
+        return { netRevenue, profit, itemsSoldCount, bestSellingProduct, totalExpenses };
+    }, [sales, returns, expenses]);
 
     const weeklySalesChartData = useMemo(() => {
         return Array.from({ length: 7 }).map((_, i) => {
@@ -151,7 +156,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
     
     return (
         <div className="space-y-6">
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
                 <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('penjualan')}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Penjualan Hari Ini</CardTitle>
@@ -162,6 +167,16 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
                         <p className="text-xs text-muted-foreground">Total penjualan bersih hari ini</p>
                     </CardContent>
                 </Card>
+                 <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('pengeluaran')}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Pengeluaran Hari Ini</CardTitle>
+                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(todayStats.totalExpenses)}</div>
+                         <p className="text-xs text-muted-foreground">Total pengeluaran hari ini</p>
+                    </CardContent>
+                </Card>
                 <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('laporan')}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Laba Hari Ini</CardTitle>
@@ -170,16 +185,6 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(todayStats.profit)}</div>
                          <p className="text-xs text-muted-foreground">Perkiraan laba bersih hari ini</p>
-                    </CardContent>
-                </Card>
-                <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('penjualan')}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Item Terjual</CardTitle>
-                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">+{todayStats.itemsSoldCount}</div>
-                        <p className="text-xs text-muted-foreground">Total item terjual hari ini</p>
                     </CardContent>
                 </Card>
                 <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('produk')}>
