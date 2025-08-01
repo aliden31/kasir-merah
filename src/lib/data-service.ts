@@ -290,6 +290,16 @@ export const addExpense = async (expense: Omit<Expense, 'id'>, user: UserRole) =
     return newExpense;
 };
 
+export const updateExpense = async (id: string, expenseData: Partial<Omit<Expense, 'id'>>, user: UserRole) => {
+    const dataToUpdate: any = { ...expenseData };
+    if (expenseData.date) {
+        dataToUpdate.date = Timestamp.fromDate(new Date(expenseData.date));
+    }
+    await updateDocument<Expense>('expenses', id, dataToUpdate);
+    await addActivityLog(user, `memperbarui pengeluaran: "${expenseData.name}"`);
+};
+
+
 // Return-specific functions
 export async function getReturns(): Promise<Return[]> {
     return getCollection<Return>('returns');

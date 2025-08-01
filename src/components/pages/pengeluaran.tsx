@@ -29,9 +29,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Expense, Settings, UserRole } from '@/lib/types';
-import { PlusCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { PlusCircle, Calendar as CalendarIcon, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getExpenses, addExpense, getSettings } from '@/lib/data-service';
+import { getExpenses, addExpense, getSettings, updateExpense } from '@/lib/data-service';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -80,7 +80,19 @@ const ExpenseChart = ({ expenses }: { expenses: Expense[] }) => {
     );
 };
 
-export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expense: Omit<Expense, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void, settings: Settings }) => {
+export const ExpenseForm = ({ 
+    expense,
+    onSave, 
+    onOpenChange, 
+    settings,
+    userRole
+}: { 
+    expense?: Expense;
+    onSave: (data: Omit<Expense, 'id'> | Expense) => Promise<void>, 
+    onOpenChange: (open: boolean) => void, 
+    settings: Settings,
+    userRole: UserRole,
+}) => {
     const [name, setName] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
     const [category, setCategory] = useState('');
@@ -88,13 +100,31 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
     const [date, setDate] = useState<Date>(new Date());
     const [isSaving, setIsSaving] = useState(false);
     
+    useEffect(() => {
+        if (expense) {
+            setName(expense.name);
+            setAmount(expense.amount);
+            setCategory(expense.category);
+            setSubcategory(expense.subcategory || '');
+            setDate(new Date(expense.date));
+        } else {
+            setName('');
+            setAmount('');
+            setCategory('');
+            setSubcategory('');
+            setDate(new Date());
+        }
+    }, [expense]);
+
     const selectedCategory = useMemo(() => {
         return (settings.expenseCategories || []).find(c => c.name === category);
     }, [category, settings.expenseCategories]);
 
     useEffect(() => {
-        setSubcategory('');
-    }, [category]);
+        if (!expense) {
+            setSubcategory('');
+        }
+    }, [category, expense]);
 
     const handleSubmit = async () => {
         if (amount === '' || amount <= 0 || !category) {
@@ -104,20 +134,21 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
             return;
         }
         setIsSaving(true);
-        const newExpense: Omit<Expense, 'id'> = {
+        const expenseData: Omit<Expense, 'id'> = {
             name: subcategory || category, // Use subcategory as name if available, otherwise category
             amount: Number(amount),
             category,
             subcategory,
             date,
         };
-        await onSave(newExpense);
+
+        if (expense?.id) {
+            await onSave({ ...expenseData, id: expense.id });
+        } else {
+            await onSave(expenseData);
+        }
+
         onOpenChange(false);
-        setName('');
-        setAmount('');
-        setCategory('');
-        setSubcategory('');
-        setDate(new Date());
         setIsSaving(false);
     }
     
@@ -126,7 +157,7 @@ export const ExpenseForm = ({ onSave, onOpenChange, settings }: { onSave: (expen
     return (
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Catat Pengeluaran Baru</DialogTitle>
+                <DialogTitle>{expense ? 'Edit Pengeluaran' : 'Catat Pengeluaran Baru'}</DialogTitle>
             </DialogHeader>
              <div className="grid gap-4 py-4">
                  <div className="grid grid-cols-4 items-center gap-4">
@@ -210,6 +241,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
   const { toast } = useToast();
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -236,7 +268,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
   
   useEffect(() => {
     fetchInitialData();
-  }, [userRole]);
+  }, []);
   
   const filteredExpenses = useMemo(() => {
     if (!date?.from || !date.to) return expenses;
@@ -245,18 +277,25 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
     return expenses.filter(expense => isWithinInterval(new Date(expense.date), interval));
   }, [expenses, date]);
 
-  const handleSaveExpense = async (expenseData: Omit<Expense, 'id'>) => {
+  const handleSaveExpense = async (expenseData: Omit<Expense, 'id'> | Expense) => {
     try {
-        await addExpense(expenseData, userRole);
-        toast({
-            title: "Pengeluaran Disimpan",
-            description: `Pengeluaran telah berhasil disimpan.`,
-        });
+        if ('id' in expenseData) {
+            await updateExpense(expenseData.id, expenseData, userRole);
+            toast({ title: "Pengeluaran Diperbarui", description: `Pengeluaran telah berhasil diperbarui.` });
+        } else {
+            await addExpense(expenseData, userRole);
+            toast({ title: "Pengeluaran Disimpan", description: `Pengeluaran telah berhasil disimpan.` });
+        }
         await fetchInitialData();
     } catch(error) {
         toast({ title: "Error", description: "Gagal menyimpan pengeluaran.", variant: "destructive" });
         console.error(error);
     }
+  }
+
+  const handleOpenForm = (expense?: Expense) => {
+    setEditingExpense(expense);
+    setFormOpen(true);
   }
 
   if (loading || !settings) {
@@ -304,14 +343,20 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
                 />
                 </PopoverContent>
             </Popover>
-            <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
+            <Dialog open={isFormOpen} onOpenChange={(isOpen) => { setFormOpen(isOpen); if (!isOpen) setEditingExpense(undefined); }}>
                 <DialogTrigger asChild>
-                    <Button>
+                    <Button onClick={() => handleOpenForm()}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Catat
                     </Button>
                 </DialogTrigger>
-                <ExpenseForm onSave={handleSaveExpense} onOpenChange={setFormOpen} settings={settings} />
+                <ExpenseForm 
+                    expense={editingExpense} 
+                    onSave={handleSaveExpense} 
+                    onOpenChange={setFormOpen} 
+                    settings={settings}
+                    userRole={userRole}
+                />
             </Dialog>
         </div>
       </div>
@@ -336,6 +381,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
                                 <TableHead>Nama Pengeluaran</TableHead>
                                 <TableHead>Kategori</TableHead>
                                 <TableHead className="text-right">Jumlah</TableHead>
+                                <TableHead className="text-right">Aksi</TableHead>
                             </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -348,10 +394,15 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
                                     {expense.subcategory && <span className="text-muted-foreground text-xs"> / {expense.subcategory}</span>}
                                 </TableCell>
                                 <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => handleOpenForm(expense)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                </TableCell>
                                 </TableRow>
                             )) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">
+                                    <TableCell colSpan={5} className="h-24 text-center">
                                         Belum ada data pengeluaran pada rentang tanggal ini.
                                     </TableCell>
                                 </TableRow>
