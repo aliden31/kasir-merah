@@ -43,7 +43,7 @@ export interface SaleItem {
 
 export interface Sale {
   id: string;
-  displayId?: number; // Optional display-only ID
+  displayId?: number;
   items: SaleItem[];
   subtotal: number;
   discount: number; // percentage

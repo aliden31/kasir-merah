@@ -48,22 +48,22 @@ interface ProdukPageProps {
 }
 
 const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onSave: (product: Product | Omit<Product, 'id'>) => Promise<void>, onOpenChange: (open: boolean) => void }) => {
-    const [name, setName] = useState(product?.name || '');
-    const [costPrice, setCostPrice] = useState<number | ''>(product?.costPrice ?? '');
-    const [sellingPrice, setSellingPrice] = useState<number | ''>(product?.sellingPrice ?? '');
-    const [stock, setStock] = useState<number | ''>(product?.stock ?? '');
-    const [category, setCategory] = useState(product?.category || '');
-    const [subcategory, setSubcategory] = useState(product?.subcategory || '');
+    const [name, setName] = useState('');
+    const [costPrice, setCostPrice] = useState<number | ''>('');
+    const [sellingPrice, setSellingPrice] = useState<number | ''>('');
+    const [stock, setStock] = useState<number | ''>('');
+    const [category, setCategory] = useState('');
+    const [subcategory, setSubcategory] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
 
     useEffect(() => {
         if (product) {
-            setName(product.name);
-            setCostPrice(product.costPrice);
-            setSellingPrice(product.sellingPrice);
-            setStock(product.stock);
-            setCategory(product.category);
+            setName(product.name || '');
+            setCostPrice(product.costPrice ?? '');
+            setSellingPrice(product.sellingPrice ?? '');
+            setStock(product.stock ?? '');
+            setCategory(product.category || '');
             setSubcategory(product.subcategory || '');
         } else {
             setName('');

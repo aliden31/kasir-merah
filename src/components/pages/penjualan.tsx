@@ -213,9 +213,11 @@ const SalesChart = ({ sales, products }: { sales: Sale[], products: Product[] })
         });
 
         sales.flatMap(sale => sale.items).forEach(item => {
-            const productId = item.product.id;
-            if (itemMap[productId]) {
-                itemMap[productId].quantity += item.quantity;
+            if (item.product) {
+                const productId = item.product.id;
+                if (itemMap[productId]) {
+                    itemMap[productId].quantity += item.quantity;
+                }
             }
         });
 
@@ -353,7 +355,7 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
                                         <dl className="-my-3 divide-y divide-border text-sm">
                                         {sale.items.map((item, itemIndex) => (
                                             <div key={itemIndex} className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-3 sm:gap-4">
-                                                <dt className="font-medium text-foreground">{item.product.name}</dt>
+                                                <dt className="font-medium text-foreground">{item.product?.name || 'Produk Dihapus'}</dt>
                                                 <dd className="text-muted-foreground sm:col-span-2 sm:text-right">{item.quantity} x {formatCurrency(item.price)} = <span className="font-medium text-foreground">{formatCurrency(item.price * item.quantity)}</span></dd>
                                             </div>
                                         ))}

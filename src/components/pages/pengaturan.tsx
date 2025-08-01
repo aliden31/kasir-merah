@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { FC } from 'react';
@@ -140,6 +141,7 @@ const PengaturanPage: FC<PengaturanPageProps> = React.memo(({ settings, onSettin
         setIsDeleting(true);
         try {
             await clearData(dataToDelete, userRole);
+            onSettingsChange(settings); // To trigger a global refresh
             toast({
                 title: "Data Dihapus",
                 description: "Data yang dipilih telah berhasil dihapus.",
