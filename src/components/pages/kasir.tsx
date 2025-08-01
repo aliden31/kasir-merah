@@ -332,7 +332,8 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
                         <div className="flex-grow">
                             <p className="font-semibold text-sm md:text-base">{item.product.name}</p>
                             <p className="text-xs md:text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
-                            <div className="flex items-center gap-2 mt-1">
+                        </div>
+                        <div className="flex items-center gap-2">
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -341,7 +342,12 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
                             >
                                 <MinusCircle className="h-4 w-4" />
                             </Button>
-                            <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                             <Input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => updateQuantity(item.product.id, parseInt(e.target.value) || 0)}
+                                className="w-12 h-8 text-center"
+                            />
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -350,9 +356,8 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
                             >
                                 <PlusCircle className="h-4 w-4" />
                             </Button>
-                            </div>
                         </div>
-                        <p className="font-semibold text-sm md:text-base">{formatCurrency(item.price * item.quantity)}</p>
+                        <p className="font-semibold text-sm md:text-base w-24 text-right">{formatCurrency(item.price * item.quantity)}</p>
                     </div>
                 ))}
                 </div>
@@ -511,4 +516,5 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
 KasirPage.displayName = 'KasirPage';
 export default KasirPage;
 
+    
     
