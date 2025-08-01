@@ -132,13 +132,12 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      setCart((prevCart) => prevCart.filter((item) => item.product.id !== productId));
-    } else {
-      setCart((prevCart) =>
-        prevCart.map((item) => (item.product.id === productId ? { ...item, quantity } : item))
-      );
-    }
+    const newQuantity = Math.max(0, quantity); // Ensure quantity is not negative
+    setCart((prevCart) =>
+      prevCart.map((item) =>
+        item.product.id === productId ? { ...item, quantity: newQuantity } : item
+      )
+    );
   };
 
   const clearCart = () => {
@@ -163,12 +162,26 @@ const KasirPage: FC<KasirPageProps> = React.memo(({ settings, flashSale, product
       });
       return;
     }
+    
+    const itemsInCart = cart.filter(item => item.quantity > 0);
+
+    if (itemsInCart.length === 0) {
+       toast({
+        variant: "destructive",
+        title: "Keranjang Kosong",
+        description: "Tidak ada item dengan jumlah lebih dari 0 untuk dibayar.",
+      });
+      return;
+    }
+
+    const subtotal = itemsInCart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const finalTotal = subtotal * (1 - discount / 100);
 
     const newSale = {
-        items: cart,
+        items: itemsInCart,
         subtotal,
         discount,
-        finalTotal: total,
+        finalTotal: finalTotal,
         date: transactionDate,
     };
 
