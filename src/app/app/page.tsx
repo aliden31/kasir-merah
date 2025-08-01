@@ -219,6 +219,10 @@ function AppPageContent() {
     setActiveView(view);
     setOpenMobile(false);
   }
+  
+  const handleSettingsChange = () => {
+    refreshAllData();
+  }
 
   const renderView = () => {
     if (isLoading || authLoading) {
@@ -264,7 +268,7 @@ function AppPageContent() {
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':
-        return <PengaturanPage settings={settings} onSettingsChange={refreshAllData} userRole={userRole!} />;
+        return <PengaturanPage settings={settings} onSettingsChange={handleSettingsChange} userRole={userRole!} />;
       case 'activity-log':
         return <ActivityLogPage />;
       default:

@@ -32,7 +32,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 
 interface PengaturanPageProps {
   settings: Settings;
-  onSettingsChange: (settings: Settings) => void;
+  onSettingsChange: () => void;
   userRole: UserRole;
 }
 
@@ -59,7 +59,7 @@ const PengaturanPage: FC<PengaturanPageProps> = React.memo(({ settings, onSettin
         setIsSaving(true);
         try {
             await saveSettings(settingsToSave, userRole);
-            onSettingsChange(settingsToSave);
+            onSettingsChange();
             toast({
                 title: "Pengaturan Disimpan",
                 description: "Pengaturan toko telah berhasil diperbarui.",
@@ -141,7 +141,7 @@ const PengaturanPage: FC<PengaturanPageProps> = React.memo(({ settings, onSettin
         setIsDeleting(true);
         try {
             await clearData(dataToDelete, userRole);
-            onSettingsChange(settings); // To trigger a global refresh
+            onSettingsChange(); // To trigger a global refresh
             toast({
                 title: "Data Dihapus",
                 description: "Data yang dipilih telah berhasil dihapus.",
