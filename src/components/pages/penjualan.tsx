@@ -22,10 +22,21 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { getSales, getProducts, updateSale, getSaleById } from '@/lib/data-service';
+import { getSales, getProducts, updateSale, deleteSale } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   Dialog,
   DialogContent,
@@ -298,11 +309,22 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
         fetchSalesData();
     }, []);
     
-    const handleEditClick = async (saleId: string) => {
-      const saleToEdit = sales.find(s => s.id === saleId);
-      if (saleToEdit) {
-        setEditingSale(saleToEdit);
-      }
+    const handleEditClick = (sale: Sale) => {
+      setEditingSale(sale);
+    };
+    
+    const handleDeleteClick = async (sale: Sale) => {
+        try {
+            await deleteSale(sale, userRole);
+            toast({
+                title: "Transaksi Dihapus",
+                description: `Transaksi (trx ${String(sale.displayId).padStart(4, '0')}) telah dihapus.`,
+            });
+            handleSave();
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Gagal menghapus transaksi.";
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        }
     };
     
     const handleSave = () => {
@@ -369,10 +391,35 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
                                             <p className="font-bold text-base pt-2 mt-2 border-t">Total Akhir: <span className="text-primary">{formatCurrency(sale.finalTotal)}</span></p>
                                             <p className="text-sm font-semibold">Perkiraan Laba: <span className={profit >= 0 ? 'text-green-600' : 'text-destructive'}>{formatCurrency(profit)}</span></p>
                                         </div>
-                                         <Button variant="outline" size="sm" onClick={() => handleEditClick(sale.id)}>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            Edit Transaksi
-                                        </Button>
+                                         <div className="flex gap-2">
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="destructive" size="sm">
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Hapus
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Tindakan ini akan menghapus transaksi (trx {String(sale.displayId).padStart(4, '0')}) secara permanen.
+                                                            Stok produk yang terjual akan dikembalikan. Tindakan ini tidak dapat diurungkan.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteClick(sale)} className="bg-destructive hover:bg-destructive/90">
+                                                            Ya, Hapus
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                            <Button variant="outline" size="sm" onClick={() => handleEditClick(sale)}>
+                                                <Edit className="mr-2 h-4 w-4" />
+                                                Edit
+                                            </Button>
+                                         </div>
                                     </div>
                                 </div>
                                 </AccordionContent>

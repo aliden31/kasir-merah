@@ -277,6 +277,32 @@ export const updateSale = async (originalSale: Sale, updatedSaleData: Sale, user
      await addActivityLog(user, `memperbarui penjualan (ID: ...${originalSale.id.slice(-6)})`);
 };
 
+export const deleteSale = async (sale: Sale, user: UserRole): Promise<void> => {
+    await runTransaction(db, async (transaction) => {
+        // Restore stock for each item in the sale
+        for (const item of sale.items) {
+            if (!item.product || item.product.id === 'unknown') continue;
+            
+            const productRef = doc(db, "products", item.product.id);
+            const productDoc = await transaction.get(productRef);
+
+            if (productDoc.exists()) {
+                const productData = productDoc.data() as Product;
+                const newStock = productData.stock + item.quantity;
+                transaction.update(productRef, { stock: newStock });
+            } else {
+                console.warn(`Product with ID ${item.product.id} not found during sale deletion. Stock not restored.`);
+            }
+        }
+
+        // Delete the sale document
+        const saleRef = doc(db, "sales", sale.id);
+        transaction.delete(saleRef);
+    });
+
+    await addActivityLog(user, `menghapus penjualan (ID: ...${sale.id.slice(-6)})`);
+};
+
 
 // Expense-specific functions
 export async function getExpenses(): Promise<Expense[]> {
