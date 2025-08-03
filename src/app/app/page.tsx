@@ -54,6 +54,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/components/auth-provider';
 import { logout } from '@/lib/auth-service';
 import { useRouter } from 'next/navigation';
+import ChatWidget from '@/components/chat-widget';
 
 type View =
   | 'dashboard'
@@ -352,6 +353,7 @@ function AppPageContent() {
                 <h1 className="text-xl font-semibold">{activeMenu?.label}</h1>
             </header>
             <main className="p-4 md:p-6">{renderView()}</main>
+             {user && userRole && <ChatWidget user={user} userRole={userRole} />}
         </SidebarInset>
       </div>
   );

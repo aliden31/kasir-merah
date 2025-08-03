@@ -16,8 +16,10 @@ import {
   runTransaction,
   DocumentReference,
   DocumentData,
+  orderBy,
+  onSnapshot,
 } from 'firebase/firestore';
-import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog, PublicSettings } from './types';
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog, PublicSettings, ChatMessage } from './types';
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -548,7 +550,36 @@ export const clearData = async (dataToClear: Record<DataType, boolean>, user: Us
     await addActivityLog(user, `menghapus data: ${collectionsToDelete.join(', ')}.`);
 };
 
+// Chat-specific functions
+export const getChatMessages = (callback: (messages: ChatMessage[]) => void) => {
+    const q = query(collection(db, 'chatMessages'), orderBy('createdAt', 'asc'));
+  
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const messages: ChatMessage[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        messages.push({
+          id: doc.id,
+          ...data,
+          createdAt: (data.createdAt as Timestamp).toDate(),
+        } as ChatMessage);
+      });
+      callback(messages);
+    });
+  
+    return unsubscribe;
+  };
+  
+  export const addChatMessage = async (message: Omit<ChatMessage, 'id'>) => {
+    const messageData = {
+      ...message,
+      createdAt: Timestamp.fromDate(message.createdAt),
+    };
+    await addDoc(collection(db, 'chatMessages'), messageData);
+  };
+
 // Helper
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
+
