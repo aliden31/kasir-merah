@@ -59,23 +59,23 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         fetchData();
     }, [toast]);
 
-    const todayStats = useMemo(() => {
-        const todayStart = startOfDay(new Date());
+    const last14DaysStats = useMemo(() => {
         const todayEnd = endOfDay(new Date());
-        const interval = { start: todayStart, end: todayEnd };
+        const last14DaysStart = startOfDay(subDays(new Date(), 13));
+        const interval = { start: last14DaysStart, end: todayEnd };
 
-        const salesToday = sales.filter(s => isWithinInterval(s.date, interval));
-        const returnsToday = returns.filter(r => isWithinInterval(r.date, interval));
-        const expensesToday = expenses.filter(e => isWithinInterval(e.date, interval));
+        const salesInRange = sales.filter(s => isWithinInterval(s.date, interval));
+        const returnsInRange = returns.filter(r => isWithinInterval(r.date, interval));
+        const expensesInRange = expenses.filter(e => isWithinInterval(e.date, interval));
 
-        const totalRevenue = salesToday.reduce((sum, sale) => sum + sale.finalTotal, 0);
-        const totalReturnValue = returnsToday.reduce((sum, ret) => sum + ret.totalRefund, 0);
-        const totalExpenses = expensesToday.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalRevenue = salesInRange.reduce((sum, sale) => sum + sale.finalTotal, 0);
+        const totalReturnValue = returnsInRange.reduce((sum, ret) => sum + ret.totalRefund, 0);
+        const totalExpenses = expensesInRange.reduce((sum, exp) => sum + exp.amount, 0);
 
-        const totalCostOfGoodsSold = salesToday.reduce((sum, sale) => 
+        const totalCostOfGoodsSold = salesInRange.reduce((sum, sale) => 
             sum + sale.items.reduce((itemSum, item) => itemSum + ((item.costPriceAtSale || 0) * item.quantity), 0), 0);
         
-        const totalCostOfReturnedGoods = returnsToday.reduce((sum, ret) =>
+        const totalCostOfReturnedGoods = returnsInRange.reduce((sum, ret) =>
             sum + ret.items.reduce((itemSum, item) => itemSum + ((item.costPriceAtSale || 0) * item.quantity), 0), 0);
 
         const netRevenue = totalRevenue - totalReturnValue;
@@ -83,9 +83,9 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         const grossProfit = netRevenue - netCOGS;
         const profit = grossProfit - totalExpenses;
         
-        const itemsSoldCount = salesToday.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+        const itemsSoldCount = salesInRange.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
         
-        const productSales = salesToday
+        const productSales = salesInRange
             .flatMap(s => s.items)
             .reduce((acc, item) => {
                 if (item.product) {
@@ -96,7 +96,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
 
         let bestSellingProduct = 'Tidak ada';
         let maxQuantity = 0;
-        for (const sale of salesToday) {
+        for (const sale of salesInRange) {
             for (const item of sale.items) {
                  if (item.product && productSales[item.product.id] > maxQuantity) {
                     maxQuantity = productSales[item.product.id];
@@ -161,32 +161,32 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
                 <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('penjualan')}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Penjualan Hari Ini</CardTitle>
+                        <CardTitle className="text-sm font-medium">Penjualan (14 Hari)</CardTitle>
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(todayStats.netRevenue)}</div>
-                        <p className="text-xs text-muted-foreground">Total penjualan bersih hari ini</p>
+                        <div className="text-2xl font-bold">{formatCurrency(last14DaysStats.netRevenue)}</div>
+                        <p className="text-xs text-muted-foreground">Total penjualan bersih 14 hari terakhir</p>
                     </CardContent>
                 </Card>
                  <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('pengeluaran')}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pengeluaran Hari Ini</CardTitle>
+                        <CardTitle className="text-sm font-medium">Pengeluaran (14 Hari)</CardTitle>
                         <Wallet className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(todayStats.totalExpenses)}</div>
-                         <p className="text-xs text-muted-foreground">Total pengeluaran hari ini</p>
+                        <div className="text-2xl font-bold">{formatCurrency(last14DaysStats.totalExpenses)}</div>
+                         <p className="text-xs text-muted-foreground">Total pengeluaran 14 hari terakhir</p>
                     </CardContent>
                 </Card>
                 <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('laporan')}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Laba Hari Ini</CardTitle>
+                        <CardTitle className="text-sm font-medium">Laba (14 Hari)</CardTitle>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(todayStats.profit)}</div>
-                         <p className="text-xs text-muted-foreground">Perkiraan laba bersih hari ini</p>
+                        <div className="text-2xl font-bold">{formatCurrency(last14DaysStats.profit)}</div>
+                         <p className="text-xs text-muted-foreground">Perkiraan laba bersih 14 hari terakhir</p>
                     </CardContent>
                 </Card>
                 <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('produk')}>
@@ -195,8 +195,8 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
                         <Package className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold truncate">{todayStats.bestSellingProduct}</div>
-                        <p className="text-xs text-muted-foreground">Produk paling populer hari ini</p>
+                        <div className="text-2xl font-bold truncate">{last14DaysStats.bestSellingProduct}</div>
+                        <p className="text-xs text-muted-foreground">Produk terpopuler 14 hari terakhir</p>
                     </CardContent>
                 </Card>
             </div>
