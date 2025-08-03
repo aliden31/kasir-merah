@@ -152,6 +152,15 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
       )
     );
   };
+  
+  const updatePrice = (productId: string, price: number) => {
+      const newPrice = Math.max(0, price); // Ensure price is not negative
+      setCart((prevCart) =>
+        prevCart.map((item) =>
+          item.product.id === productId ? { ...item, price: newPrice } : item
+        )
+      );
+  };
 
   const clearCart = () => {
     setCart([]);
@@ -355,7 +364,12 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                     <div key={item.product.id} className="flex items-center gap-4">
                         <div className="flex-grow">
                             <p className="font-semibold text-sm md:text-base">{item.product.name}</p>
-                            <p className="text-xs md:text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
+                            <Input
+                                type="number"
+                                value={item.price}
+                                onChange={(e) => updatePrice(item.product.id, parseInt(e.target.value) || 0)}
+                                className="w-28 h-8 text-xs"
+                            />
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
@@ -541,4 +555,6 @@ KasirPage.displayName = 'KasirPage';
 export default KasirPage;
 
     
+    
+
     

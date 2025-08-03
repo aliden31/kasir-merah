@@ -83,6 +83,17 @@ const EditSaleForm = ({ sale, onSave, onOpenChange, userRole }: { sale: Sale, on
         recalculateTotals(updatedItems, editedSale.discount, editedSale.date);
     };
 
+    const updateItemPrice = (productId: string, newPrice: number) => {
+        if (!editedSale) return;
+
+        const updatedItems = editedSale.items.map(item =>
+            item.product.id === productId ? { ...item, price: newPrice } : item
+        );
+        
+        recalculateTotals(updatedItems, editedSale.discount, editedSale.date);
+    };
+
+
     const handleDiscountChange = (newDiscount: number) => {
         if (!editedSale) return;
         if (newDiscount < 0) newDiscount = 0;
@@ -131,7 +142,12 @@ const EditSaleForm = ({ sale, onSave, onOpenChange, userRole }: { sale: Sale, on
                              <div key={item.product.id} className="flex items-center gap-4">
                                 <div className="flex-grow">
                                     <p className="font-semibold text-sm">{item.product.name}</p>
-                                    <p className="text-xs text-muted-foreground">{formatCurrency(item.price)}</p>
+                                    <Input
+                                        type="number"
+                                        value={item.price}
+                                        onChange={(e) => updateItemPrice(item.product.id, parseInt(e.target.value) || 0)}
+                                        className="w-28 h-8 text-xs"
+                                    />
                                 </div>
                                 <div className="flex items-center gap-2">
                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.product.id, item.quantity - 1)}>
@@ -444,3 +460,5 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
 
 PenjualanPage.displayName = 'PenjualanPage';
 export default PenjualanPage;
+
+    
