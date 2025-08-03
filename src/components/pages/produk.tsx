@@ -125,15 +125,15 @@ const ProductForm = ({ product, onSave, onOpenChange }: { product?: Product, onS
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="costPrice" className="text-right">Harga Modal</Label>
-                    <Input id="costPrice" type="number" value={costPrice} onChange={(e) => setCostPrice(Number(e.target.value))} className="col-span-3" placeholder="0"/>
+                    <Input id="costPrice" type="number" value={costPrice} onChange={(e) => setCostPrice(e.target.value === '' ? '' : Number(e.target.value))} className="col-span-3" placeholder="0"/>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="sellingPrice" className="text-right">Harga Jual</Label>
-                    <Input id="sellingPrice" type="number" value={sellingPrice} onChange={(e) => setSellingPrice(Number(e.target.value))} className="col-span-3" placeholder="0"/>
+                    <Input id="sellingPrice" type="number" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value === '' ? '' : Number(e.target.value))} className="col-span-3" placeholder="0"/>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="stock" className="text-right">Stok</Label>
-                    <Input id="stock" type="number" value={stock} onChange={(e) => setStock(Number(e.target.value))} className="col-span-3" placeholder="0"/>
+                    <Input id="stock" type="number" value={stock} onChange={(e) => setStock(e.target.value === '' ? '' : Number(e.target.value))} className="col-span-3" placeholder="0"/>
                 </div>
             </div>
             <DialogFooter>
