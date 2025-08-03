@@ -88,7 +88,9 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         const productSales = salesToday
             .flatMap(s => s.items)
             .reduce((acc, item) => {
-                acc[item.product.id] = (acc[item.product.id] || 0) + item.quantity;
+                if (item.product) {
+                    acc[item.product.id] = (acc[item.product.id] || 0) + item.quantity;
+                }
                 return acc;
             }, {} as Record<string, number>);
 
@@ -96,7 +98,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         let maxQuantity = 0;
         for (const sale of salesToday) {
             for (const item of sale.items) {
-                if (productSales[item.product.id] > maxQuantity) {
+                 if (item.product && productSales[item.product.id] > maxQuantity) {
                     maxQuantity = productSales[item.product.id];
                     bestSellingProduct = item.product.name;
                 }
@@ -106,9 +108,9 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         return { netRevenue, profit, itemsSoldCount, bestSellingProduct, totalExpenses };
     }, [sales, returns, expenses]);
 
-    const weeklySalesChartData = useMemo(() => {
-        return Array.from({ length: 7 }).map((_, i) => {
-            const date = subDays(new Date(), 6 - i);
+    const salesChartData = useMemo(() => {
+        return Array.from({ length: 14 }).map((_, i) => {
+            const date = subDays(new Date(), 13 - i);
             const dayStart = startOfDay(date);
             const dayEnd = endOfDay(date);
             const interval = { start: dayStart, end: dayEnd };
@@ -117,7 +119,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
             const total = dailySales.reduce((sum, sale) => sum + sale.finalTotal, 0);
 
             return {
-                name: format(date, 'EEE', { locale: localeId }),
+                name: format(date, 'd/MM'),
                 Penjualan: total,
             };
         });
@@ -201,11 +203,11 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="lg:col-span-4">
                     <CardHeader>
-                        <CardTitle>Penjualan 7 Hari Terakhir</CardTitle>
+                        <CardTitle>Penjualan 14 Hari Terakhir</CardTitle>
                     </CardHeader>
                     <CardContent className="pl-2">
                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={weeklySalesChartData}>
+                            <BarChart data={salesChartData}>
                                 <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rp${Number(value) / 1000}k`} />
                                 <Tooltip
