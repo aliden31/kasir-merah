@@ -510,7 +510,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
 
         {currentSlide === 0 && (
           <Button
-            className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg lg:hidden z-20"
+            className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg z-20"
             size="icon"
             onClick={() => carouselApi?.scrollNext()}
           >

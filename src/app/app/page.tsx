@@ -30,6 +30,7 @@ import {
   Home as HomeIcon,
   History,
   LogOut,
+  ShoppingCart,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,8 @@ import { useAuth } from '@/components/auth-provider';
 import { logout } from '@/lib/auth-service';
 import { useRouter } from 'next/navigation';
 import ChatWidget from '@/components/chat-widget';
+import { Badge } from '@/components/ui/badge';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type View =
   | 'dashboard'
@@ -91,6 +94,7 @@ function AppPageContent() {
   const [returns, setReturns] = useState<Return[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // Cart state lifted from KasirPage
   const [cart, setCart] = useState<SaleItem[]>([]);
@@ -269,7 +273,7 @@ function AppPageContent() {
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':
-        return <PengaturanPage settings={settings} onSettingsChange={handleSettingsChange} userRole={userRole!} />;
+        return <PengaturanPage settings={settings} onSettingsChange={refreshAllData} userRole={userRole!} />;
       case 'activity-log':
         return <ActivityLogPage />;
       default:
@@ -354,6 +358,26 @@ function AppPageContent() {
             </header>
             <main className="p-4 md:p-6">{renderView()}</main>
              {user && userRole && <ChatWidget user={user} userRole={userRole} />}
+             
+             {isMobile && activeView !== 'kasir' && activeView !== 'pengaturan' && (
+                <Button
+                    className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg z-20"
+                    size="icon"
+                    onClick={() => handleNavigate('kasir')}
+                >
+                    <ShoppingCart className="h-6 w-6" />
+                    <span className="sr-only">Keranjang</span>
+                    {cartItemCount > 0 && (
+                    <Badge
+                        variant="destructive"
+                        className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full p-2 text-xs"
+                    >
+                        {cartItemCount}
+                    </Badge>
+                    )}
+                </Button>
+             )}
+
         </SidebarInset>
       </div>
   );
