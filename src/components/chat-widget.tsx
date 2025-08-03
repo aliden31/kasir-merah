@@ -87,7 +87,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, userRole }) => {
       {!isOpen && (
         <Button
           onClick={handleToggleOpen}
-          className="fixed bottom-4 right-4 z-50 h-14 w-14 rounded-full shadow-lg"
+          className="fixed bottom-4 left-4 z-50 h-14 w-14 rounded-full shadow-lg"
           size="icon"
         >
           {hasUnreadMessages && (
@@ -101,7 +101,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, userRole }) => {
       )}
 
       {isOpen && (
-        <Card className="fixed bottom-4 right-4 z-50 flex h-[60vh] w-80 flex-col shadow-lg">
+        <Card className="fixed bottom-4 left-4 z-50 flex h-[60vh] w-80 flex-col shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between p-4">
             <CardTitle className="text-lg">Obrolan Tim</CardTitle>
             <Button variant="ghost" size="icon" onClick={handleToggleOpen} className="h-6 w-6">
