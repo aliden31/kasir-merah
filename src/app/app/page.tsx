@@ -32,6 +32,7 @@ import {
   LogOut,
   ShoppingCart,
   LayoutDashboard,
+  Calculator,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,7 @@ import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
 import ActivityLogPage from '@/components/pages/activity-log';
 import ErpPage from '@/components/pages/erp';
+import KalkulatorRoasPage from '@/components/pages/kalkulator-roas';
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings, Sale, Return } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings, getSales, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
@@ -73,7 +75,8 @@ type View =
   | 'flash-sale'
   | 'pengaturan'
   | 'activity-log'
-  | 'erp';
+  | 'erp'
+  | 'kalkulator-roas';
 
 const defaultSettings: AppSettings = { 
   storeName: 'Memuat...', 
@@ -215,6 +218,7 @@ function AppPageContent() {
     { id: 'retur', label: 'Retur', icon: Undo2, roles: ['admin', 'kasir'] },
     { id: 'pengeluaran', label: 'Pengeluaran', icon: Wallet, roles: ['admin', 'kasir'] },
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
+    { id: 'kalkulator-roas', label: 'Kalkulator ROAS', icon: Calculator, roles: ['admin'] },
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
     { id: 'pengaturan', label: 'Pengaturan', icon: Settings, roles: ['admin', 'kasir'] },
     { id: 'activity-log', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
@@ -276,6 +280,8 @@ function AppPageContent() {
         return <PengeluaranPage userRole={userRole!} />;
       case 'laporan':
         return <LaporanPage onNavigate={handleNavigate} />;
+      case 'kalkulator-roas':
+        return <KalkulatorRoasPage />;
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':
