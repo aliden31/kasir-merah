@@ -8,13 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 
 const formatCurrency = (amount: number) => {
-    if (isNaN(amount)) return 'Rp 0';
+    if (isNaN(amount) || !isFinite(amount)) return 'Rp 0';
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
-const formatNumber = (amount: number) => {
-    if (isNaN(amount)) return '0';
-    return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+const formatNumber = (amount: number, precision = 2) => {
+    if (isNaN(amount) || !isFinite(amount)) return '0';
+    return new Intl.NumberFormat('id-ID', { minimumFractionDigits: precision, maximumFractionDigits: precision }).format(amount);
 };
 
 
@@ -28,6 +28,8 @@ const KalkulatorRoasPage: React.FC = () => {
         l30dPcsTerjual: '', // G
         biayaProsesPesananConst: '1250',
         hppTambahan: '',
+        overheadNonIklan: '', // M
+        targetProfitMargin: '', // O
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,19 +46,35 @@ const KalkulatorRoasPage: React.FC = () => {
         const G = parseFloat(inputs.l30dPcsTerjual) || 0;
         const biayaProses = parseFloat(inputs.biayaProsesPesananConst) || 0;
         const hppTambahan = parseFloat(inputs.hppTambahan) || 0;
+        const M = parseFloat(inputs.overheadNonIklan) || 0;
+        const O = parseFloat(inputs.targetProfitMargin) || 0;
         
+        // Original Calculations
         const D = (A - B) * (1 - C / 100);
         const H = G > 0 ? F / G : 0;
         const I = H * biayaProses;
-        const J = E; // HPP / pesanan is just HPP/pcs in this context
+        const J = E * H; // HPP /pesanan is HPP/pcs * Faktor Pengali
         const K = J + I + hppTambahan;
         
+        // New Calculations
+        const L = D - K; // Laba Kotor per Pesanan
+        const N = D * (M / 100);
+        const P = D * (O / 100);
+        const Q = L - N - P;
+        const R = Q > 0 ? D / Q : 0;
+        const S = Q > 0 ? A / (Q / 1.11) : 0;
+
         return {
             omzetReal: D,
             faktorPengali: H,
             biayaProsesPesanan: I,
             hppPerPesanan: J,
-            hppReal: K
+            hppReal: K,
+            estimasiOverhead: N,
+            estimasiProfit: P,
+            iklanMax: Q,
+            roasPembukuan: R,
+            roasShopee: S
         };
     }, [inputs]);
 
@@ -116,6 +134,17 @@ const KalkulatorRoasPage: React.FC = () => {
                                 <Input id="hppTambahan" type="number" placeholder="Contoh: Biaya packing" value={inputs.hppTambahan} onChange={handleInputChange} />
                              </div>
                         </div>
+                        <Separator />
+                        <div className="grid sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="overheadNonIklan">M. Overhead non iklan (%)</Label>
+                                <Input id="overheadNonIklan" type="number" placeholder="Biaya kontrakan, internet, dll." value={inputs.overheadNonIklan} onChange={handleInputChange} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="targetProfitMargin">O. Target profit margin bersih (%)</Label>
+                                <Input id="targetProfitMargin" type="number" placeholder="Target laba sebelum pajak" value={inputs.targetProfitMargin} onChange={handleInputChange} />
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -124,31 +153,53 @@ const KalkulatorRoasPage: React.FC = () => {
                         <CardTitle>Hasil Kalkulasi</CardTitle>
                         <CardDescription>Hasil perhitungan berdasarkan data yang Anda masukkan.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3">
                         <div className="flex justify-between items-center">
                             <Label>D. OMZET REAL</Label>
                             <span className="font-semibold text-lg">{formatCurrency(calculated.omzetReal)}</span>
                         </div>
                          <Separator />
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center text-sm">
                             <Label>H. Faktor Pengali</Label>
                             <span className="font-semibold">{formatNumber(calculated.faktorPengali)}</span>
                         </div>
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center text-sm">
                             <Label>I. Biaya Proses Pesanan</Label>
                             <span className="font-semibold">{formatCurrency(calculated.biayaProsesPesanan)}</span>
                         </div>
-                         <div className="flex justify-between items-center">
+                         <div className="flex justify-between items-center text-sm">
                             <Label>J. HPP / Pesanan</Label>
                             <span className="font-semibold">{formatCurrency(calculated.hppPerPesanan)}</span>
                         </div>
-                         <Separator />
-                         <div className="p-4 bg-primary/10 rounded-lg">
-                            <div className="flex justify-between items-center">
-                                <Label className="text-lg font-bold">K. HPP REAL</Label>
-                                <span className="font-bold text-xl text-primary">{formatCurrency(calculated.hppReal)}</span>
-                            </div>
+                         <div className="flex justify-between items-center text-sm font-bold">
+                            <Label>K. HPP REAL</Label>
+                            <span className="font-semibold">{formatCurrency(calculated.hppReal)}</span>
                          </div>
+                         <Separator />
+                         <div className="flex justify-between items-center text-sm">
+                            <Label>N. Estimasi Overhead</Label>
+                            <span className="font-semibold">{formatCurrency(calculated.estimasiOverhead)}</span>
+                        </div>
+                         <div className="flex justify-between items-center text-sm">
+                            <Label>P. Estimasi Profit</Label>
+                            <span className="font-semibold">{formatCurrency(calculated.estimasiProfit)}</span>
+                        </div>
+                        <div className="p-3 bg-primary/10 rounded-lg space-y-2">
+                            <div className="flex justify-between items-center">
+                                <Label className="text-md font-bold">Q. Iklan MAX per pcs</Label>
+                                <span className="font-bold text-lg text-primary">{formatCurrency(calculated.iklanMax)}</span>
+                            </div>
+                        </div>
+                         <Separator />
+                         <div className="flex justify-between items-center text-sm">
+                            <Label>R. ROAS Pembukuan</Label>
+                            <span className="font-semibold">{formatNumber(calculated.roasPembukuan)}</span>
+                        </div>
+                         <div className="flex justify-between items-center text-sm">
+                            <Label>S. ROAS SC Shopee Iklan</Label>
+                            <span className="font-semibold">{formatNumber(calculated.roasShopee)}</span>
+                        </div>
+
                     </CardContent>
                 </Card>
             </div>
