@@ -23,15 +23,15 @@ const formatNumber = (amount: number, precision = 2) => {
 
 const KalkulatorRoasPage: React.FC = () => {
     const [inputs, setInputs] = useState({
-        hargaFinal: '', // A: Revenue per piece after seller discount
-        voucherToko: '', // B: Max store voucher applicable
-        adminFee: '6.5',   // C: Platform admin fee percentage
-        hppPerPcs: '',   // E: Cost of Goods Sold per piece
-        l30dPembeli: '', // F: Buyers in last 30 days
-        l30dPcsTerjual: '', // G: Pieces sold in last 30 days
-        biayaPacking: '', // Additional packing cost per order
-        targetProfit: '20', // O: Target net profit margin
-        overheadCost: '5', // M: Non-ad overhead cost percentage
+        hargaFinal: '',
+        voucherToko: '',
+        adminFee: '6.5',
+        hppPerPcs: '',
+        l30dPembeli: '',
+        l30dPcsTerjual: '',
+        biayaPacking: '',
+        targetProfit: '20',
+        overheadCost: '5',
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,7 +50,7 @@ const KalkulatorRoasPage: React.FC = () => {
         const M = parseFloat(inputs.overheadCost) || 0;
         const O = parseFloat(inputs.targetProfit) || 0;
         
-        // Pendapatan Real per Pesanan
+        // D. OMZET REAL (A-B)x(1-C)
         const D = (A - B) * (1 - C / 100);
 
         // Biaya per Pesanan
@@ -61,30 +61,32 @@ const KalkulatorRoasPage: React.FC = () => {
         // Laba Kotor per Pesanan (sebelum biaya operasional lain)
         const labaKotorPerPesanan = D - totalBiayaModalPerPesanan;
 
-        // Biaya Operasional & Target Profit
-        const estimasiProfit = D * (O / 100);
-        const estimasiOverhead = D * (M / 100);
+        // N. Estimasi Overhead non iklan M% x D
+        const N = D * (M / 100);
+        // P. Estimasi Profit bersih per pcs O% x D
+        const P = D * (O / 100);
 
-        // Batas Biaya Iklan (Break-Even Ad Cost)
-        const budgetIklanMax = labaKotorPerPesanan - estimasiProfit - estimasiOverhead;
+        // Q. Iklan MAX per pcs L-N-P (Laba Kotor - Overhead - Target Profit)
+        const Q = labaKotorPerPesanan - N - P;
 
-        // Metrik ROAS
-        const roasPembukuan = budgetIklanMax > 0 ? D / budgetIklanMax : 0;
-        // Asumsi PPN 11% untuk biaya iklan di platform
-        const roasPlatform = budgetIklanMax > 0 ? A / (budgetIklanMax / 1.11) : 0;
+        // R. ROAS Pembukuan D/Q
+        const R = Q > 0 ? D / Q : 0;
+        
+        // S. ROAS SC shopee iklan A/(Q/1.11)
+        const S = Q > 0 ? A / (Q / 1.11) : 0;
 
 
         return {
-            pendapatanRealPerPesanan: D,
+            omzetReal: D,
             pcsPerPesanan,
             hppPerPesanan,
             totalBiayaModalPerPesanan,
             labaKotorPerPesanan,
-            estimasiProfit,
-            estimasiOverhead,
-            budgetIklanMax,
-            roasPembukuan,
-            roasPlatform
+            estimasiProfit: P,
+            estimasiOverhead: N,
+            budgetIklanMax: Q,
+            roasPembukuan: R,
+            roasPlatform: S
         };
     }, [inputs]);
 
@@ -104,24 +106,24 @@ const KalkulatorRoasPage: React.FC = () => {
                         </CardHeader>
                         <CardContent className="grid sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="hargaFinal">Harga Jual Produk</Label>
+                                <Label htmlFor="hargaFinal">Harga Jual Produk (A)</Label>
                                 <Input id="hargaFinal" type="number" placeholder="Contoh: 100000" value={inputs.hargaFinal} onChange={handleInputChange} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="voucherToko">Maksimal Voucher Toko</Label>
+                                <Label htmlFor="voucherToko">Maksimal Voucher Toko (B)</Label>
                                 <Input id="voucherToko" type="number" placeholder="Contoh: 5000" value={inputs.voucherToko} onChange={handleInputChange} />
                             </div>
                         </CardContent>
                     </Card>
                      <Card>
                         <CardHeader>
-                            <CardTitle>Data Biaya</CardTitle>
+                            <CardTitle>Data Biaya & Operasional</CardTitle>
                             <CardDescription>Masukkan semua biaya yang terkait dengan produk dan operasional.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="hppPerPcs">Harga Pokok Penjualan (HPP) /pcs</Label>
+                                    <Label htmlFor="hppPerPcs">Harga Pokok Penjualan (HPP) /pcs (E)</Label>
                                     <Input id="hppPerPcs" type="number" placeholder="Contoh: 40000" value={inputs.hppPerPcs} onChange={handleInputChange} />
                                 </div>
                                 <div className="space-y-2">
@@ -133,26 +135,26 @@ const KalkulatorRoasPage: React.FC = () => {
                             <p className="text-xs text-muted-foreground pt-2">Data berikut digunakan untuk menghitung rata-rata item per pesanan. Gunakan data dari 30 hari terakhir untuk akurasi.</p>
                              <div className="grid sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="l30dPcsTerjual">Total Pcs Terjual (30 Hari)</Label>
+                                    <Label htmlFor="l30dPcsTerjual">Total Pcs Terjual (G)</Label>
                                     <Input id="l30dPcsTerjual" type="number" placeholder="Contoh: 120" value={inputs.l30dPcsTerjual} onChange={handleInputChange} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="l30dPembeli">Total Pesanan (30 Hari)</Label>
+                                    <Label htmlFor="l30dPembeli">Total Pesanan (F)</Label>
                                     <Input id="l30dPembeli" type="number" placeholder="Contoh: 100" value={inputs.l30dPembeli} onChange={handleInputChange} />
                                 </div>
                             </div>
                             <Separator/>
                              <div className="grid sm:grid-cols-3 gap-4 pt-2">
                                 <div className="space-y-2">
-                                    <Label htmlFor="adminFee">Admin Platform (%)</Label>
+                                    <Label htmlFor="adminFee">Admin Platform (%) (C)</Label>
                                     <Input id="adminFee" type="number" value={inputs.adminFee} onChange={handleInputChange} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="overheadCost">Overhead Non-Iklan (%)</Label>
+                                    <Label htmlFor="overheadCost">Overhead Non-Iklan (%) (M)</Label>
                                     <Input id="overheadCost" type="number" value={inputs.overheadCost} onChange={handleInputChange} />
                                 </div>
                                  <div className="space-y-2">
-                                    <Label htmlFor="targetProfit">Target Profit Bersih (%)</Label>
+                                    <Label htmlFor="targetProfit">Target Profit Bersih (%) (O)</Label>
                                     <Input id="targetProfit" type="number" value={inputs.targetProfit} onChange={handleInputChange} />
                                 </div>
                             </div>
@@ -160,34 +162,15 @@ const KalkulatorRoasPage: React.FC = () => {
                     </Card>
                 </div>
 
-                <div className="lg:col-span-2 space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Ringkasan Biaya per Pesanan</CardTitle>
-                        </CardHeader>
-                         <CardContent className="space-y-3 text-sm">
-                            <div className="flex justify-between items-center">
-                                <Label>Rata-rata item / pesanan</Label>
-                                <span className="font-semibold">{formatNumber(calculated.pcsPerPesanan, 2)} pcs</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <Label>Estimasi HPP / pesanan</Label>
-                                <span className="font-semibold">{formatCurrency(calculated.hppPerPesanan)}</span>
-                            </div>
-                             <div className="flex justify-between items-center font-bold">
-                                <Label>TOTAL MODAL / PESANAN</Label>
-                                <span className="font-semibold">{formatCurrency(calculated.totalBiayaModalPerPesanan)}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
+                <div className="lg:col-span-2 space-y-6 sticky top-6">
                     <Card>
                         <CardHeader>
                             <CardTitle>Hasil Analisis</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex justify-between items-center">
-                                <Label>Pendapatan Real / Pesanan</Label>
-                                <span className="font-bold text-lg">{formatCurrency(calculated.pendapatanRealPerPesanan)}</span>
+                                <Label>Omzet Real / Pesanan (D)</Label>
+                                <span className="font-bold text-lg">{formatCurrency(calculated.omzetReal)}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <Label>Laba Kotor / Pesanan</Label>
@@ -196,29 +179,29 @@ const KalkulatorRoasPage: React.FC = () => {
                             <Separator />
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between items-center">
-                                    <Label className="text-muted-foreground">Target Profit ({inputs.targetProfit}%)</Label>
+                                    <Label className="text-muted-foreground">Target Profit ({inputs.targetProfit}%) (P)</Label>
                                     <span className="font-medium">-{formatCurrency(calculated.estimasiProfit)}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <Label className="text-muted-foreground">Biaya Overhead ({inputs.overheadCost}%)</Label>
+                                    <Label className="text-muted-foreground">Biaya Overhead ({inputs.overheadCost}%) (N)</Label>
                                     <span className="font-medium">-{formatCurrency(calculated.estimasiOverhead)}</span>
                                 </div>
                             </div>
                             <Separator />
                             <Alert className="bg-primary/10 border-primary/20">
                                 <TrendingUp className="h-4 w-4 !text-primary" />
-                                <AlertTitle className="text-primary !mb-0">Batas Biaya Iklan per Pesanan</AlertTitle>
+                                <AlertTitle className="text-primary !mb-0">Batas Biaya Iklan / Pesanan (Q)</AlertTitle>
                                 <AlertDescription className="text-2xl font-bold text-primary">
                                     {formatCurrency(calculated.budgetIklanMax)}
                                 </AlertDescription>
                             </Alert>
                              <div className="space-y-3 pt-2">
                                 <div className="flex justify-between items-center text-sm">
-                                    <Label>Target ROAS Pembukuan</Label>
+                                    <Label>Target ROAS Pembukuan (R)</Label>
                                     <span className="font-semibold text-base">{formatNumber(calculated.roasPembukuan, 2)}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
-                                    <Label>Target ROAS Platform Iklan</Label>
+                                    <Label>Target ROAS Platform Iklan (S)</Label>
                                     <span className="font-semibold text-base">{formatNumber(calculated.roasPlatform, 2)}</span>
                                 </div>
                             </div>
@@ -231,5 +214,3 @@ const KalkulatorRoasPage: React.FC = () => {
 };
 
 export default KalkulatorRoasPage;
-
-    
