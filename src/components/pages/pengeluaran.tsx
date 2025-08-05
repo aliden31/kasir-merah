@@ -37,6 +37,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
+import { Skeleton } from '../ui/skeleton';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
@@ -114,7 +115,7 @@ export const ExpenseForm = ({
             setName(expense.name);
             setAmount(expense.amount);
             setCategory(expense.category);
-            setDate(new Date(expense.date));
+setDate(new Date(expense.date));
             setSelectedSubCategory(expense.subcategory || '');
         } else {
             setName('');
@@ -328,7 +329,29 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
   }
 
   if (loading) {
-    return <div>Memuat data pengeluaran...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <div className="space-y-2">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-4 w-80" />
+            </div>
+            <div className="flex items-center gap-2">
+                <Skeleton className="h-10 w-64" />
+                <Skeleton className="h-10 w-24" />
+            </div>
+        </div>
+        <Card>
+            <CardHeader>
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-72" />
+            </CardHeader>
+            <CardContent>
+                <Skeleton className="h-48 w-full" />
+            </CardContent>
+        </Card>
+    </div>
+    );
   }
     
   return (
@@ -339,39 +362,41 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
             <p className="text-muted-foreground">Catat dan lihat semua pengeluaran toko Anda.</p>
         </div>
         <div className="flex items-center gap-2">
-            <Popover>
-                <PopoverTrigger asChild>
-                <Button
-                    id="date"
-                    variant={"outline"}
-                    className="w-full sm:w-[260px] justify-start text-left font-normal"
-                >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date?.from ? (
-                    date.to ? (
-                        <>
-                        {format(date.from, "LLL dd, y")} -{" "}
-                        {format(date.to, "LLL dd, y")}
-                        </>
-                    ) : (
-                        format(date.from, "LLL dd, y")
-                    )
-                    ) : (
-                    <span>Pilih rentang tanggal</span>
-                    )}
-                </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={date?.from}
-                    selected={date}
-                    onSelect={setDate}
-                    numberOfMonths={2}
-                />
-                </PopoverContent>
-            </Popover>
+            {userRole === 'admin' && (
+              <Popover>
+                  <PopoverTrigger asChild>
+                  <Button
+                      id="date"
+                      variant={"outline"}
+                      className="w-full sm:w-[260px] justify-start text-left font-normal"
+                  >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date?.from ? (
+                      date.to ? (
+                          <>
+                          {format(date.from, "LLL dd, y")} -{" "}
+                          {format(date.to, "LLL dd, y")}
+                          </>
+                      ) : (
+                          format(date.from, "LLL dd, y")
+                      )
+                      ) : (
+                      <span>Pilih rentang tanggal</span>
+                      )}
+                  </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={date?.from}
+                      selected={date}
+                      onSelect={setDate}
+                      numberOfMonths={2}
+                  />
+                  </PopoverContent>
+              </Popover>
+            )}
             <Dialog open={isFormOpen} onOpenChange={(isOpen) => { setFormOpen(isOpen); if (!isOpen) setEditingExpense(undefined); }}>
                 <DialogTrigger asChild>
                     <Button onClick={() => handleOpenForm()}>
@@ -388,70 +413,84 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
             </Dialog>
         </div>
       </div>
-
-      <Tabs defaultValue="riwayat">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="riwayat">Riwayat Pengeluaran</TabsTrigger>
-          <TabsTrigger value="diagram">Diagram</TabsTrigger>
-        </TabsList>
-        <TabsContent value="riwayat" className="mt-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Riwayat Pengeluaran</CardTitle>
-                    <CardDescription>Daftar semua pengeluaran yang telah dicatat dalam rentang waktu terpilih.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                            <TableRow>
-                                <TableHead>Tanggal</TableHead>
-                                <TableHead>Deskripsi</TableHead>
-                                <TableHead>Kategori</TableHead>
-                                <TableHead className="text-right">Jumlah</TableHead>
-                                <TableHead className="text-right">Aksi</TableHead>
-                            </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                            {filteredExpenses.length > 0 ? filteredExpenses.map((expense) => (
-                                <TableRow key={expense.id}>
-                                <TableCell>{new Date(expense.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
-                                <TableCell className="font-medium">{expense.name}</TableCell>
-                                <TableCell>
-                                    {expense.category}
-                                </TableCell>
-                                <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
-                                <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => handleOpenForm(expense)}>
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                </TableCell>
-                                </TableRow>
-                            )) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
-                                        Belum ada data pengeluaran pada rentang tanggal ini.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="diagram" className="mt-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Diagram Pengeluaran</CardTitle>
-                    <CardDescription>Visualisasi pengeluaran berdasarkan kategori dalam rentang waktu terpilih.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ExpenseChart expenses={filteredExpenses} />
-                </CardContent>
-            </Card>
-        </TabsContent>
-      </Tabs>
+      
+      {userRole === 'admin' ? (
+        <Tabs defaultValue="riwayat">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="riwayat">Riwayat Pengeluaran</TabsTrigger>
+            <TabsTrigger value="diagram">Diagram</TabsTrigger>
+          </TabsList>
+          <TabsContent value="riwayat" className="mt-4">
+              <Card>
+                  <CardHeader>
+                      <CardTitle>Riwayat Pengeluaran</CardTitle>
+                      <CardDescription>Daftar semua pengeluaran yang telah dicatat dalam rentang waktu terpilih.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <div className="overflow-x-auto">
+                          <Table>
+                              <TableHeader>
+                              <TableRow>
+                                  <TableHead>Tanggal</TableHead>
+                                  <TableHead>Deskripsi</TableHead>
+                                  <TableHead>Kategori</TableHead>
+                                  <TableHead className="text-right">Jumlah</TableHead>
+                                  <TableHead className="text-right">Aksi</TableHead>
+                              </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                              {filteredExpenses.length > 0 ? filteredExpenses.map((expense) => (
+                                  <TableRow key={expense.id}>
+                                  <TableCell>{new Date(expense.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
+                                  <TableCell className="font-medium">{expense.name}</TableCell>
+                                  <TableCell>
+                                      {expense.category}
+                                  </TableCell>
+                                  <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
+                                  <TableCell className="text-right">
+                                      <Button variant="ghost" size="icon" onClick={() => handleOpenForm(expense)}>
+                                          <Edit className="h-4 w-4" />
+                                      </Button>
+                                  </TableCell>
+                                  </TableRow>
+                              )) : (
+                                  <TableRow>
+                                      <TableCell colSpan={5} className="h-24 text-center">
+                                          Belum ada data pengeluaran pada rentang tanggal ini.
+                                      </TableCell>
+                                  </TableRow>
+                              )}
+                              </TableBody>
+                          </Table>
+                      </div>
+                  </CardContent>
+              </Card>
+          </TabsContent>
+          <TabsContent value="diagram" className="mt-4">
+              <Card>
+                  <CardHeader>
+                      <CardTitle>Diagram Pengeluaran</CardTitle>
+                      <CardDescription>Visualisasi pengeluaran berdasarkan kategori dalam rentang waktu terpilih.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <ExpenseChart expenses={filteredExpenses} />
+                  </CardContent>
+              </Card>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <Card className="mt-6">
+            <CardHeader>
+                <CardTitle>Catat Pengeluaran</CardTitle>
+                <CardDescription>Gunakan tombol "Catat" di atas untuk menambahkan pengeluaran baru. Anda tidak memiliki akses untuk melihat riwayat.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="h-40 flex items-center justify-center bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Riwayat pengeluaran hanya dapat dilihat oleh Admin.</p>
+                </div>
+            </CardContent>
+        </Card>
+      )}
     </div>
   );
 });
