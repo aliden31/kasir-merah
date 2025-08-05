@@ -1,11 +1,13 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { TrendingUp } from 'lucide-react';
 
 const formatCurrency = (amount: number) => {
     if (isNaN(amount) || !isFinite(amount)) return 'Rp 0';
@@ -14,22 +16,22 @@ const formatCurrency = (amount: number) => {
 
 const formatNumber = (amount: number, precision = 2) => {
     if (isNaN(amount) || !isFinite(amount)) return '0';
-    return new Intl.NumberFormat('id-ID', { minimumFractionDigits: precision, maximumFractionDigits: precision }).format(amount);
+    const num = new Intl.NumberFormat('id-ID', { minimumFractionDigits: precision, maximumFractionDigits: precision }).format(amount);
+    return num;
 };
 
 
 const KalkulatorRoasPage: React.FC = () => {
     const [inputs, setInputs] = useState({
-        hargaFinal: '', // A
-        voucherMax: '', // B
-        adminFee: '', // C
-        hppPerPcs: '', // E
-        l30dPembeli: '', // F
-        l30dPcsTerjual: '', // G
-        biayaProsesPesananConst: '1250',
-        hppTambahan: '',
-        overheadNonIklan: '', // M
-        targetProfitMargin: '', // O
+        hargaFinal: '', // A: Revenue per piece after seller discount
+        voucherToko: '', // B: Max store voucher applicable
+        adminFee: '6.5',   // C: Platform admin fee percentage
+        hppPerPcs: '',   // E: Cost of Goods Sold per piece
+        l30dPembeli: '', // F: Buyers in last 30 days
+        l30dPcsTerjual: '', // G: Pieces sold in last 30 days
+        biayaPacking: '', // Additional packing cost per order
+        targetProfit: '20', // O: Target net profit margin
+        overheadCost: '5', // M: Non-ad overhead cost percentage
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,172 +41,195 @@ const KalkulatorRoasPage: React.FC = () => {
 
     const calculated = useMemo(() => {
         const A = parseFloat(inputs.hargaFinal) || 0;
-        const B = parseFloat(inputs.voucherMax) || 0;
+        const B = parseFloat(inputs.voucherToko) || 0;
         const C = parseFloat(inputs.adminFee) || 0;
         const E = parseFloat(inputs.hppPerPcs) || 0;
         const F = parseFloat(inputs.l30dPembeli) || 0;
         const G = parseFloat(inputs.l30dPcsTerjual) || 0;
-        const biayaProses = parseFloat(inputs.biayaProsesPesananConst) || 0;
-        const hppTambahan = parseFloat(inputs.hppTambahan) || 0;
-        const M = parseFloat(inputs.overheadNonIklan) || 0;
-        const O = parseFloat(inputs.targetProfitMargin) || 0;
+        const biayaPacking = parseFloat(inputs.biayaPacking) || 0;
+        const M = parseFloat(inputs.overheadCost) || 0;
+        const O = parseFloat(inputs.targetProfit) || 0;
         
-        // Original Calculations
+        // Pendapatan Real per Pesanan
         const D = (A - B) * (1 - C / 100);
-        const H = G > 0 ? F / G : 0;
-        const I = H * biayaProses;
-        const J = E * H; // HPP /pesanan is HPP/pcs * Faktor Pengali
-        const K = J + I + hppTambahan;
+
+        // Biaya per Pesanan
+        const pcsPerPesanan = F > 0 ? G / F : 1;
+        const hppPerPesanan = E * pcsPerPesanan;
+        const totalBiayaModalPerPesanan = hppPerPesanan + biayaPacking;
         
-        // New Calculations
-        const L = D - K; // Laba Kotor per Pesanan
-        const N = D * (M / 100);
-        const P = D * (O / 100);
-        const Q = L - N - P;
-        const R = Q > 0 ? D / Q : 0;
-        const S = Q > 0 ? A / (Q / 1.11) : 0;
+        // Laba Kotor per Pesanan (sebelum biaya operasional lain)
+        const labaKotorPerPesanan = D - totalBiayaModalPerPesanan;
+
+        // Biaya Operasional & Target Profit
+        const estimasiProfit = D * (O / 100);
+        const estimasiOverhead = D * (M / 100);
+
+        // Batas Biaya Iklan (Break-Even Ad Cost)
+        const budgetIklanMax = labaKotorPerPesanan - estimasiProfit - estimasiOverhead;
+
+        // Metrik ROAS
+        const roasPembukuan = budgetIklanMax > 0 ? D / budgetIklanMax : 0;
+        // Asumsi PPN 11% untuk biaya iklan di platform
+        const roasPlatform = budgetIklanMax > 0 ? A / (budgetIklanMax / 1.11) : 0;
+
 
         return {
-            omzetReal: D,
-            faktorPengali: H,
-            biayaProsesPesanan: I,
-            hppPerPesanan: J,
-            hppReal: K,
-            estimasiOverhead: N,
-            estimasiProfit: P,
-            iklanMax: Q,
-            roasPembukuan: R,
-            roasShopee: S
+            pendapatanRealPerPesanan: D,
+            pcsPerPesanan,
+            hppPerPesanan,
+            totalBiayaModalPerPesanan,
+            labaKotorPerPesanan,
+            estimasiProfit,
+            estimasiOverhead,
+            budgetIklanMax,
+            roasPembukuan,
+            roasPlatform
         };
     }, [inputs]);
 
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold">Kalkulator ROAS Shopee</h1>
-                <p className="text-muted-foreground">Hitung HPP riil per pesanan untuk mengoptimalkan strategi iklan Anda.</p>
+                <h1 className="text-2xl font-bold">Kalkulator Profitabilitas & ROAS</h1>
+                <p className="text-muted-foreground">Analisis biaya, profit, dan target ROAS untuk setiap produk Anda.</p>
             </div>
             
-            <div className="grid md:grid-cols-3 gap-8">
-                <Card className="md:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Input Data</CardTitle>
-                        <CardDescription>Masukkan data dari Shopee untuk melakukan perhitungan.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                         <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid lg:grid-cols-5 gap-8 items-start">
+                <div className="lg:col-span-3 space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Data Penjualan</CardTitle>
+                            <CardDescription>Masukkan detail pendapatan untuk satu unit produk.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="hargaFinal">A. Harga Final (setelah disc)</Label>
-                                <Input id="hargaFinal" type="number" placeholder="Contoh: 50000" value={inputs.hargaFinal} onChange={handleInputChange} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="voucherMax">B. Voucher max (Rp)</Label>
-                                <Input id="voucherMax" type="number" placeholder="Contoh: 5000" value={inputs.voucherMax} onChange={handleInputChange} />
-                            </div>
-                         </div>
-                         <div className="grid sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="adminFee">C. Admin Fee (%)</Label>
-                                <Input id="adminFee" type="number" placeholder="Contoh: 6.5" value={inputs.adminFee} onChange={handleInputChange} />
+                                <Label htmlFor="hargaFinal">Harga Jual Produk</Label>
+                                <Input id="hargaFinal" type="number" placeholder="Contoh: 100000" value={inputs.hargaFinal} onChange={handleInputChange} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="hppPerPcs">E. HPP/pcs</Label>
-                                <Input id="hppPerPcs" type="number" placeholder="Contoh: 20000" value={inputs.hppPerPcs} onChange={handleInputChange} />
+                                <Label htmlFor="voucherToko">Maksimal Voucher Toko</Label>
+                                <Input id="voucherToko" type="number" placeholder="Contoh: 5000" value={inputs.voucherToko} onChange={handleInputChange} />
                             </div>
-                        </div>
-                        <Separator />
-                        <div className="grid sm:grid-cols-2 gap-4">
-                             <div className="space-y-2">
-                                <Label htmlFor="l30dPembeli">F. L30D Pembeli</Label>
-                                <Input id="l30dPembeli" type="number" placeholder="Contoh: 100" value={inputs.l30dPembeli} onChange={handleInputChange} />
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Data Biaya</CardTitle>
+                            <CardDescription>Masukkan semua biaya yang terkait dengan produk dan operasional.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="hppPerPcs">Harga Pokok Penjualan (HPP) /pcs</Label>
+                                    <Input id="hppPerPcs" type="number" placeholder="Contoh: 40000" value={inputs.hppPerPcs} onChange={handleInputChange} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="biayaPacking">Biaya Packing /pesanan</Label>
+                                    <Input id="biayaPacking" type="number" placeholder="Contoh: 1500" value={inputs.biayaPacking} onChange={handleInputChange} />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="l30dPcsTerjual">G. L30D pcs Terjual</Label>
-                                <Input id="l30dPcsTerjual" type="number" placeholder="Contoh: 120" value={inputs.l30dPcsTerjual} onChange={handleInputChange} />
+                             <Separator />
+                            <p className="text-xs text-muted-foreground pt-2">Data berikut digunakan untuk menghitung rata-rata item per pesanan. Gunakan data dari 30 hari terakhir untuk akurasi.</p>
+                             <div className="grid sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="l30dPcsTerjual">Total Pcs Terjual (30 Hari)</Label>
+                                    <Input id="l30dPcsTerjual" type="number" placeholder="Contoh: 120" value={inputs.l30dPcsTerjual} onChange={handleInputChange} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="l30dPembeli">Total Pesanan (30 Hari)</Label>
+                                    <Input id="l30dPembeli" type="number" placeholder="Contoh: 100" value={inputs.l30dPembeli} onChange={handleInputChange} />
+                                </div>
                             </div>
-                        </div>
-                        <Separator />
-                        <div className="grid sm:grid-cols-2 gap-4">
-                             <div className="space-y-2">
-                                <Label htmlFor="biayaProsesPesananConst">Biaya Proses / Resi</Label>
-                                <Input id="biayaProsesPesananConst" type="number" value={inputs.biayaProsesPesananConst} onChange={handleInputChange} />
-                             </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="hppTambahan">HPP Tambahan / Pesanan</Label>
-                                <Input id="hppTambahan" type="number" placeholder="Contoh: Biaya packing" value={inputs.hppTambahan} onChange={handleInputChange} />
-                             </div>
-                        </div>
-                        <Separator />
-                        <div className="grid sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="overheadNonIklan">M. Overhead non iklan (%)</Label>
-                                <Input id="overheadNonIklan" type="number" placeholder="Biaya kontrakan, internet, dll." value={inputs.overheadNonIklan} onChange={handleInputChange} />
+                            <Separator/>
+                             <div className="grid sm:grid-cols-3 gap-4 pt-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="adminFee">Admin Platform (%)</Label>
+                                    <Input id="adminFee" type="number" value={inputs.adminFee} onChange={handleInputChange} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="overheadCost">Overhead Non-Iklan (%)</Label>
+                                    <Input id="overheadCost" type="number" value={inputs.overheadCost} onChange={handleInputChange} />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="targetProfit">Target Profit Bersih (%)</Label>
+                                    <Input id="targetProfit" type="number" value={inputs.targetProfit} onChange={handleInputChange} />
+                                </div>
                             </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="targetProfitMargin">O. Target profit margin bersih (%)</Label>
-                                <Input id="targetProfitMargin" type="number" placeholder="Target laba sebelum pajak" value={inputs.targetProfitMargin} onChange={handleInputChange} />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </div>
 
-                <Card className="md:col-span-1">
-                    <CardHeader>
-                        <CardTitle>Hasil Kalkulasi</CardTitle>
-                        <CardDescription>Hasil perhitungan berdasarkan data yang Anda masukkan.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <div className="flex justify-between items-center">
-                            <Label>D. OMZET REAL</Label>
-                            <span className="font-semibold text-lg">{formatCurrency(calculated.omzetReal)}</span>
-                        </div>
-                         <Separator />
-                        <div className="flex justify-between items-center text-sm">
-                            <Label>H. Faktor Pengali</Label>
-                            <span className="font-semibold">{formatNumber(calculated.faktorPengali)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                            <Label>I. Biaya Proses Pesanan</Label>
-                            <span className="font-semibold">{formatCurrency(calculated.biayaProsesPesanan)}</span>
-                        </div>
-                         <div className="flex justify-between items-center text-sm">
-                            <Label>J. HPP / Pesanan</Label>
-                            <span className="font-semibold">{formatCurrency(calculated.hppPerPesanan)}</span>
-                        </div>
-                         <div className="flex justify-between items-center text-sm font-bold">
-                            <Label>K. HPP REAL</Label>
-                            <span className="font-semibold">{formatCurrency(calculated.hppReal)}</span>
-                         </div>
-                         <Separator />
-                         <div className="flex justify-between items-center text-sm">
-                            <Label>N. Estimasi Overhead</Label>
-                            <span className="font-semibold">{formatCurrency(calculated.estimasiOverhead)}</span>
-                        </div>
-                         <div className="flex justify-between items-center text-sm">
-                            <Label>P. Estimasi Profit</Label>
-                            <span className="font-semibold">{formatCurrency(calculated.estimasiProfit)}</span>
-                        </div>
-                        <div className="p-3 bg-primary/10 rounded-lg space-y-2">
+                <div className="lg:col-span-2 space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Ringkasan Biaya per Pesanan</CardTitle>
+                        </CardHeader>
+                         <CardContent className="space-y-3 text-sm">
                             <div className="flex justify-between items-center">
-                                <Label className="text-md font-bold">Q. Iklan MAX per pcs</Label>
-                                <span className="font-bold text-lg text-primary">{formatCurrency(calculated.iklanMax)}</span>
+                                <Label>Rata-rata item / pesanan</Label>
+                                <span className="font-semibold">{formatNumber(calculated.pcsPerPesanan, 2)} pcs</span>
                             </div>
-                        </div>
-                         <Separator />
-                         <div className="flex justify-between items-center text-sm">
-                            <Label>R. ROAS Pembukuan</Label>
-                            <span className="font-semibold">{formatNumber(calculated.roasPembukuan)}</span>
-                        </div>
-                         <div className="flex justify-between items-center text-sm">
-                            <Label>S. ROAS SC Shopee Iklan</Label>
-                            <span className="font-semibold">{formatNumber(calculated.roasShopee)}</span>
-                        </div>
-
-                    </CardContent>
-                </Card>
+                            <div className="flex justify-between items-center">
+                                <Label>Estimasi HPP / pesanan</Label>
+                                <span className="font-semibold">{formatCurrency(calculated.hppPerPesanan)}</span>
+                            </div>
+                             <div className="flex justify-between items-center font-bold">
+                                <Label>TOTAL MODAL / PESANAN</Label>
+                                <span className="font-semibold">{formatCurrency(calculated.totalBiayaModalPerPesanan)}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Hasil Analisis</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <Label>Pendapatan Real / Pesanan</Label>
+                                <span className="font-bold text-lg">{formatCurrency(calculated.pendapatanRealPerPesanan)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <Label>Laba Kotor / Pesanan</Label>
+                                <span className="font-bold text-lg">{formatCurrency(calculated.labaKotorPerPesanan)}</span>
+                            </div>
+                            <Separator />
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-muted-foreground">Target Profit ({inputs.targetProfit}%)</Label>
+                                    <span className="font-medium">-{formatCurrency(calculated.estimasiProfit)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-muted-foreground">Biaya Overhead ({inputs.overheadCost}%)</Label>
+                                    <span className="font-medium">-{formatCurrency(calculated.estimasiOverhead)}</span>
+                                </div>
+                            </div>
+                            <Separator />
+                            <Alert className="bg-primary/10 border-primary/20">
+                                <TrendingUp className="h-4 w-4 !text-primary" />
+                                <AlertTitle className="text-primary !mb-0">Batas Biaya Iklan per Pesanan</AlertTitle>
+                                <AlertDescription className="text-2xl font-bold text-primary">
+                                    {formatCurrency(calculated.budgetIklanMax)}
+                                </AlertDescription>
+                            </Alert>
+                             <div className="space-y-3 pt-2">
+                                <div className="flex justify-between items-center text-sm">
+                                    <Label>Target ROAS Pembukuan</Label>
+                                    <span className="font-semibold text-base">{formatNumber(calculated.roasPembukuan, 2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <Label>Target ROAS Platform Iklan</Label>
+                                    <span className="font-semibold text-base">{formatNumber(calculated.roasPlatform, 2)}</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     );
 };
 
 export default KalkulatorRoasPage;
+
+    
