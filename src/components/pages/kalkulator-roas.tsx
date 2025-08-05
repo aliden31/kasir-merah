@@ -207,6 +207,25 @@ const KalkulatorRoasPage: React.FC = () => {
                             </div>
                         </CardContent>
                     </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Detail Perhitungan</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                            <div className="flex justify-between items-center">
+                                <Label className="text-muted-foreground">Rata-rata Pcs / Pesanan</Label>
+                                <span className="font-medium">{formatNumber(calculated.pcsPerPesanan, 2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <Label className="text-muted-foreground">HPP / Pesanan</Label>
+                                <span className="font-medium">{formatCurrency(calculated.hppPerPesanan)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <Label className="text-muted-foreground">Total Modal / Pesanan</Label>
+                                <span className="font-medium">{formatCurrency(calculated.totalBiayaModalPerPesanan)}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </div>
@@ -214,3 +233,5 @@ const KalkulatorRoasPage: React.FC = () => {
 };
 
 export default KalkulatorRoasPage;
+
+    
