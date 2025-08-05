@@ -5,7 +5,7 @@ import type { FC } from 'react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, ShoppingCart, TrendingUp, Package, Wallet, AreaChart, Settings, ArrowRight } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Package, Wallet, AreaChart, Settings, ArrowRight, Calculator } from 'lucide-react';
 import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Bar } from 'recharts';
 import type { Sale, Return, Product, Expense } from '@/lib/types';
 import { getSales, getReturns, getProducts, getExpenses } from '@/lib/data-service';
@@ -25,7 +25,8 @@ type View =
   | 'flash-sale'
   | 'pengaturan'
   | 'activity-log'
-  | 'erp';
+  | 'erp'
+  | 'kalkulator-roas';
 
 interface ErpPageProps {
   onNavigate: (view: View) => void;
@@ -174,7 +175,7 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
             <div className="grid gap-6 md:grid-cols-2">
                 <Card className="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Package/> Manajemen Produk & Stok</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Package/> Manajemen Produk &amp; Stok</CardTitle>
                         <CardDescription>Kelola inventaris, harga, dan stok produk Anda.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-3">
@@ -194,7 +195,7 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                 </Card>
                 <Card className="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><ShoppingCart/> Kasir & Penjualan</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><ShoppingCart/> Kasir &amp; Penjualan</CardTitle>
                         <CardDescription>Akses cepat ke modul kasir dan riwayat transaksi.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-3">
@@ -214,7 +215,7 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                 </Card>
                 <Card className="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><AreaChart/> Laporan & Keuangan</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><AreaChart/> Laporan &amp; Keuangan</CardTitle>
                         <CardDescription>Analisis performa bisnis dan lacak pengeluaran.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-3">
@@ -230,11 +231,15 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                             <span>Dasbor Rangkuman</span>
                              <ArrowRight className="h-4 w-4"/>
                         </Button>
+                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('kalkulator-roas')}>
+                            <span>Kalkulator ROAS</span>
+                             <ArrowRight className="h-4 w-4"/>
+                        </Button>
                     </CardContent>
                 </Card>
                 <Card className="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Settings/> Pengaturan & Sistem</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Settings/> Pengaturan &amp; Sistem</CardTitle>
                         <CardDescription>Konfigurasi aplikasi dan kelola data sistem.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-3">
