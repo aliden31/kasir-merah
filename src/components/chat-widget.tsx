@@ -22,22 +22,17 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, userRole }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const prevMessagesCountRef = useRef(0);
 
   useEffect(() => {
-    // Only subscribe when the component is mounted, not just when it's open
+    if (!isOpen) return;
+    
     const unsubscribe = getChatMessages((newMessages) => {
-      if (newMessages.length > prevMessagesCountRef.current && !isOpen) {
-        setHasUnreadMessages(true);
-      }
       setMessages(newMessages);
-      prevMessagesCountRef.current = newMessages.length;
     });
 
     return () => unsubscribe();
-  }, [isOpen]); // Re-subscribing logic depends on isOpen now
+  }, [isOpen]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -71,13 +66,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, userRole }) => {
   };
   
   const handleToggleOpen = () => {
-    setIsOpen(prev => {
-        const newIsOpen = !prev;
-        if (newIsOpen) {
-            setHasUnreadMessages(false);
-        }
-        return newIsOpen;
-    });
+    setIsOpen(prev => !prev);
   };
 
   if (!user) return null;
@@ -90,12 +79,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, userRole }) => {
           className="fixed top-4 right-4 z-50 h-14 w-14 rounded-full shadow-lg"
           size="icon"
         >
-          {hasUnreadMessages && (
-            <span className="absolute top-1 right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-            </span>
-          )}
           <MessageCircle className="h-6 w-6" />
         </Button>
       )}
