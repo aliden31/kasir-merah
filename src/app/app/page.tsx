@@ -31,6 +31,7 @@ import {
   History,
   LogOut,
   ShoppingCart,
+  LayoutDashboard,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,7 @@ import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
 import ActivityLogPage from '@/components/pages/activity-log';
+import ErpPage from '@/components/pages/erp';
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings, Sale, Return } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings, getSales, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
@@ -70,7 +72,8 @@ type View =
   | 'laporan'
   | 'flash-sale'
   | 'pengaturan'
-  | 'activity-log';
+  | 'activity-log'
+  | 'erp';
 
 const defaultSettings: AppSettings = { 
   storeName: 'Memuat...', 
@@ -86,7 +89,7 @@ function AppPageContent() {
   const { user, userRole, loading: authLoading } = useAuth();
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
-  const [activeView, setActiveView] = useState<View>('dashboard');
+  const [activeView, setActiveView] = useState<View>('erp');
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [flashSale, setFlashSale] = useState<FlashSale>(defaultFlashSale);
   const [products, setProducts] = useState<Product[]>([]);
@@ -171,7 +174,7 @@ function AppPageContent() {
       document.documentElement.classList.remove('dark');
     }
     document.documentElement.className = document.documentElement.className.replace(/\btheme-\S+/g, '');
-    if (settings.theme !== 'dark') {
+    if (settings.theme !== 'dark' && settings.theme !== 'default') {
       document.documentElement.classList.add(`theme-${settings.theme}`);
     }
   }, [settings.theme]);
@@ -180,7 +183,7 @@ function AppPageContent() {
     if (!authLoading && userRole === 'kasir') {
       setActiveView('kasir');
     } else if (!authLoading && userRole === 'admin') {
-      setActiveView('dashboard');
+      setActiveView('erp');
     }
   }, [authLoading, userRole]);
 
@@ -203,6 +206,7 @@ function AppPageContent() {
   }
 
   const allMenuItems = [
+    { id: 'erp', label: 'ERP', icon: LayoutDashboard, roles: ['admin'] },
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, roles: ['admin', 'kasir'] },
     { id: 'kasir', label: 'Kasir', icon: LayoutGrid, roles: ['admin', 'kasir'] },
     { id: 'produk', label: 'Produk', icon: Package, roles: ['admin'] },
@@ -240,6 +244,8 @@ function AppPageContent() {
       )
     }
     switch (activeView) {
+      case 'erp':
+        return <ErpPage onNavigate={handleNavigate} />;
       case 'dashboard':
         return <DashboardPage onNavigate={handleNavigate} />;
       case 'kasir':
@@ -291,7 +297,7 @@ function AppPageContent() {
           transactionDate={transactionDate}
           setTransactionDate={setTransactionDate}
           cartItemCount={cartItemCount}
-        /> : <DashboardPage onNavigate={handleNavigate} />;
+        /> : <ErpPage onNavigate={handleNavigate} />;
     }
   };
 
@@ -359,7 +365,7 @@ function AppPageContent() {
             <main className="p-4 md:p-6">{renderView()}</main>
              {user && userRole && <ChatWidget user={user} userRole={userRole} />}
              
-             {isMobile && activeView !== 'kasir' && activeView !== 'pengaturan' && (
+             {isMobile && activeView !== 'kasir' && activeView !== 'pengaturan' && activeView !== 'erp' && (
                 <Button
                     className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg z-20"
                     size="icon"
