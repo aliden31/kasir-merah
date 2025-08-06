@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getProducts, updateProduct, addStockOpnameLog, getStockOpnameLogs, batchUpdateStockToZero } from '@/lib/data-service';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
@@ -31,6 +31,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { DateRange } from 'react-day-picker';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 interface StokOpnamePageProps {
     onDataChange: () => void;
@@ -46,6 +51,10 @@ const StokOpnamePage: FC<StokOpnamePageProps> = React.memo(({ onDataChange, user
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProducts, setSelectedProducts] = useState<Record<string, boolean>>({});
     const [isMassUpdating, setIsMassUpdating] = useState(false);
+    const [date, setDate] = useState<DateRange | undefined>({
+        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        to: new Date(),
+    });
     const { toast } = useToast();
 
     const fetchInitialData = async () => {
@@ -53,7 +62,7 @@ const StokOpnamePage: FC<StokOpnamePageProps> = React.memo(({ onDataChange, user
         try {
             const [productsData, logsData] = await Promise.all([getProducts(), getStockOpnameLogs()]);
             setProducts(productsData.sort((a,b) => a.name.localeCompare(b.name)));
-            setLogs(logsData.sort((a,b) => b.date.getTime() - a.date.getTime()));
+            setLogs(logsData.map(log => ({ ...log, date: new Date(log.date) })).sort((a,b) => b.date.getTime() - a.date.getTime()));
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
         } finally {
@@ -151,6 +160,14 @@ const StokOpnamePage: FC<StokOpnamePageProps> = React.memo(({ onDataChange, user
             product.name.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [products, searchTerm]);
+
+    const filteredLogs = useMemo(() => {
+        if (!date?.from) return logs;
+        const toDate = date.to ? endOfDay(date.to) : endOfDay(date.from);
+        const interval = { start: startOfDay(date.from), end: toDate };
+        return logs.filter(log => isWithinInterval(log.date, interval));
+    }, [logs, date]);
+
 
     if (loading) {
         return <div>Memuat data produk...</div>
@@ -291,8 +308,45 @@ const StokOpnamePage: FC<StokOpnamePageProps> = React.memo(({ onDataChange, user
                 <TabsContent value="history" className="mt-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Riwayat Penyesuaian Stok</CardTitle>
-                            <CardDescription>Daftar semua perubahan stok yang dilakukan melalui stok opname.</CardDescription>
+                             <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
+                                <div>
+                                    <CardTitle>Riwayat Penyesuaian Stok</CardTitle>
+                                    <CardDescription>Daftar semua perubahan stok yang dilakukan melalui stok opname.</CardDescription>
+                                </div>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                    <Button
+                                        id="date"
+                                        variant={"outline"}
+                                        className="w-full sm:w-[260px] justify-start text-left font-normal"
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {date?.from ? (
+                                        date.to ? (
+                                            <>
+                                            {format(date.from, "LLL dd, y", { locale: id })} -{" "}
+                                            {format(date.to, "LLL dd, y", { locale: id })}
+                                            </>
+                                        ) : (
+                                            format(date.from, "LLL dd, y", { locale: id })
+                                        )
+                                        ) : (
+                                        <span>Pilih rentang tanggal</span>
+                                        )}
+                                    </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="end">
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={date?.from}
+                                        selected={date}
+                                        onSelect={setDate}
+                                        numberOfMonths={2}
+                                    />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
                         </CardHeader>
                         <CardContent>
                              <div className="overflow-x-auto">
@@ -309,11 +363,11 @@ const StokOpnamePage: FC<StokOpnamePageProps> = React.memo(({ onDataChange, user
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {logs.length > 0 ? logs.map(log => {
+                                        {filteredLogs.length > 0 ? filteredLogs.map(log => {
                                             const change = log.newStock - log.previousStock;
                                             return (
                                                 <TableRow key={log.id}>
-                                                    <TableCell>{new Date(log.date).toLocaleString('id-ID')}</TableCell>
+                                                    <TableCell>{new Date(log.date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</TableCell>
                                                     <TableCell className="font-medium">{log.productName}</TableCell>
                                                     <TableCell className="capitalize">{log.user}</TableCell>
                                                     <TableCell className="text-muted-foreground">{log.notes}</TableCell>
@@ -327,7 +381,7 @@ const StokOpnamePage: FC<StokOpnamePageProps> = React.memo(({ onDataChange, user
                                         }) : (
                                             <TableRow>
                                                 <TableCell colSpan={7} className="text-center h-24">
-                                                    Belum ada riwayat penyesuaian stok.
+                                                    Belum ada riwayat penyesuaian stok pada periode ini.
                                                 </TableCell>
                                             </TableRow>
                                         )}
@@ -344,5 +398,3 @@ const StokOpnamePage: FC<StokOpnamePageProps> = React.memo(({ onDataChange, user
 
 StokOpnamePage.displayName = 'StokOpnamePage';
 export default StokOpnamePage;
-
-    
