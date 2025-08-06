@@ -52,8 +52,9 @@ import { Separator } from '@/components/ui/separator';
 import { Edit, Loader2, MinusCircle, PlusCircle, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
 
 
 const formatCurrency = (amount: number) => {
@@ -259,25 +260,31 @@ const SalesChart = ({ sales, products }: { sales: Sale[], products: Product[] })
         <Card>
             <CardHeader>
                 <CardTitle>10 Item Terlaris</CardTitle>
-                <CardDescription>Grafik penjualan produk terbanyak.</CardDescription>
+                <CardDescription>Grafik penjualan produk terbanyak dalam periode terpilih.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={salesByItem} layout="vertical">
-                        <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-                        <YAxis type="category" dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={120} />
-                        <Tooltip
-                            cursor={{ fill: 'hsl(var(--muted))' }}
-                            contentStyle={{
-                                background: "hsl(var(--background))",
-                                border: "1px solid hsl(var(--border))",
-                                borderRadius: "var(--radius)",
-                            }}
-                            formatter={(value: number) => [value, "Jumlah Terjual"]}
-                        />
-                        <Bar dataKey="quantity" fill="hsl(var(--primary))" name="Jumlah Terjual" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
+                {salesByItem.filter(item => item.quantity > 0).length > 0 ? (
+                    <ResponsiveContainer width="100%" height={350}>
+                        <BarChart data={salesByItem} layout="vertical">
+                            <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                            <YAxis type="category" dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={120} />
+                            <Tooltip
+                                cursor={{ fill: 'hsl(var(--muted))' }}
+                                contentStyle={{
+                                    background: "hsl(var(--background))",
+                                    border: "1px solid hsl(var(--border))",
+                                    borderRadius: "var(--radius)",
+                                }}
+                                formatter={(value: number) => [value, "Jumlah Terjual"]}
+                            />
+                            <Bar dataKey="quantity" fill="hsl(var(--primary))" name="Jumlah Terjual" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className="h-[350px] flex items-center justify-center text-muted-foreground">
+                        Tidak ada penjualan pada periode ini.
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
@@ -295,23 +302,27 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
     const [loading, setLoading] = useState(true);
     const [editingSale, setEditingSale] = useState<Sale | null>(null);
     const { toast } = useToast();
+     const [date, setDate] = React.useState<DateRange | undefined>({
+        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        to: new Date(),
+    });
 
     const fetchSalesData = async () => {
         setLoading(true);
         try {
             const [salesData, productsData] = await Promise.all([getSales(), getProducts()]);
             const salesWithDisplayId = salesData
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                 .map((sale, index) => ({
                     ...sale,
-                    displayId: salesData.length - index,
+                    displayId: index + 1,
                     date: new Date(sale.date), 
                     items: sale.items.map((item: any) => ({
                         ...item,
                         product: item.product || { id: 'unknown', name: 'Produk Dihapus', costPrice: 0, sellingPrice: 0, stock: 0, category: 'Lainnya' }
                     }))
                 }));
-            setSales(salesWithDisplayId);
+            setSales(salesWithDisplayId.sort((a, b) => b.date.getTime() - a.date.getTime()));
             setProducts(productsData);
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data penjualan.", variant: "destructive" });
@@ -325,6 +336,13 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
         fetchSalesData();
     }, []);
     
+    const filteredSales = useMemo(() => {
+        if (!date?.from) return sales;
+        const toDate = date.to ? endOfDay(date.to) : endOfDay(date.from);
+        const interval = { start: startOfDay(date.from), end: toDate };
+        return sales.filter(sale => isWithinInterval(new Date(sale.date), interval));
+    }, [sales, date]);
+
     const handleEditClick = (sale: Sale) => {
       setEditingSale(sale);
     };
@@ -354,7 +372,45 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Riwayat Penjualan</h1>
+       <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
+            <div>
+              <h1 className="text-2xl font-bold">Riwayat Penjualan</h1>
+              <p className="text-muted-foreground">Analisis riwayat penjualan dalam rentang waktu tertentu.</p>
+            </div>
+            <Popover>
+                <PopoverTrigger asChild>
+                <Button
+                    id="date"
+                    variant={"outline"}
+                    className="w-full md:w-[260px] justify-start text-left font-normal"
+                >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date?.from ? (
+                    date.to ? (
+                        <>
+                        {format(date.from, "LLL dd, y")} -{" "}
+                        {format(date.to, "LLL dd, y")}
+                        </>
+                    ) : (
+                        format(date.from, "LLL dd, y")
+                    )
+                    ) : (
+                    <span>Pilih rentang tanggal</span>
+                    )}
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={date?.from}
+                    selected={date}
+                    onSelect={setDate}
+                    numberOfMonths={2}
+                />
+                </PopoverContent>
+            </Popover>
+        </div>
       {editingSale && (
         <Dialog open={!!editingSale} onOpenChange={(open) => !open && setEditingSale(null)}>
             <EditSaleForm sale={editingSale} onSave={handleSave} onOpenChange={(open) => !open && setEditingSale(null)} userRole={userRole}/>
@@ -370,11 +426,13 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
              <Card>
                 <CardHeader>
                     <CardTitle>Daftar Transaksi</CardTitle>
-                    <CardDescription>Berikut adalah daftar semua transaksi penjualan yang tercatat.</CardDescription>
+                    <CardDescription>
+                        Menampilkan {filteredSales.length} transaksi untuk periode yang dipilih.
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Accordion type="single" collapsible className="w-full">
-                        {sales.length > 0 ? sales.map((sale: Sale) => {
+                        {filteredSales.length > 0 ? filteredSales.map((sale: Sale) => {
                             const totalCost = sale.items.reduce((acc, item) => acc + (item.costPriceAtSale * item.quantity), 0);
                             const profit = sale.finalTotal - totalCost;
 
@@ -443,7 +501,7 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
                         )
                         }) : (
                             <div className="text-center text-muted-foreground py-10">
-                                <p>Belum ada riwayat penjualan.</p>
+                                <p>Tidak ada riwayat penjualan pada periode ini.</p>
                             </div>
                         )}
                     </Accordion>
@@ -451,7 +509,7 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
              </Card>
         </TabsContent>
         <TabsContent value="diagram" className="mt-4">
-            <SalesChart sales={sales} products={products} />
+            <SalesChart sales={filteredSales} products={products} />
         </TabsContent>
       </Tabs>
     </div>
