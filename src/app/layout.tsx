@@ -6,11 +6,31 @@ import { Toaster } from '@/components/ui/toaster';
 import AuthProvider, { useAuth } from '@/components/auth-provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import useIdleTimer from '@/hooks/use-idle-timer';
+import { logout } from '@/lib/auth-service';
+import { useToast } from '@/hooks/use-toast';
 
 function AppContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast();
+
+  const handleIdle = async () => {
+    if (user) {
+       toast({
+        title: "Sesi Anda Telah Berakhir",
+        description: "Anda telah logout secara otomatis karena tidak ada aktivitas.",
+        variant: "destructive",
+      });
+      await logout();
+      router.replace('/login');
+    }
+  };
+
+  // Set auto-logout timer for 6 hours
+  useIdleTimer(6 * 60 * 60 * 1000, handleIdle);
+
 
   useEffect(() => {
     if (loading) return; 
