@@ -52,7 +52,7 @@ import { Separator } from '@/components/ui/separator';
 import { Edit, Loader2, MinusCircle, PlusCircle, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay, subDays } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 
@@ -366,6 +366,10 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
         onDataChange();
     };
 
+    const handleDatePreset = (days: number) => {
+        setDate({ from: subDays(new Date(), days - 1), to: new Date() });
+    }
+
     if (loading) {
         return <div>Memuat data penjualan...</div>
     }
@@ -377,39 +381,43 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
               <h1 className="text-2xl font-bold">Riwayat Penjualan</h1>
               <p className="text-muted-foreground">Analisis riwayat penjualan dalam rentang waktu tertentu.</p>
             </div>
-            <Popover>
-                <PopoverTrigger asChild>
-                <Button
-                    id="date"
-                    variant={"outline"}
-                    className="w-full md:w-[260px] justify-start text-left font-normal"
-                >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date?.from ? (
-                    date.to ? (
-                        <>
-                        {format(date.from, "LLL dd, y")} -{" "}
-                        {format(date.to, "LLL dd, y")}
-                        </>
-                    ) : (
-                        format(date.from, "LLL dd, y")
-                    )
-                    ) : (
-                    <span>Pilih rentang tanggal</span>
-                    )}
-                </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={date?.from}
-                    selected={date}
-                    onSelect={setDate}
-                    numberOfMonths={2}
-                />
-                </PopoverContent>
-            </Popover>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+                <Button variant="outline" size="sm" onClick={() => handleDatePreset(14)}>14 Hari</Button>
+                <Button variant="outline" size="sm" onClick={() => handleDatePreset(30)}>1 Bulan Terakhir</Button>
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className="w-full sm:w-[260px] justify-start text-left font-normal"
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date?.from ? (
+                        date.to ? (
+                            <>
+                            {format(date.from, "LLL dd, y")} -{" "}
+                            {format(date.to, "LLL dd, y")}
+                            </>
+                        ) : (
+                            format(date.from, "LLL dd, y")
+                        )
+                        ) : (
+                        <span>Pilih rentang tanggal</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={2}
+                    />
+                    </PopoverContent>
+                </Popover>
+            </div>
         </div>
       {editingSale && (
         <Dialog open={!!editingSale} onOpenChange={(open) => !open && setEditingSale(null)}>
