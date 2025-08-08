@@ -120,17 +120,20 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
         
         const newReturn: Omit<Return, 'id'> = {
             saleId: selectedSaleId,
-            items: itemsToReturn.map(({ product, ...rest }) => ({
-                ...rest,
+            items: itemsToReturn.map(item => ({
                 product: {
-                    id: product.id,
-                    name: product.name,
-                }
+                    id: item.product.id,
+                    name: item.product.name,
+                },
+                quantity: item.quantity,
+                priceAtSale: item.priceAtSale,
+                costPriceAtSale: item.costPriceAtSale,
             })),
-            reason: "",
+            reason: "", // Reason is set to empty for now
             date: new Date(),
             totalRefund,
         };
+
         await onSave(newReturn);
         setIsSaving(false);
         onOpenChange(false);

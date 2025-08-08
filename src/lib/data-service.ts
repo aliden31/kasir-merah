@@ -360,12 +360,19 @@ export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole):
             }
 
             const cleanedReturnData = {
-                ...returnData,
+                saleId: returnData.saleId,
+                reason: returnData.reason,
+                date: Timestamp.fromDate(returnData.date),
+                totalRefund: returnData.totalRefund,
                 items: returnData.items.map(item => ({
-                    ...item,
-                    product: { id: item.product.id, name: item.product.name }
+                    product: { 
+                        id: item.product.id,
+                        name: item.product.name,
+                    },
+                    quantity: item.quantity,
+                    priceAtSale: item.priceAtSale,
+                    costPriceAtSale: item.costPriceAtSale,
                 })),
-                date: Timestamp.fromDate(returnData.date)
             };
 
             transaction.set(newReturnRef, cleanedReturnData);
@@ -373,11 +380,11 @@ export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole):
             return {
                 id: newReturnRef.id,
                 ...returnData,
-            } as Return;
+            };
         });
         
         await addActivityLog(user, `mencatat retur dari penjualan (ID: ...${newReturn.saleId.slice(-6)})`);
-        return newReturn;
+        return newReturn as Return;
 
     } catch (e) {
         console.error("Return transaction failed: ", e);
