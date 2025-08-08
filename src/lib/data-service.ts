@@ -345,19 +345,27 @@ export async function getReturns(): Promise<Return[]> {
 export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole): Promise<Return> => {
     try {
         const newReturn = await runTransaction(db, async (transaction) => {
+            const productRefs = returnData.items.map(item => doc(db, 'products', item.product.id));
+            
+            // --- READ PHASE ---
+            const productDocs = await Promise.all(
+                productRefs.map(ref => transaction.get(ref))
+            );
+
+            // --- WRITE PHASE ---
             const newReturnRef = doc(collection(db, 'returns'));
 
-            for (const item of returnData.items) {
-                const productRef = doc(db, "products", item.product.id);
-                const productDoc = await transaction.get(productRef);
+            productDocs.forEach((productDoc, index) => {
                 if (productDoc.exists()) {
                     const currentStock = productDoc.data().stock || 0;
-                    const newStock = currentStock + item.quantity;
-                    transaction.update(productRef, { stock: newStock });
+                    const itemToReturn = returnData.items[index];
+                    const newStock = currentStock + itemToReturn.quantity;
+                    transaction.update(productDoc.ref, { stock: newStock });
                 } else {
-                    console.warn(`Product with ID ${item.product.id} not found during return. Stock not updated.`);
+                    const itemToReturn = returnData.items[index];
+                    console.warn(`Product with ID ${itemToReturn.product.id} not found during return. Stock not updated.`);
                 }
-            }
+            });
 
             const cleanedReturnData = {
                 saleId: returnData.saleId,
