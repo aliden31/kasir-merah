@@ -345,9 +345,8 @@ export async function getReturns(): Promise<Return[]> {
 export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole): Promise<Return> => {
     try {
         const newReturn = await runTransaction(db, async (transaction) => {
-            const productRefs = returnData.items.map(item => doc(db, 'products', item.product.id));
-            
             // --- READ PHASE ---
+            const productRefs = returnData.items.map(item => doc(db, 'products', item.product.id));
             const productDocs = await Promise.all(
                 productRefs.map(ref => transaction.get(ref))
             );
@@ -505,6 +504,7 @@ export const addStockOpnameLog = async (
         productName: product.name,
         previousStock: product.stock,
         newStock: newStock,
+        date: new Date(),
         notes,
         user,
     };
