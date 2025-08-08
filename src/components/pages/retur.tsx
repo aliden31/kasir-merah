@@ -76,7 +76,6 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
                 product: {
                     id: saleItem.product.id,
                     name: saleItem.product.name,
-                    subcategory: saleItem.product.subcategory,
                 },
                 quantity: 1,
                 priceAtSale: saleItem.price,
@@ -119,12 +118,6 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
         setIsSaving(true);
         const totalRefund = itemsToReturn.reduce((acc, item) => acc + (item.priceAtSale * item.quantity), 0);
         
-        const reasonFromSubcategories = itemsToReturn
-            .map(item => item.product.subcategory)
-            .filter(Boolean) // Filter out undefined/empty strings
-            .join(', ');
-
-
         const newReturn: Omit<Return, 'id'> = {
             saleId: selectedSaleId,
             items: itemsToReturn.map(({ product, ...rest }) => ({
@@ -134,7 +127,7 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
                     name: product.name,
                 }
             })),
-            reason: reasonFromSubcategories,
+            reason: "",
             date: new Date(),
             totalRefund,
         };
