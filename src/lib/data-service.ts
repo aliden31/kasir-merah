@@ -343,9 +343,9 @@ export async function getReturns(): Promise<Return[]> {
 
 
 export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole): Promise<Return> => {
-    let newReturn: Return | null = null;
     try {
         const newReturnRef = doc(collection(db, 'returns'));
+        let newReturn: Return | null = null;
         
         await runTransaction(db, async (transaction) => {
             for (const item of returnData.items) {
@@ -360,10 +360,16 @@ export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole):
                 }
             }
 
-            transaction.set(newReturnRef, {
+            const cleanedReturnData = {
                 ...returnData,
+                items: returnData.items.map(item => ({
+                    ...item,
+                    product: { id: item.product.id, name: item.product.name }
+                })),
                 date: Timestamp.fromDate(returnData.date)
-            });
+            };
+
+            transaction.set(newReturnRef, cleanedReturnData);
         });
 
         const newReturnDoc = await getDoc(newReturnRef);
@@ -492,7 +498,6 @@ export const addStockOpnameLog = async (
         productName: product.name,
         previousStock: product.stock,
         newStock: newStock,
-        date: new Date(),
         notes,
         user,
     };
@@ -582,4 +587,3 @@ export const getChatMessages = (callback: (messages: ChatMessage[]) => void) => 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
-
