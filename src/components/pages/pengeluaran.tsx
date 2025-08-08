@@ -29,7 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Expense, Settings, UserRole, SubCategory } from '@/lib/types';
-import { PlusCircle, Calendar as CalendarIcon, Edit } from 'lucide-react';
+import { PlusCircle, Calendar as CalendarIcon, Edit, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getExpenses, addExpense, getSettings, updateExpense } from '@/lib/data-service';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -282,6 +282,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
   });
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -301,11 +302,30 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
   }, []);
   
   const filteredExpenses = useMemo(() => {
-    if (!date?.from || !date.to) return expenses;
-    const toDate = endOfDay(date.to);
-    const interval = { start: startOfDay(date.from), end: toDate };
-    return expenses.filter(expense => isWithinInterval(new Date(expense.date), interval));
-  }, [expenses, date]);
+    let dateFilteredExpenses = expenses;
+
+    if (date?.from) {
+        const toDate = date.to ? endOfDay(date.to) : endOfDay(date.from);
+        const interval = { start: startOfDay(date.from), end: toDate };
+        dateFilteredExpenses = expenses.filter(expense => isWithinInterval(new Date(expense.date), interval));
+    }
+
+    if (!searchTerm) {
+        return dateFilteredExpenses;
+    }
+
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return dateFilteredExpenses.filter(expense => 
+        expense.name.toLowerCase().includes(lowercasedTerm) ||
+        expense.category.toLowerCase().includes(lowercasedTerm) ||
+        (expense.subcategory && expense.subcategory.toLowerCase().includes(lowercasedTerm))
+    );
+  }, [expenses, date, searchTerm]);
+
+  const totalFilteredAmount = useMemo(() => {
+    return filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  }, [filteredExpenses]);
+
 
   const handleSaveExpense = async (expenseData: Omit<Expense, 'id'> | Expense) => {
     try {
@@ -362,41 +382,6 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
             <p className="text-muted-foreground">Catat dan lihat semua pengeluaran toko Anda.</p>
         </div>
         <div className="flex items-center gap-2">
-            {userRole === 'admin' && (
-              <Popover>
-                  <PopoverTrigger asChild>
-                  <Button
-                      id="date"
-                      variant={"outline"}
-                      className="w-full sm:w-[260px] justify-start text-left font-normal"
-                  >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date?.from ? (
-                      date.to ? (
-                          <>
-                          {format(date.from, "LLL dd, y")} -{" "}
-                          {format(date.to, "LLL dd, y")}
-                          </>
-                      ) : (
-                          format(date.from, "LLL dd, y")
-                      )
-                      ) : (
-                      <span>Pilih rentang tanggal</span>
-                      )}
-                  </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={date?.from}
-                      selected={date}
-                      onSelect={setDate}
-                      numberOfMonths={2}
-                  />
-                  </PopoverContent>
-              </Popover>
-            )}
             <Dialog open={isFormOpen} onOpenChange={(isOpen) => { setFormOpen(isOpen); if (!isOpen) setEditingExpense(undefined); }}>
                 <DialogTrigger asChild>
                     <Button onClick={() => handleOpenForm()}>
@@ -423,8 +408,58 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
           <TabsContent value="riwayat" className="mt-4">
               <Card>
                   <CardHeader>
-                      <CardTitle>Riwayat Pengeluaran</CardTitle>
-                      <CardDescription>Daftar semua pengeluaran yang telah dicatat dalam rentang waktu terpilih.</CardDescription>
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
+                        <div>
+                            <CardTitle>Riwayat Pengeluaran</CardTitle>
+                            <CardDescription>
+                                Ditemukan {filteredExpenses.length} transaksi dengan total <span className="font-semibold text-primary">{formatCurrency(totalFilteredAmount)}</span>.
+                            </CardDescription>
+                        </div>
+                        <div className="flex w-full sm:w-auto flex-col sm:flex-row gap-2">
+                             <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Cari pengeluaran..."
+                                    className="pl-10 w-full sm:w-auto"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    id="date"
+                                    variant={"outline"}
+                                    className="w-full sm:w-[260px] justify-start text-left font-normal"
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {date?.from ? (
+                                    date.to ? (
+                                        <>
+                                        {format(date.from, "LLL dd, y")} -{" "}
+                                        {format(date.to, "LLL dd, y")}
+                                        </>
+                                    ) : (
+                                        format(date.from, "LLL dd, y")
+                                    )
+                                    ) : (
+                                    <span>Pilih rentang tanggal</span>
+                                    )}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    defaultMonth={date?.from}
+                                    selected={date}
+                                    onSelect={setDate}
+                                    numberOfMonths={2}
+                                />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
                       <div className="overflow-x-auto">
@@ -445,6 +480,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
                                   <TableCell className="font-medium">{expense.name}</TableCell>
                                   <TableCell>
                                       {expense.category}
+                                      {expense.subcategory && <span className="text-muted-foreground text-xs"> / {expense.subcategory}</span>}
                                   </TableCell>
                                   <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
                                   <TableCell className="text-right">
@@ -456,7 +492,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
                               )) : (
                                   <TableRow>
                                       <TableCell colSpan={5} className="h-24 text-center">
-                                          Belum ada data pengeluaran pada rentang tanggal ini.
+                                          Belum ada data pengeluaran pada rentang tanggal atau pencarian ini.
                                       </TableCell>
                                   </TableRow>
                               )}
@@ -497,3 +533,4 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
 
 PengeluaranPage.displayName = 'PengeluaranPage';
 export default PengeluaranPage;
+
