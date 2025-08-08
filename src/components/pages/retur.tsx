@@ -72,11 +72,14 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
         if (!selectedSale) return;
         const saleItem = selectedSale.items.find(item => item.product.id === productId);
         if (saleItem && !itemsToReturn.find(item => item.product.id === productId)) {
+            // Re-create the product object to only include necessary fields
+            const cleanProduct = {
+                id: saleItem.product.id,
+                name: saleItem.product.name,
+            };
+
             setItemsToReturn(prev => [...prev, {
-                product: {
-                    id: saleItem.product.id,
-                    name: saleItem.product.name,
-                },
+                product: cleanProduct,
                 quantity: 1,
                 priceAtSale: saleItem.price,
                 costPriceAtSale: saleItem.costPriceAtSale,
@@ -87,22 +90,28 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
     const updateReturnQuantity = (productId: string, quantity: number) => {
         const saleItem = selectedSale?.items.find(item => item.product.id === productId);
         const maxQuantity = saleItem?.quantity || 0;
+        
+        const newQuantity = Number(quantity);
+        if (isNaN(newQuantity) || newQuantity < 0) {
+            return; // Ignore invalid input
+        }
 
-        if (quantity <= 0) {
+        if (newQuantity === 0) {
              setItemsToReturn(prev => prev.filter(item => item.product.id !== productId));
              return;
         }
 
-        if (quantity > maxQuantity) {
+        if (newQuantity > maxQuantity) {
             toast({
                 variant: "destructive",
                 title: "Jumlah Melebihi Pembelian",
                 description: `Jumlah retur tidak boleh melebihi jumlah pembelian (${maxQuantity})`,
             });
-            quantity = maxQuantity;
+            setItemsToReturn(prev => prev.map(item => item.product.id === productId ? { ...item, quantity: maxQuantity } : item));
+            return;
         }
 
-        setItemsToReturn(prev => prev.map(item => item.product.id === productId ? { ...item, quantity } : item));
+        setItemsToReturn(prev => prev.map(item => item.product.id === productId ? { ...item, quantity: newQuantity } : item));
     }
 
     const handleSubmit = async () => {
@@ -120,15 +129,7 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
         
         const newReturn: Omit<Return, 'id'> = {
             saleId: selectedSaleId,
-            items: itemsToReturn.map(item => ({
-                product: {
-                    id: item.product.id,
-                    name: item.product.name,
-                },
-                quantity: item.quantity,
-                priceAtSale: item.priceAtSale,
-                costPriceAtSale: item.costPriceAtSale,
-            })),
+            items: itemsToReturn,
             reason: "", // Reason is set to empty for now
             date: new Date(),
             totalRefund,
@@ -209,7 +210,7 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
                                                         type="number" 
                                                         className="w-16 h-8 text-center" 
                                                         value={item.quantity}
-                                                        onChange={(e) => updateReturnQuantity(item.product.id, Number(e.target.value))}
+                                                        onChange={(e) => updateReturnQuantity(item.product.id, parseInt(e.target.value))}
                                                     />
                                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.product.id, item.quantity + 1)}>
                                                         <PlusCircle className="h-4 w-4" />
