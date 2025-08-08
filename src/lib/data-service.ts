@@ -344,10 +344,9 @@ export async function getReturns(): Promise<Return[]> {
 
 export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole): Promise<Return> => {
     try {
-        const newReturnRef = doc(collection(db, 'returns'));
-        let newReturn: Return | null = null;
-        
-        await runTransaction(db, async (transaction) => {
+        const newReturn = await runTransaction(db, async (transaction) => {
+            const newReturnRef = doc(collection(db, 'returns'));
+
             for (const item of returnData.items) {
                 const productRef = doc(db, "products", item.product.id);
                 const productDoc = await transaction.get(productRef);
@@ -370,20 +369,13 @@ export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole):
             };
 
             transaction.set(newReturnRef, cleanedReturnData);
+            
+            return {
+                id: newReturnRef.id,
+                ...returnData,
+            } as Return;
         });
-
-        const newReturnDoc = await getDoc(newReturnRef);
-        if (!newReturnDoc.exists()) {
-            throw new Error("Failed to create the return document.");
-        }
-
-        const newReturnData = newReturnDoc.data();
-        Object.keys(newReturnData!).forEach(key => {
-            if (newReturnData![key] instanceof Timestamp) {
-                newReturnData![key] = newReturnData![key].toDate();
-            }
-        });
-        newReturn = { id: newReturnDoc.id, ...newReturnData } as Return;
+        
         await addActivityLog(user, `mencatat retur dari penjualan (ID: ...${newReturn.saleId.slice(-6)})`);
         return newReturn;
 
