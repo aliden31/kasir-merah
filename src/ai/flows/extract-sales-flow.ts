@@ -51,7 +51,8 @@ const extractSalesFlow = ai.defineFlow(
     },
     async (input) => {
         const { output } = await extractionPrompt(input);
-        return output!;
+        // Add a safety check. If output is null/undefined, return an empty array instead of crashing.
+        return output || { sales: [] };
     }
 );
 
