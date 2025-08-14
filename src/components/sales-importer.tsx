@@ -23,6 +23,13 @@ const formatCurrency = (amount: number) => {
 };
 
 type AnalysisState = 'idle' | 'analyzing' | 'review' | 'saving' | 'error';
+type AggregatedSaleItem = {
+    sku: string;
+    name: string;
+    quantity: number;
+    price: number;
+    isNew: boolean;
+};
 
 interface SalesImporterProps {
     onImportSuccess: () => void;
@@ -45,26 +52,54 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
         fetchDbProducts();
     }, []);
 
-    const analysisResult = useMemo(() => {
-        if (extractedSales.length === 0) return { newProducts: [], matchedProducts: new Map() };
+    const aggregatedAnalysis = useMemo(() => {
+        if (extractedSales.length === 0) return { newProducts: [], matchedProducts: new Map(), aggregatedItems: [] };
 
-        const allSkus = new Set(extractedSales.flatMap(s => s.items.map(i => i.sku)));
-        const matchedProducts = new Map<string, Product>();
-        const newProducts = new Map<string, ExtractedSaleItem>();
-
-        allSkus.forEach(sku => {
-            const dbProduct = dbProducts.find(p => p.id === sku || p.name.toLowerCase() === sku.toLowerCase());
-            if (dbProduct) {
-                matchedProducts.set(sku, dbProduct);
-            } else {
-                const item = extractedSales.flatMap(s => s.items).find(i => i.sku === sku);
-                if (item) {
-                    newProducts.set(sku, item);
-                }
+        const allItems = extractedSales.flatMap(s => s.items);
+        
+        // Group items by SKU
+        const itemsBySku = allItems.reduce((acc, item) => {
+            if (!acc[item.sku]) {
+                acc[item.sku] = [];
             }
-        });
+            acc[item.sku].push(item);
+            return acc;
+        }, {} as Record<string, ExtractedSaleItem[]>);
+        
+        const aggregatedItems: AggregatedSaleItem[] = [];
+        const newProducts = new Map<string, ExtractedSaleItem>();
+        const matchedProducts = new Map<string, Product>();
 
-        return { newProducts: Array.from(newProducts.values()), matchedProducts };
+        for (const sku in itemsBySku) {
+            const items = itemsBySku[sku];
+            const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+            const averagePrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) / totalQuantity;
+            const name = items[0].name;
+
+            const dbProduct = dbProducts.find(p => p.id === sku || p.name.toLowerCase() === sku.toLowerCase());
+            const isNew = !dbProduct;
+            
+            if (isNew) {
+                newProducts.set(sku, items[0]);
+            } else {
+                matchedProducts.set(sku, dbProduct);
+            }
+
+            aggregatedItems.push({
+                sku,
+                name,
+                quantity: totalQuantity,
+                price: averagePrice,
+                isNew,
+            });
+        }
+        
+        return { 
+            newProducts: Array.from(newProducts.values()), 
+            matchedProducts,
+            aggregatedItems
+        };
+
     }, [extractedSales, dbProducts]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,14 +144,15 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
     const handleConfirmImport = async () => {
         setAnalysisState('saving');
         try {
-            const { newProducts, matchedProducts } = analysisResult;
+            const { newProducts, matchedProducts, aggregatedItems } = aggregatedAnalysis;
             const newProductIds = new Map<string, string>();
 
             // 1. Create new products
             for (const newProd of newProducts) {
+                const aggregatedItem = aggregatedItems.find(item => item.sku === newProd.sku);
                 const productData = {
                     name: newProd.name,
-                    sellingPrice: newProd.price,
+                    sellingPrice: aggregatedItem?.price || newProd.price,
                     costPrice: 0, // Default cost price, can be edited later
                     stock: 0,     // Default stock
                     category: 'Impor', // Default category
@@ -125,46 +161,45 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
                 newProductIds.set(newProd.sku, createdProduct.id);
             }
 
-            // 2. Add sales
-            for (const sale of extractedSales) {
-                const saleItems = sale.items.map(item => {
-                    const dbProduct = matchedProducts.get(item.sku);
-                    const newProductId = newProductIds.get(item.sku);
-                    const productId = dbProduct?.id || newProductId;
-                    
-                    if (!productId) return null; // Should not happen
-
-                    const productInfo = dbProduct || {
-                        id: productId,
-                        name: item.name,
-                        category: 'Impor',
-                        costPrice: 0,
-                    };
-
-                    return {
-                        product: {
-                            id: productInfo.id,
-                            name: productInfo.name,
-                            category: productInfo.category,
-                            costPrice: productInfo.costPrice,
-                        },
-                        quantity: item.quantity,
-                        price: item.price,
-                        costPriceAtSale: productInfo.costPrice,
-                    };
-                }).filter((i): i is NonNullable<typeof i> => i !== null);
+            // 2. Add sales (assuming one sale per import for simplicity)
+            const saleItems = aggregatedItems.map(item => {
+                const dbProduct = matchedProducts.get(item.sku);
+                const newProductId = newProductIds.get(item.sku);
+                const productId = dbProduct?.id || newProductId;
                 
-                const subtotal = saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+                if (!productId) return null;
 
-                const newSale = {
-                    items: saleItems,
-                    subtotal: subtotal,
-                    discount: 0,
-                    finalTotal: subtotal,
-                    date: new Date(),
+                const productInfo = dbProduct || {
+                    id: productId,
+                    name: item.name,
+                    category: 'Impor',
+                    costPrice: 0,
                 };
-                await addSale(newSale, userRole);
-            }
+
+                return {
+                    product: {
+                        id: productInfo.id,
+                        name: productInfo.name,
+                        category: productInfo.category,
+                        subcategory: productInfo.subcategory,
+                        costPrice: productInfo.costPrice,
+                    },
+                    quantity: item.quantity,
+                    price: item.price,
+                    costPriceAtSale: productInfo.costPrice,
+                };
+            }).filter((i): i is NonNullable<typeof i> => i !== null);
+            
+            const subtotal = saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+            const newSale = {
+                items: saleItems,
+                subtotal: subtotal,
+                discount: 0,
+                finalTotal: subtotal,
+                date: new Date(),
+            };
+            await addSale(newSale, userRole);
             
             onImportSuccess();
         } catch (error) {
@@ -204,7 +239,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
                 <Sparkles className="h-4 w-4" />
                 <AlertTitle>Hasil Analisis AI</AlertTitle>
                 <AlertDescription>
-                    Harap tinjau data yang diekstrak di bawah ini. Pastikan semuanya akurat sebelum mengonfirmasi impor.
+                    Harap tinjau data yang diekstrak di bawah ini. Jika ada harga yang berbeda untuk SKU yang sama, harga jual akan dirata-ratakan.
                     Produk baru akan dibuat untuk item yang tidak dikenali.
                 </AlertDescription>
             </Alert>
@@ -215,9 +250,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
                         <CardTitle className="text-base flex items-center"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500"/> Produk Dikenali</CardTitle>
                     </CardHeader>
                     <CardContent>
-                       {Array.from(analysisResult.matchedProducts.values()).length > 0 ? (
+                       {Array.from(aggregatedAnalysis.matchedProducts.values()).length > 0 ? (
                            <ul className="text-sm space-y-1">
-                               {Array.from(analysisResult.matchedProducts.values()).map(p => <li key={p.id}>{p.name}</li>)}
+                               {Array.from(aggregatedAnalysis.matchedProducts.values()).map(p => <li key={p.id}>{p.name}</li>)}
                            </ul>
                        ) : <p className="text-sm text-muted-foreground">Tidak ada produk yang cocok.</p>}
                     </CardContent>
@@ -227,9 +262,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
                         <CardTitle className="text-base flex items-center"><AlertCircle className="h-4 w-4 mr-2 text-amber-500"/>Produk Baru Akan Dibuat</CardTitle>
                     </CardHeader>
                     <CardContent>
-                       {analysisResult.newProducts.length > 0 ? (
+                       {aggregatedAnalysis.newProducts.length > 0 ? (
                             <ul className="text-sm space-y-1">
-                               {analysisResult.newProducts.map(p => <li key={p.sku}>{p.name}</li>)}
+                               {aggregatedAnalysis.newProducts.map(p => <li key={p.sku}>{p.name}</li>)}
                            </ul>
                        ) : <p className="text-sm text-muted-foreground">Semua produk dikenali.</p>}
                     </CardContent>
@@ -243,25 +278,22 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
                             <TableHead>Nama Produk</TableHead>
                             <TableHead>SKU</TableHead>
                             <TableHead className="text-right">Jumlah</TableHead>
-                            <TableHead className="text-right">Harga</TableHead>
+                            <TableHead className="text-right">Harga Jual (Rata-rata)</TableHead>
                             <TableHead className="text-right">Status</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {extractedSales.flatMap(s => s.items).map((item, index) => {
-                            const isNew = analysisResult.newProducts.some(p => p.sku === item.sku);
-                            return (
-                                <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.name}</TableCell>
-                                    <TableCell className="text-muted-foreground">{item.sku}</TableCell>
-                                    <TableCell className="text-right">{item.quantity}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Badge variant={isNew ? "secondary" : "default"}>{isNew ? "Baru" : "OK"}</Badge>
-                                    </TableCell>
-                                </TableRow>
-                            );
-                        })}
+                        {aggregatedAnalysis.aggregatedItems.map((item, index) => (
+                            <TableRow key={index}>
+                                <TableCell className="font-medium">{item.name}</TableCell>
+                                <TableCell className="text-muted-foreground">{item.sku}</TableCell>
+                                <TableCell className="text-right">{item.quantity}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
+                                <TableCell className="text-right">
+                                    <Badge variant={item.isNew ? "secondary" : "default"}>{item.isNew ? "Baru" : "OK"}</Badge>
+                                </TableCell>
+                            </TableRow>
+                        ))}
                     </TableBody>
                 </Table>
             </ScrollArea>
