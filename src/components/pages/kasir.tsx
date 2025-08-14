@@ -435,7 +435,10 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                             <Input
                                 type="number"
                                 value={item.price}
-                                onChange={(e) => updatePrice(item.product.id, parseInt(e.target.value) || 0)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    updatePrice(item.product.id, value === '' ? 0 : parseInt(value, 10) || 0);
+                                }}
                                 className="w-28 h-8 text-xs"
                             />
                         </div>
@@ -451,7 +454,10 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                              <Input
                                 type="number"
                                 value={item.quantity}
-                                onChange={(e) => updateQuantity(item.product.id, parseInt(e.target.value) || 0)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    updateQuantity(item.product.id, value === '' ? 0 : parseInt(value, 10) || 0);
+                                }}
                                 className="w-12 h-8 text-center"
                             />
                             <Button
@@ -626,4 +632,5 @@ export default KasirPage;
     
 
     
+
 
