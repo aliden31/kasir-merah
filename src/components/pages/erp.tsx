@@ -5,7 +5,7 @@ import type { FC } from 'react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, ShoppingCart, TrendingUp, Package, Wallet, AreaChart, Settings, ArrowRight, Calculator, PlusSquare } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Package, Wallet, AreaChart, Settings, ArrowRight, Calculator, PlusSquare, FileAxis3d } from 'lucide-react';
 import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Bar } from 'recharts';
 import type { Sale, Return, Product, Expense, OtherIncome } from '@/lib/types';
 import { getSales, getReturns, getProducts, getExpenses, getOtherIncomes } from '@/lib/data-service';
@@ -27,14 +27,15 @@ type View =
   | 'pengaturan'
   | 'activity-log'
   | 'erp'
-  | 'kalkulator-roas';
+  | 'kalkulator-roas'
+  | 'pdf-converter';
 
 interface ErpPageProps {
   onNavigate: (view: View) => void;
 }
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
 const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
@@ -180,7 +181,7 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
             <div className="grid gap-6 md:grid-cols-2">
                 <Card className="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Package/> Manajemen Produk &amp; Stok</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Package/> Manajemen Produk & Stok</CardTitle>
                         <CardDescription>Kelola inventaris, harga, dan stok produk Anda.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-3">
@@ -200,7 +201,7 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                 </Card>
                 <Card className="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><ShoppingCart/> Kasir &amp; Penjualan</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><ShoppingCart/> Kasir & Penjualan</CardTitle>
                         <CardDescription>Akses cepat ke modul kasir dan riwayat transaksi.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-3">
@@ -220,7 +221,7 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                 </Card>
                 <Card className="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><AreaChart/> Laporan &amp; Keuangan</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><AreaChart/> Laporan & Keuangan</CardTitle>
                         <CardDescription>Analisis performa bisnis dan lacak pengeluaran.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-3">
@@ -248,12 +249,16 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                 </Card>
                 <Card className="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Settings/> Pengaturan &amp; Sistem</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Settings/> Pengaturan & Sistem</CardTitle>
                         <CardDescription>Konfigurasi aplikasi dan kelola data sistem.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-3">
                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('pengaturan')}>
                             <span>Pengaturan Umum</span>
+                            <ArrowRight className="h-4 w-4"/>
+                        </Button>
+                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('pdf-converter')}>
+                            <span>Konverter PDF ke Excel</span>
                             <ArrowRight className="h-4 w-4"/>
                         </Button>
                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('activity-log')}>
@@ -290,3 +295,5 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
 
 ErpPage.displayName = 'ErpPage';
 export default ErpPage;
+
+    

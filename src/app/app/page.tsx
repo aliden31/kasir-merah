@@ -34,6 +34,7 @@ import {
   LayoutDashboard,
   Calculator,
   PlusSquare,
+  FileAxis3d,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,7 @@ import PengaturanPage from '@/components/pages/pengaturan';
 import ActivityLogPage from '@/components/pages/activity-log';
 import ErpPage from '@/components/pages/erp';
 import KalkulatorRoasPage from '@/components/pages/kalkulator-roas';
+import PdfConverterPage from '@/components/pages/pdf-converter';
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings, Sale, Return } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings, getSales, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
@@ -79,7 +81,8 @@ type View =
   | 'pengaturan'
   | 'activity-log'
   | 'erp'
-  | 'kalkulator-roas';
+  | 'kalkulator-roas'
+  | 'pdf-converter';
 
 const defaultSettings: AppSettings = { 
   storeName: 'Memuat...', 
@@ -223,12 +226,13 @@ function AppPageContent() {
     { id: 'pemasukan-lain', label: 'Pemasukan Lain', icon: PlusSquare, roles: ['admin'] },
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
     { id: 'kalkulator-roas', label: 'Kalkulator ROAS', icon: Calculator, roles: ['admin'] },
+    { id: 'pdf-converter', label: 'PDF ke Excel', icon: FileAxis3d, roles: ['admin'] },
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
     { id: 'pengaturan', label: 'Pengaturan', icon: Settings, roles: ['admin', 'kasir'] },
     { id: 'activity-log', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
   ];
 
-  const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(userRole));
+  const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(item.roles));
   
   const activeMenu = menuItems.find(item => item.id === activeView);
 
@@ -293,6 +297,8 @@ function AppPageContent() {
         return <LaporanPage onNavigate={handleNavigate} />;
       case 'kalkulator-roas':
         return <KalkulatorRoasPage />;
+      case 'pdf-converter':
+        return <PdfConverterPage />;
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':
@@ -414,3 +420,5 @@ export default function AppPage() {
     </SidebarProvider>
   )
 }
+
+    
