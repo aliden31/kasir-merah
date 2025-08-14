@@ -15,7 +15,7 @@ const extractionPrompt = ai.definePrompt({
     name: 'extractSalesPrompt',
     input: { schema: ExtractSalesInputSchema },
     output: { schema: ExtractSalesOutputSchema },
-    prompt: `You are an expert data extraction agent. Your task is to analyze the provided file (image or PDF) containing one or more shipping labels or delivery notes ("Daftar Pengiriman").
+    prompt: `You are an expert data extraction agent. Your task is to analyze the provided document (image or PDF) containing one or more shipping labels or delivery notes ("Daftar Pengiriman").
 
 You have been provided with a list of existing products in the database. Use this list as your primary reference for matching items.
 Existing Products:
@@ -27,15 +27,17 @@ Existing Products:
 - No products in the database.
 {{/if}}
 
-Extract the following information for each distinct delivery note you find in the document:
-1.  **items**: A list of all products. For each product, extract:
-    -   **sku**: Match the product from the file to the "Existing Products" list. Use the existing product's SKU/ID if a confident match is found based on name or code. If no match is found, generate a logical, consistent, and unique SKU based on the product name (e.g., 'GLASWOOL 1M KUNING' could become 'GLW-KNG-1M').
-    -   **name**: The full name or description of the product (e.g., 'GLASWOOL 1M KUNING', 'ECERAN PUTIH 25 X 30 CM').
-    -   **quantity**: The number of units for that product.
-    -   **price**: The price per unit of the product.
-2.  **total**: The final total amount for that specific delivery note.
+Go through the document line by line. For **every single product line item** you find, extract the following information:
+1.  **sku**: Match the product from the file to an "Existing Product". Use the existing product's SKU/ID if a confident match is found. If no match is found, generate a logical, consistent, and unique SKU based on the product name (e.g., 'GLASWOOL 1M KUNING' could become 'GLW-KNG-1M').
+2.  **name**: The full name or description of the product as written on the note (e.g., 'GLASWOOL 1M KUNING').
+3.  **quantity**: The quantity for that specific line item.
+4.  **price**: The price per unit for that specific line item.
 
-Carefully analyze the entire document. There might be multiple delivery notes on a single page. Return each one as a separate object in the 'sales' array.
+Then, extract the grand total amount for the entire delivery note.
+
+If a document contains multiple delivery notes, return each one as a separate object in the 'sales' array.
+
+**IMPORTANT**: Do NOT add up quantities yourself. Extract each product line item exactly as you see it. If a product appears multiple times, extract it multiple times.
 
 Analyze this file: {{media url=fileDataUri}}
 `,
