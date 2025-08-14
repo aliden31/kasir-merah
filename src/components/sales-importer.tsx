@@ -72,7 +72,11 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         for (const skuKey in itemsBySku) {
             const items = itemsBySku[skuKey];
             const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-            const averagePrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) / totalQuantity;
+            
+            // Calculate weighted average price
+            const totalValue = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const averagePrice = totalQuantity > 0 ? totalValue / totalQuantity : 0;
+
             const name = items[0].name || skuKey;
             const sku = items[0].sku || skuKey;
 
