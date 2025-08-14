@@ -33,6 +33,7 @@ import {
   ShoppingCart,
   LayoutDashboard,
   Calculator,
+  PlusSquare,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ import StokOpnamePage from '@/components/pages/stok-opname';
 import PenjualanPage from '@/components/pages/penjualan';
 import ReturPage from '@/components/pages/retur';
 import PengeluaranPage from '@/components/pages/pengeluaran';
+import PemasukanLainPage from '@/components/pages/pemasukan-lain';
 import LaporanPage from '@/components/pages/laporan';
 import FlashSalePage from '@/components/pages/flash-sale';
 import PengaturanPage from '@/components/pages/pengaturan';
@@ -71,6 +73,7 @@ type View =
   | 'penjualan'
   | 'retur'
   | 'pengeluaran'
+  | 'pemasukan-lain'
   | 'laporan'
   | 'flash-sale'
   | 'pengaturan'
@@ -210,13 +213,14 @@ function AppPageContent() {
 
   const allMenuItems = [
     { id: 'erp', label: 'ERP', icon: LayoutDashboard, roles: ['admin'] },
-    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, roles: ['admin', 'kasir'] },
+    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, roles: ['admin'] },
     { id: 'kasir', label: 'Kasir', icon: LayoutGrid, roles: ['admin', 'kasir'] },
     { id: 'produk', label: 'Produk', icon: Package, roles: ['admin'] },
     { id: 'stok-opname', label: 'Stok Opname', icon: ClipboardList, roles: ['admin'] },
     { id: 'penjualan', label: 'Riwayat Penjualan', icon: ScrollText, roles: ['admin'] },
     { id: 'retur', label: 'Retur', icon: Undo2, roles: ['admin', 'kasir'] },
     { id: 'pengeluaran', label: 'Pengeluaran', icon: Wallet, roles: ['admin', 'kasir'] },
+    { id: 'pemasukan-lain', label: 'Pemasukan Lain', icon: PlusSquare, roles: ['admin'] },
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
     { id: 'kalkulator-roas', label: 'Kalkulator ROAS', icon: Calculator, roles: ['admin'] },
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
@@ -247,6 +251,11 @@ function AppPageContent() {
         </div>
       )
     }
+
+    if (userRole === 'kasir' && (activeView === 'dashboard' || activeView === 'erp')) {
+      setActiveView('kasir');
+    }
+
     switch (activeView) {
       case 'erp':
         return <ErpPage onNavigate={handleNavigate} />;
@@ -278,6 +287,8 @@ function AppPageContent() {
         return <ReturPage onDataChange={refreshAllData} userRole={userRole!} />;
       case 'pengeluaran':
         return <PengeluaranPage userRole={userRole!} />;
+      case 'pemasukan-lain':
+        return <PemasukanLainPage onDataChange={refreshAllData} userRole={userRole!} />;
       case 'laporan':
         return <LaporanPage onNavigate={handleNavigate} />;
       case 'kalkulator-roas':

@@ -4,15 +4,15 @@
 import type { FC } from 'react';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Wallet, Download, Undo2, Printer } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Wallet, Download, Undo2, Printer, PlusSquare } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, startOfDay, eachDayOfInterval, endOfDay } from 'date-fns';
-import type { Sale, Expense, Return, SaleItem, ReturnItem } from '@/lib/types';
-import { getSales, getExpenses, getReturns } from '@/lib/data-service';
+import type { Sale, Expense, Return, SaleItem, ReturnItem, OtherIncome } from '@/lib/types';
+import { getSales, getExpenses, getReturns, getOtherIncomes } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import {
@@ -48,6 +48,7 @@ type View =
   | 'penjualan'
   | 'retur'
   | 'pengeluaran'
+  | 'pemasukan-lain'
   | 'laporan'
   | 'flash-sale'
   | 'pengaturan';
@@ -61,6 +62,7 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [returns, setReturns] = useState<Return[]>([]);
+    const [otherIncomes, setOtherIncomes] = useState<OtherIncome[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
     const [date, setDate] = React.useState<DateRange | undefined>({
@@ -73,10 +75,11 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [salesData, expensesData, returnsData] = await Promise.all([getSales(), getExpenses(), getReturns()]);
+                const [salesData, expensesData, returnsData, otherIncomesData] = await Promise.all([getSales(), getExpenses(), getReturns(), getOtherIncomes()]);
                 setSales(salesData);
                 setExpenses(expensesData);
                 setReturns(returnsData);
+                setOtherIncomes(otherIncomesData);
             } catch (error) {
                 toast({ title: "Error", description: "Gagal memuat data laporan.", variant: "destructive" });
                 console.error(error);
@@ -88,7 +91,7 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
     }, [toast]);
     
     const filteredData = useMemo(() => {
-        if (!date?.from || !date.to) return { filteredSales: [], filteredExpenses: [], filteredReturns: [] };
+        if (!date?.from || !date.to) return { filteredSales: [], filteredExpenses: [], filteredReturns: [], filteredOtherIncomes: [] };
 
         const toDate = endOfDay(date.to);
         const interval = { start: startOfDay(date.from), end: toDate };
@@ -96,10 +99,11 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
         const filteredSales = sales.filter(sale => isWithinInterval(new Date(sale.date), interval));
         const filteredExpenses = expenses.filter(expense => isWithinInterval(new Date(expense.date), interval));
         const filteredReturns = returns.filter(ret => isWithinInterval(new Date(ret.date), interval));
+        const filteredOtherIncomes = otherIncomes.filter(income => isWithinInterval(new Date(income.date), interval));
 
-        return { filteredSales, filteredExpenses, filteredReturns };
+        return { filteredSales, filteredExpenses, filteredReturns, filteredOtherIncomes };
 
-    }, [sales, expenses, returns, date]);
+    }, [sales, expenses, returns, otherIncomes, date]);
     
     const dailyChartData = useMemo(() => {
         const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
@@ -145,10 +149,11 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
 
 
     const financialSummary = useMemo(() => {
-        const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
+        const { filteredSales, filteredExpenses, filteredReturns, filteredOtherIncomes } = filteredData;
         
         const totalSalesValue = filteredSales.reduce((sum, sale) => sum + sale.finalTotal, 0);
         const totalReturnValue = filteredReturns.reduce((sum, ret) => sum + ret.totalRefund, 0);
+        const totalOtherIncomesValue = filteredOtherIncomes.reduce((sum, income) => sum + income.amount, 0);
 
         const totalCostOfGoodsSold = filteredSales.reduce((totalCost, sale) => {
             const saleCost = sale.items.reduce((itemCost, item: SaleItem) => {
@@ -171,7 +176,7 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
         const netSales = totalSalesValue - totalReturnValue;
         const netCOGS = totalCostOfGoodsSold - totalCostOfReturnedGoods;
 
-        const grossProfit = netSales - netCOGS;
+        const grossProfit = netSales - netCOGS + totalOtherIncomesValue;
         const netProfit = grossProfit - totalExpensesValue;
         
         return { 
@@ -179,6 +184,7 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
             totalCostOfGoods: netCOGS,
             totalExpenses: totalExpensesValue,
             totalReturns: totalReturnValue,
+            totalOtherIncomes: totalOtherIncomesValue,
             grossProfit, 
             netProfit 
         };
@@ -347,9 +353,9 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
     const kpiCards = [
         { title: 'Penjualan Bersih', value: formatCurrency(financialSummary.totalSales), icon: TrendingUp, color: 'text-green-500', view: 'penjualan' as View | undefined },
         { title: 'Total Modal (HPP)', value: formatCurrency(financialSummary.totalCostOfGoods), icon: ShoppingCart, color: 'text-blue-500', view: undefined },
-        { title: 'Total Pengeluaran', value: formatCurrency(financialSummary.totalExpenses), icon: Wallet, color: 'text-orange-500', view: 'pengeluaran' as View | undefined },
+        { title: 'Pemasukan Lain', value: formatCurrency(financialSummary.totalOtherIncomes), icon: PlusSquare, color: 'text-sky-500', view: 'pemasukan-lain' as View | undefined },
         { title: 'Total Retur', value: formatCurrency(financialSummary.totalReturns), icon: Undo2, color: 'text-yellow-500', view: 'retur' as View | undefined },
-        { title: 'Laba Kotor', value: formatCurrency(financialSummary.grossProfit), icon: DollarSign, color: 'text-primary', view: undefined },
+        { title: 'Total Pengeluaran', value: formatCurrency(financialSummary.totalExpenses), icon: Wallet, color: 'text-orange-500', view: 'pengeluaran' as View | undefined },
         { title: 'Laba Bersih', value: formatCurrency(financialSummary.netProfit), icon: financialSummary.netProfit >= 0 ? TrendingUp : TrendingDown, color: financialSummary.netProfit >= 0 ? 'text-green-600' : 'text-destructive', view: undefined },
     ];
 
@@ -509,4 +515,3 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
 
 LaporanPage.displayName = 'LaporanPage';
 export default LaporanPage;
-

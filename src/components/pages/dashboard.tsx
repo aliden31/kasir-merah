@@ -6,8 +6,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DollarSign, ShoppingCart, Package, TrendingUp, Users, Clock, Wallet } from 'lucide-react';
 import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Bar } from 'recharts';
-import type { Sale, Return, Product, Expense } from '@/lib/types';
-import { getSales, getReturns, getProducts, getExpenses } from '@/lib/data-service';
+import type { Sale, Return, Product, Expense, OtherIncome } from '@/lib/types';
+import { getSales, getReturns, getProducts, getExpenses, getOtherIncomes } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
@@ -39,6 +39,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [returns, setReturns] = useState<Return[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [otherIncomes, setOtherIncomes] = useState<OtherIncome[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
@@ -46,10 +47,11 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [salesData, returnsData, expensesData] = await Promise.all([getSales(), getReturns(), getExpenses()]);
+                const [salesData, returnsData, expensesData, otherIncomesData] = await Promise.all([getSales(), getReturns(), getExpenses(), getOtherIncomes()]);
                 setSales(salesData);
                 setReturns(returnsData);
                 setExpenses(expensesData);
+                setOtherIncomes(otherIncomesData);
             } catch (error) {
                 toast({ title: "Error", description: "Gagal memuat data dashboard.", variant: "destructive" });
             } finally {
@@ -67,10 +69,12 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         const salesInRange = sales.filter(s => isWithinInterval(s.date, interval));
         const returnsInRange = returns.filter(r => isWithinInterval(r.date, interval));
         const expensesInRange = expenses.filter(e => isWithinInterval(e.date, interval));
+        const otherIncomesInRange = otherIncomes.filter(i => isWithinInterval(i.date, interval));
 
         const totalRevenue = salesInRange.reduce((sum, sale) => sum + sale.finalTotal, 0);
         const totalReturnValue = returnsInRange.reduce((sum, ret) => sum + ret.totalRefund, 0);
         const totalExpenses = expensesInRange.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalOtherIncomes = otherIncomesInRange.reduce((sum, income) => sum + income.amount, 0);
 
         const totalCostOfGoodsSold = salesInRange.reduce((sum, sale) => 
             sum + sale.items.reduce((itemSum, item) => itemSum + ((item.costPriceAtSale || 0) * item.quantity), 0), 0);
@@ -81,7 +85,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         const netRevenue = totalRevenue - totalReturnValue;
         const netCOGS = totalCostOfGoodsSold - totalCostOfReturnedGoods;
         const grossProfit = netRevenue - netCOGS;
-        const profit = grossProfit - totalExpenses;
+        const profit = grossProfit - totalExpenses + totalOtherIncomes;
         
         const itemsSoldCount = salesInRange.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
         
@@ -106,7 +110,7 @@ const DashboardPage: FC<DashboardPageProps> = React.memo(({ onNavigate }) => {
         }
         
         return { netRevenue, profit, itemsSoldCount, bestSellingProduct, totalExpenses };
-    }, [sales, returns, expenses]);
+    }, [sales, returns, expenses, otherIncomes]);
 
     const salesChartData = useMemo(() => {
         return Array.from({ length: 14 }).map((_, i) => {

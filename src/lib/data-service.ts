@@ -19,7 +19,7 @@ import {
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
-import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog, PublicSettings, ChatMessage } from './types';
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog, PublicSettings, ChatMessage, OtherIncome } from './types';
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -397,6 +397,19 @@ export const addReturn = async (returnData: Omit<Return, 'id'>, user: UserRole):
         console.error("Return transaction failed: ", e);
         throw new Error("Gagal memproses retur. Silakan coba lagi.");
     }
+};
+
+
+// Other Income Functions
+export async function getOtherIncomes(): Promise<OtherIncome[]> {
+    const incomes = await getCollection<OtherIncome>('otherIncomes');
+    return incomes.map(i => ({...i, date: new Date(i.date) }));
+}
+
+export const addOtherIncome = async (income: Omit<OtherIncome, 'id'>, user: UserRole) => {
+    const newIncome = await addDocument<OtherIncome>('otherIncomes', income);
+    await addActivityLog(user, `mencatat pemasukan lain: "${newIncome.name}" sebesar ${formatCurrency(newIncome.amount)}`);
+    return newIncome;
 };
 
 

@@ -80,6 +80,14 @@ export interface Expense {
   subcategory?: string;
 }
 
+export interface OtherIncome {
+  id: string;
+  name: string;
+  amount: number;
+  date: Date;
+  notes?: string;
+}
+
 export interface FlashSaleProduct extends Product {
   discountPrice: number;
 }

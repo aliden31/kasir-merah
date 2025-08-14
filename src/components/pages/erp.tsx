@@ -5,10 +5,10 @@ import type { FC } from 'react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, ShoppingCart, TrendingUp, Package, Wallet, AreaChart, Settings, ArrowRight, Calculator } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Package, Wallet, AreaChart, Settings, ArrowRight, Calculator, PlusSquare } from 'lucide-react';
 import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Bar } from 'recharts';
-import type { Sale, Return, Product, Expense } from '@/lib/types';
-import { getSales, getReturns, getProducts, getExpenses } from '@/lib/data-service';
+import type { Sale, Return, Product, Expense, OtherIncome } from '@/lib/types';
+import { getSales, getReturns, getProducts, getExpenses, getOtherIncomes } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,6 +21,7 @@ type View =
   | 'penjualan'
   | 'retur'
   | 'pengeluaran'
+  | 'pemasukan-lain'
   | 'laporan'
   | 'flash-sale'
   | 'pengaturan'
@@ -40,6 +41,7 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [returns, setReturns] = useState<Return[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [otherIncomes, setOtherIncomes] = useState<OtherIncome[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
@@ -47,10 +49,11 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [salesData, returnsData, expensesData] = await Promise.all([getSales(), getReturns(), getExpenses()]);
+                const [salesData, returnsData, expensesData, otherIncomesData] = await Promise.all([getSales(), getReturns(), getExpenses(), getOtherIncomes()]);
                 setSales(salesData);
                 setReturns(returnsData);
                 setExpenses(expensesData);
+                setOtherIncomes(otherIncomesData);
             } catch (error) {
                 toast({ title: "Error", description: "Gagal memuat data dashboard.", variant: "destructive" });
             } finally {
@@ -68,10 +71,12 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
         const salesInRange = sales.filter(s => isWithinInterval(s.date, interval));
         const returnsInRange = returns.filter(r => isWithinInterval(r.date, interval));
         const expensesInRange = expenses.filter(e => isWithinInterval(e.date, interval));
+        const otherIncomesInRange = otherIncomes.filter(i => isWithinInterval(i.date, interval));
 
         const totalRevenue = salesInRange.reduce((sum, sale) => sum + sale.finalTotal, 0);
         const totalReturnValue = returnsInRange.reduce((sum, ret) => sum + ret.totalRefund, 0);
         const totalExpenses = expensesInRange.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalOtherIncomes = otherIncomesInRange.reduce((sum, income) => sum + income.amount, 0);
         
         const totalCostOfGoodsSold = salesInRange.reduce((sum, sale) => 
             sum + sale.items.reduce((itemSum, item) => itemSum + ((item.costPriceAtSale || 0) * item.quantity), 0), 0);
@@ -82,10 +87,10 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
         const netRevenue = totalRevenue - totalReturnValue;
         const netCOGS = totalCostOfGoodsSold - totalCostOfReturnedGoods;
         const grossProfit = netRevenue - netCOGS;
-        const profit = grossProfit - totalExpenses;
+        const profit = grossProfit - totalExpenses + totalOtherIncomes;
 
         return { netRevenue, profit, totalExpenses, totalReturns: totalReturnValue };
-    }, [sales, returns, expenses]);
+    }, [sales, returns, expenses, otherIncomes]);
 
     const salesChartData = useMemo(() => {
         return Array.from({ length: 14 }).map((_, i) => {
@@ -227,12 +232,16 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                             <span>Catat Pengeluaran</span>
                              <ArrowRight className="h-4 w-4"/>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('dashboard')}>
-                            <span>Dasbor Rangkuman</span>
+                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('pemasukan-lain')}>
+                            <span>Pemasukan Lain-lain</span>
+                            <ArrowRight className="h-4 w-4"/>
+                        </Button>
+                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('kalkulator-roas')}>
+                            <span>Kalkulator ROAS</span>
                              <ArrowRight className="h-4 w-4"/>
                         </Button>
-                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('kalkulator-roas')}>
-                            <span>Kalkulator ROAS</span>
+                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('dashboard')}>
+                            <span>Dasbor Rangkuman</span>
                              <ArrowRight className="h-4 w-4"/>
                         </Button>
                     </CardContent>
