@@ -43,8 +43,7 @@ const pdfToExcelFlow = ai.defineFlow(
             "Nama SKU": item.name,
             "SKU": item.sku,
             "Jumlah": item.quantity,
-            "Harga Satuan (IDR)": item.price,
-            "Total (IDR)": item.price * item.quantity,
+            "Harga Satuan": item.price,
         }))
     );
 
