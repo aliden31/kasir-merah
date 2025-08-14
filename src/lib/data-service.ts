@@ -412,6 +412,20 @@ export const addOtherIncome = async (income: Omit<OtherIncome, 'id'>, user: User
     return newIncome;
 };
 
+export const updateOtherIncome = async (id: string, incomeData: Partial<Omit<OtherIncome, 'id'>>, user: UserRole) => {
+    const dataToUpdate: any = { ...incomeData };
+    if (incomeData.date) {
+        dataToUpdate.date = Timestamp.fromDate(new Date(incomeData.date));
+    }
+    await updateDocument<OtherIncome>('otherIncomes', id, dataToUpdate);
+    await addActivityLog(user, `memperbarui pemasukan lain: "${incomeData.name}"`);
+};
+
+export const deleteOtherIncome = async (income: OtherIncome, user: UserRole) => {
+    await deleteDocument('otherIncomes', income.id);
+    await addActivityLog(user, `menghapus pemasukan lain: "${income.name}"`);
+};
+
 
 // FlashSale-specific functions
 export const getFlashSaleSettings = async (): Promise<FlashSale> => {

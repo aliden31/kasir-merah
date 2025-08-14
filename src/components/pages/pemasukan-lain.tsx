@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { FC } from 'react';
@@ -22,12 +23,23 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { OtherIncome, UserRole } from '@/lib/types';
-import { PlusCircle, Calendar as CalendarIcon, Edit } from 'lucide-react';
+import { PlusCircle, Calendar as CalendarIcon, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getOtherIncomes, addOtherIncome } from '@/lib/data-service';
+import { getOtherIncomes, addOtherIncome, updateOtherIncome, deleteOtherIncome } from '@/lib/data-service';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -216,8 +228,8 @@ const PemasukanLainPage: FC<PemasukanLainPageProps> = React.memo(({ onDataChange
   const handleSaveIncome = async (incomeData: Omit<OtherIncome, 'id'> | OtherIncome) => {
     try {
         if ('id' in incomeData) {
-            // await updateOtherIncome(incomeData.id, incomeData, userRole);
-            toast({ title: "Fitur belum tersedia", description: `Mengedit pemasukan lain belum didukung.` });
+            await updateOtherIncome(incomeData.id, incomeData, userRole);
+            toast({ title: "Pemasukan Diperbarui", description: `Pemasukan telah berhasil diperbarui.` });
         } else {
             await addOtherIncome(incomeData, userRole);
             toast({ title: "Pemasukan Disimpan", description: `Pemasukan baru telah berhasil disimpan.` });
@@ -227,6 +239,17 @@ const PemasukanLainPage: FC<PemasukanLainPageProps> = React.memo(({ onDataChange
     } catch(error) {
         toast({ title: "Error", description: "Gagal menyimpan pemasukan.", variant: "destructive" });
         console.error(error);
+    }
+  }
+
+  const handleDeleteIncome = async (income: OtherIncome) => {
+    try {
+        await deleteOtherIncome(income, userRole);
+        toast({ title: "Pemasukan Dihapus", description: `Pemasukan "${income.name}" telah dihapus.` });
+        await fetchInitialData();
+        onDataChange();
+    } catch (error) {
+        toast({ title: "Error", description: "Gagal menghapus pemasukan.", variant: "destructive" });
     }
   }
 
@@ -340,19 +363,46 @@ const PemasukanLainPage: FC<PemasukanLainPageProps> = React.memo(({ onDataChange
                             <TableHead>Deskripsi</TableHead>
                             <TableHead>Catatan</TableHead>
                             <TableHead className="text-right">Jumlah</TableHead>
+                            <TableHead className="text-right">Aksi</TableHead>
                         </TableRow>
                         </TableHeader>
                         <TableBody>
                         {filteredIncomes.length > 0 ? filteredIncomes.map((income) => (
                             <TableRow key={income.id}>
-                            <TableCell>{new Date(income.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
-                            <TableCell className="font-medium">{income.name}</TableCell>
-                            <TableCell className="text-muted-foreground">{income.notes}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(income.amount)}</TableCell>
+                                <TableCell>{new Date(income.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
+                                <TableCell className="font-medium">{income.name}</TableCell>
+                                <TableCell className="text-muted-foreground">{income.notes}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(income.amount)}</TableCell>
+                                <TableCell className="text-right space-x-2">
+                                    <Button variant="ghost" size="icon" onClick={() => handleOpenForm(income)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Hapus Pemasukan?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Tindakan ini akan menghapus catatan pemasukan "{income.name}" secara permanen. Apakah Anda yakin?
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteIncome(income)} className="bg-destructive hover:bg-destructive/90">
+                                                    Hapus
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center">
                                     Belum ada data pemasukan pada rentang tanggal ini.
                                 </TableCell>
                             </TableRow>
