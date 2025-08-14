@@ -271,72 +271,76 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         </div>
     );
     
-    const renderReviewState = () => (
-        <div className="space-y-4">
-             <Alert>
-                <Sparkles className="h-4 w-4" />
-                <AlertTitle>Hasil Analisis</AlertTitle>
-                <AlertDescription>
-                    Harap tinjau data yang diekstrak di bawah ini. Jika ada harga yang berbeda untuk SKU yang sama, harga jual akan dirata-ratakan.
-                    Produk baru akan dibuat untuk item yang tidak dikenali.
-                </AlertDescription>
-            </Alert>
-            
-            <div className="grid md:grid-cols-2 gap-4">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base flex items-center"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500"/> Produk Dikenali</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                       {Array.from(matchedProducts.values()).length > 0 ? (
-                           <ul className="text-sm space-y-1">
-                               {Array.from(matchedProducts.values()).map(p => <li key={p.id}>{p.name}</li>)}
-                           </ul>
-                       ) : <p className="text-sm text-muted-foreground">Tidak ada produk yang cocok.</p>}
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base flex items-center"><AlertCircle className="h-4 w-4 mr-2 text-amber-500"/>Produk Baru Akan Dibuat</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                       {newProducts.length > 0 ? (
-                            <ul className="text-sm space-y-1">
-                               {newProducts.map(p => <li key={p.sku}>{p.name}</li>)}
-                           </ul>
-                       ) : <p className="text-sm text-muted-foreground">Semua produk dikenali.</p>}
-                    </CardContent>
-                </Card>
-            </div>
+    const ReviewState = () => {
+        const totalQuantity = useMemo(() => aggregatedItems.reduce((sum, item) => sum + item.quantity, 0), [aggregatedItems]);
 
-            <ScrollArea className="h-64 border rounded-md">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Nama Produk</TableHead>
-                            <TableHead>SKU</TableHead>
-                            <TableHead className="text-right">Jumlah</TableHead>
-                            <TableHead className="text-right">Harga Jual (Rata-rata)</TableHead>
-                            <TableHead className="text-right">Status</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {aggregatedItems.map((item, index) => (
-                            <TableRow key={index}>
-                                <TableCell className="font-medium">{item.name}</TableCell>
-                                <TableCell className="text-muted-foreground">{item.sku}</TableCell>
-                                <TableCell className="text-right">{item.quantity}</TableCell>
-                                <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                                <TableCell className="text-right">
-                                    <Badge variant={item.isNew ? "secondary" : "default"}>{item.isNew ? "Baru" : "OK"}</Badge>
-                                </TableCell>
+        return (
+            <div className="space-y-4">
+                 <Alert>
+                    <Sparkles className="h-4 w-4" />
+                    <AlertTitle>Hasil Analisis</AlertTitle>
+                    <AlertDescription>
+                        Sistem berhasil mengekstrak total <span className="font-bold">{totalQuantity} item</span> dari <span className="font-bold">{aggregatedItems.length} jenis produk</span>.
+                        Harap tinjau data di bawah ini. Produk baru akan dibuat untuk item yang tidak dikenali.
+                    </AlertDescription>
+                </Alert>
+                
+                <div className="grid md:grid-cols-2 gap-4">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500"/> Produk Dikenali</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                           {Array.from(matchedProducts.values()).length > 0 ? (
+                               <ul className="text-sm space-y-1">
+                                   {Array.from(matchedProducts.values()).map(p => <li key={p.id}>{p.name}</li>)}
+                               </ul>
+                           ) : <p className="text-sm text-muted-foreground">Tidak ada produk yang cocok.</p>}
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center"><AlertCircle className="h-4 w-4 mr-2 text-amber-500"/>Produk Baru Akan Dibuat</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                           {newProducts.length > 0 ? (
+                                <ul className="text-sm space-y-1">
+                                   {newProducts.map(p => <li key={p.sku}>{p.name}</li>)}
+                               </ul>
+                           ) : <p className="text-sm text-muted-foreground">Semua produk dikenali.</p>}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <ScrollArea className="h-64 border rounded-md">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Nama Produk</TableHead>
+                                <TableHead>SKU</TableHead>
+                                <TableHead className="text-right">Jumlah</TableHead>
+                                <TableHead className="text-right">Harga Jual (Rata-rata)</TableHead>
+                                <TableHead className="text-right">Status</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </ScrollArea>
-        </div>
-    );
+                        </TableHeader>
+                        <TableBody>
+                            {aggregatedItems.map((item, index) => (
+                                <TableRow key={index}>
+                                    <TableCell className="font-medium">{item.name}</TableCell>
+                                    <TableCell className="text-muted-foreground">{item.sku}</TableCell>
+                                    <TableCell className="text-right">{item.quantity}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Badge variant={item.isNew ? "secondary" : "default"}>{item.isNew ? "Baru" : "OK"}</Badge>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </ScrollArea>
+            </div>
+        );
+    }
     
     const renderErrorState = () => (
          <Alert variant="destructive">
@@ -366,7 +370,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             <div className="py-4">
                 {analysisState === 'idle' && renderIdleState()}
                 {analysisState === 'analyzing' && renderAnalyzingState()}
-                {analysisState === 'review' && renderReviewState()}
+                {analysisState === 'review' && <ReviewState />}
                 {analysisState === 'error' && renderErrorState()}
             </div>
 
