@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { extractSales } from '@/ai/flows/extract-sales-flow';
-import type { ExtractedSale, ExtractedSaleItem } from '@/ai/schemas/extract-sales-schema';
+import type { ExtractedSaleItem } from '@/ai/schemas/extract-sales-schema';
 import { getProducts, addProduct } from '@/lib/data-service';
 import type { Product, UserRole, SaleItem } from '@/lib/types';
 import { FileQuestion, Loader2, Wand2, CheckCircle2, AlertCircle, Sparkles, FileSpreadsheet } from 'lucide-react';
@@ -57,10 +57,11 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         if (extractedItems.length === 0) return { newProducts: [], matchedProducts: new Map(), aggregatedItems: [] };
         
         const itemsBySku = extractedItems.reduce((acc, item) => {
-            if (!acc[item.sku]) {
-                acc[item.sku] = [];
+            const skuKey = item.sku || item.name;
+            if (!acc[skuKey]) {
+                acc[skuKey] = [];
             }
-            acc[item.sku].push(item);
+            acc[skuKey].push(item);
             return acc;
         }, {} as Record<string, ExtractedSaleItem[]>);
         
@@ -68,11 +69,12 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         const newProducts = new Map<string, ExtractedSaleItem>();
         const matchedProducts = new Map<string, Product>();
 
-        for (const sku in itemsBySku) {
-            const items = itemsBySku[sku];
+        for (const skuKey in itemsBySku) {
+            const items = itemsBySku[skuKey];
             const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
             const averagePrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) / totalQuantity;
-            const name = items[0].name;
+            const name = items[0].name || skuKey;
+            const sku = items[0].sku || skuKey;
 
             const dbProduct = dbProducts.find(p => p.id.toLowerCase() === sku.toLowerCase() || p.name.toLowerCase() === name.toLowerCase());
             const isNew = !dbProduct;
@@ -118,17 +120,17 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 const json = XLSX.utils.sheet_to_json(worksheet) as any[];
 
                 const items: ExtractedSaleItem[] = json.map((row) => ({
-                    sku: (row.sku || row.SKU || row['ID Produk'] || row.name || row.Nama || row['Nama Produk']).toString(),
-                    name: (row.name || row.Nama || row['Nama Produk']).toString(),
-                    quantity: Number(row.quantity || row.Qty || row.Jumlah || 0),
-                    price: Number(row.price || row.Harga || row['Harga Jual'] || 0),
+                    sku: (row['Nama SKU'] || '').toString(),
+                    name: (row['Nama SKU'] || '').toString(),
+                    quantity: Number(row['Jumlah'] || 0),
+                    price: Number(row['Harga Satuan (IDR)'] || 0),
                 })).filter(item => item.name && item.quantity > 0);
 
                 if (items.length > 0) {
                     setExtractedItems(items);
                     setAnalysisState('review');
                 } else {
-                    setErrorMessage('Format Excel tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "name", "quantity", dan "price".');
+                    setErrorMessage('Format Excel tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "Nama SKU", "Jumlah", dan "Harga Satuan (IDR)".');
                     setAnalysisState('error');
                 }
             } catch (err) {
