@@ -245,12 +245,27 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
     }
   }
 
-  const handleImportSuccess = () => {
-    toast({
-      title: "Impor Berhasil",
-      description: "Data penjualan dan produk baru telah berhasil diimpor."
+  const handleImportComplete = (importedItems: SaleItem[]) => {
+    setCart(prevCart => {
+        const newCart = [...prevCart];
+        
+        importedItems.forEach(importedItem => {
+            const existingItemIndex = newCart.findIndex(cartItem => cartItem.product.id === importedItem.product.id);
+            if (existingItemIndex > -1) {
+                newCart[existingItemIndex].quantity += importedItem.quantity;
+            } else {
+                newCart.push(importedItem);
+            }
+        });
+
+        return newCart;
     });
-    onDataNeedsRefresh();
+
+    toast({
+      title: "Impor Selesai",
+      description: `${importedItems.length} jenis produk telah ditambahkan ke keranjang.`
+    });
+    onDataNeedsRefresh(); // To get latest product data if new ones were created
     setImporterOpen(false);
   }
 
@@ -349,7 +364,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                             <FileUp className="mr-2 h-4 w-4" /> Impor
                         </Button>
                     </DialogTrigger>
-                    <SalesImporter onImportSuccess={handleImportSuccess} userRole={userRole}/>
+                    <SalesImporter onImportComplete={handleImportComplete} userRole={userRole}/>
                 </Dialog>
                 <Dialog open={isReturnFormOpen} onOpenChange={setReturnFormOpen}>
                     <DialogTrigger asChild>

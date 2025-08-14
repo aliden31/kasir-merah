@@ -13,8 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { extractSales } from '@/ai/flows/extract-sales-flow';
 import type { ExtractedSale, ExtractedSaleItem } from '@/ai/schemas/extract-sales-schema';
-import { getProducts, addProduct, addSale } from '@/lib/data-service';
-import type { Product, UserRole } from '@/lib/types';
+import { getProducts, addProduct } from '@/lib/data-service';
+import type { Product, UserRole, SaleItem } from '@/lib/types';
 import { FileQuestion, Loader2, Wand2, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -32,11 +32,11 @@ type AggregatedSaleItem = {
 };
 
 interface SalesImporterProps {
-    onImportSuccess: () => void;
+    onImportComplete: (items: SaleItem[]) => void;
     userRole: UserRole;
 }
 
-export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, userRole }) => {
+export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, userRole }) => {
     const [file, setFile] = useState<File | null>(null);
     const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
     const [extractedSales, setExtractedSales] = useState<ExtractedSale[]>([]);
@@ -146,6 +146,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
         try {
             const { newProducts, matchedProducts, aggregatedItems } = aggregatedAnalysis;
             const newProductIds = new Map<string, string>();
+            let updatedDbProducts = [...dbProducts];
 
             // 1. Create new products
             for (const newProd of newProducts) {
@@ -159,22 +160,20 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
                 };
                 const createdProduct = await addProduct(productData, userRole);
                 newProductIds.set(newProd.sku, createdProduct.id);
+                updatedDbProducts.push(createdProduct);
             }
 
-            // 2. Add sales (assuming one sale per import for simplicity)
-            const saleItems = aggregatedItems.map(item => {
+            // 2. Construct SaleItem[] for the cart
+            const cartItems = aggregatedItems.map(item => {
                 const dbProduct = matchedProducts.get(item.sku);
                 const newProductId = newProductIds.get(item.sku);
-                const productId = dbProduct?.id || newProductId;
-                
-                if (!productId) return null;
+                const finalProductId = dbProduct?.id || newProductId;
 
-                const productInfo = dbProduct || {
-                    id: productId,
-                    name: item.name,
-                    category: 'Impor',
-                    costPrice: 0,
-                };
+                if (!finalProductId) return null;
+
+                const productInfo = updatedDbProducts.find(p => p.id === finalProductId);
+
+                if (!productInfo) return null;
 
                 return {
                     product: {
@@ -190,18 +189,8 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
                 };
             }).filter((i): i is NonNullable<typeof i> => i !== null);
             
-            const subtotal = saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+            onImportComplete(cartItems);
 
-            const newSale = {
-                items: saleItems,
-                subtotal: subtotal,
-                discount: 0,
-                finalTotal: subtotal,
-                date: new Date(),
-            };
-            await addSale(newSale, userRole);
-            
-            onImportSuccess();
         } catch (error) {
             console.error('Import failed:', error);
             toast({
@@ -340,7 +329,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportSuccess, u
                         <Button variant="secondary" onClick={() => setAnalysisState('idle')}>Analisis Ulang</Button>
                         <Button onClick={handleConfirmImport} disabled={analysisState === 'saving'}>
                             {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                            Konfirmasi & Impor Data
+                            Konfirmasi & Impor ke Keranjang
                         </Button>
                      </>
                  ) : null}
