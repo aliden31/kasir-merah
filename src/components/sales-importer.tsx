@@ -181,7 +181,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         setAnalysisState('analyzing');
         setErrorMessage('');
         
-        if(file.type.includes('spreadsheetml') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv')) {
+        if(file.type.includes('spreadsheetml') || file.type.includes('csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv')) {
             handleStructuredFileParse(file);
         } else if (file.type.startsWith('image/') || file.type === 'application/pdf') {
             handlePdfImageParse(file);
@@ -273,6 +273,12 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
     
     const ReviewState = () => {
         const totalQuantity = useMemo(() => aggregatedItems.reduce((sum, item) => sum + item.quantity, 0), [aggregatedItems]);
+        const uniqueMatchedProducts = useMemo(() => {
+            const unique = new Set<Product>();
+            matchedProducts.forEach(p => unique.add(p));
+            return Array.from(unique);
+        }, [matchedProducts]);
+
 
         return (
             <div className="space-y-4">
@@ -291,9 +297,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                             <CardTitle className="text-base flex items-center"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500"/> Produk Dikenali</CardTitle>
                         </CardHeader>
                         <CardContent>
-                           {Array.from(matchedProducts.values()).length > 0 ? (
+                           {uniqueMatchedProducts.length > 0 ? (
                                <ul className="text-sm space-y-1">
-                                   {Array.from(matchedProducts.values()).map(p => <li key={p.id}>{p.name}</li>)}
+                                   {uniqueMatchedProducts.map(p => <li key={p.id}>{p.name}</li>)}
                                </ul>
                            ) : <p className="text-sm text-muted-foreground">Tidak ada produk yang cocok.</p>}
                         </CardContent>
@@ -353,7 +359,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
     const getAnalysisButton = () => {
         const fileType = file?.type;
         const fileName = file?.name || '';
-        if(fileType?.includes('spreadsheetml') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
+        if(fileType?.includes('spreadsheetml') || fileType?.includes('csv') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
             return <><FileSpreadsheet className="mr-2 h-4 w-4"/>Proses File</>
         }
         return <><Wand2 className="mr-2 h-4 w-4"/>Analisis dengan AI</>
@@ -398,5 +404,3 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         </DialogContent>
     );
 };
-
-    
