@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -40,12 +40,17 @@ interface SalesImporterProps {
 export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, userRole }) => {
     const [file, setFile] = useState<File | null>(null);
     const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
-    const [extractedItems, setExtractedItems] = useState<ExtractedSaleItem[]>([]);
     const [dbProducts, setDbProducts] = useState<Product[]>([]);
     const [errorMessage, setErrorMessage] = useState('');
     const { toast } = useToast();
 
-    React.useEffect(() => {
+    // State to hold the final, processed data for review
+    const [aggregatedItems, setAggregatedItems] = useState<AggregatedSaleItem[]>([]);
+    const [newProducts, setNewProducts] = useState<ExtractedSaleItem[]>([]);
+    const [matchedProducts, setMatchedProducts] = useState<Map<string, Product>>(new Map());
+
+
+    useEffect(() => {
         const fetchDbProducts = async () => {
             const products = await getProducts();
             setDbProducts(products);
@@ -53,44 +58,42 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         fetchDbProducts();
     }, []);
 
-    const aggregatedAnalysis = useMemo(() => {
-        if (extractedItems.length === 0) return { newProducts: [], matchedProducts: new Map(), aggregatedItems: [] };
-        
-        const itemsBySku = extractedItems.reduce((acc, item) => {
+    const processExtractedItems = (items: ExtractedSaleItem[]) => {
+        const itemsBySku = new Map<string, { totalQuantity: number; totalValue: number; name: string; originalItems: ExtractedSaleItem[] }>();
+
+        // 1. Group items and aggregate quantities and values
+        items.forEach(item => {
             const skuKey = item.sku || item.name;
-            if (!acc[skuKey]) {
-                acc[skuKey] = [];
+            if (!itemsBySku.has(skuKey)) {
+                itemsBySku.set(skuKey, { totalQuantity: 0, totalValue: 0, name: item.name, originalItems: [] });
             }
-            acc[skuKey].push(item);
-            return acc;
-        }, {} as Record<string, ExtractedSaleItem[]>);
-        
-        const aggregatedItems: AggregatedSaleItem[] = [];
-        const newProducts = new Map<string, ExtractedSaleItem>();
-        const matchedProducts = new Map<string, Product>();
+            const existing = itemsBySku.get(skuKey)!;
+            existing.totalQuantity += item.quantity;
+            existing.totalValue += item.price * item.quantity;
+            existing.originalItems.push(item);
+        });
 
-        for (const skuKey in itemsBySku) {
-            const items = itemsBySku[skuKey];
-            const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-            
-            // Calculate weighted average price
-            const totalValue = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        // 2. Calculate final aggregated list and identify new/matched products
+        const finalAggregatedItems: AggregatedSaleItem[] = [];
+        const finalNewProducts = new Map<string, ExtractedSaleItem>();
+        const finalMatchedProducts = new Map<string, Product>();
+
+        for (const [skuKey, aggregatedData] of itemsBySku.entries()) {
+            const { totalQuantity, totalValue, name, originalItems } = aggregatedData;
             const averagePrice = totalQuantity > 0 ? totalValue / totalQuantity : 0;
+            const representativeItem = originalItems[0];
 
-            const name = items[0].name || skuKey;
-            const sku = items[0].sku || skuKey;
-
-            const dbProduct = dbProducts.find(p => p.id.toLowerCase() === sku.toLowerCase() || p.name.toLowerCase() === name.toLowerCase());
+            const dbProduct = dbProducts.find(p => p.id.toLowerCase() === skuKey.toLowerCase() || p.name.toLowerCase() === name.toLowerCase());
             const isNew = !dbProduct;
-            
-            if (isNew) {
-                newProducts.set(sku, items[0]);
-            } else {
-                matchedProducts.set(sku, dbProduct);
-            }
 
-            aggregatedItems.push({
-                sku,
+            if (isNew) {
+                finalNewProducts.set(skuKey, representativeItem);
+            } else {
+                finalMatchedProducts.set(skuKey, dbProduct);
+            }
+            
+            finalAggregatedItems.push({
+                sku: skuKey,
                 name,
                 quantity: totalQuantity,
                 price: averagePrice,
@@ -98,13 +101,13 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             });
         }
         
-        return { 
-            newProducts: Array.from(newProducts.values()), 
-            matchedProducts,
-            aggregatedItems
-        };
+        // 3. Set the state
+        setAggregatedItems(finalAggregatedItems);
+        setNewProducts(Array.from(finalNewProducts.values()));
+        setMatchedProducts(finalMatchedProducts);
+        setAnalysisState('review');
+    };
 
-    }, [extractedItems, dbProducts]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
@@ -131,8 +134,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 })).filter(item => item.name && item.quantity > 0);
 
                 if (items.length > 0) {
-                    setExtractedItems(items);
-                    setAnalysisState('review');
+                    processExtractedItems(items);
                 } else {
                     setErrorMessage('Format Excel tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "Nama SKU", "Jumlah", dan "Harga Satuan (IDR)".');
                     setAnalysisState('error');
@@ -155,8 +157,8 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                     const result = await extractSales({ fileDataUri, products: existingProducts });
                     
                     if (result && result.sales.length > 0) {
-                        setExtractedItems(result.sales.flatMap(s => s.items));
-                        setAnalysisState('review');
+                        const allItems = result.sales.flatMap(s => s.items);
+                        processExtractedItems(allItems);
                     } else {
                         setErrorMessage('AI tidak dapat menemukan data penjualan di dalam file. Coba file lain atau pastikan formatnya jelas.');
                         setAnalysisState('error');
@@ -192,7 +194,6 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
     const handleConfirmImport = async () => {
         setAnalysisState('saving');
         try {
-            const { newProducts, matchedProducts, aggregatedItems } = aggregatedAnalysis;
             const newProductIds = new Map<string, string>();
             let updatedDbProducts = [...dbProducts];
 
@@ -287,9 +288,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                         <CardTitle className="text-base flex items-center"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500"/> Produk Dikenali</CardTitle>
                     </CardHeader>
                     <CardContent>
-                       {Array.from(aggregatedAnalysis.matchedProducts.values()).length > 0 ? (
+                       {Array.from(matchedProducts.values()).length > 0 ? (
                            <ul className="text-sm space-y-1">
-                               {Array.from(aggregatedAnalysis.matchedProducts.values()).map(p => <li key={p.id}>{p.name}</li>)}
+                               {Array.from(matchedProducts.values()).map(p => <li key={p.id}>{p.name}</li>)}
                            </ul>
                        ) : <p className="text-sm text-muted-foreground">Tidak ada produk yang cocok.</p>}
                     </CardContent>
@@ -299,9 +300,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                         <CardTitle className="text-base flex items-center"><AlertCircle className="h-4 w-4 mr-2 text-amber-500"/>Produk Baru Akan Dibuat</CardTitle>
                     </CardHeader>
                     <CardContent>
-                       {aggregatedAnalysis.newProducts.length > 0 ? (
+                       {newProducts.length > 0 ? (
                             <ul className="text-sm space-y-1">
-                               {aggregatedAnalysis.newProducts.map(p => <li key={p.sku}>{p.name}</li>)}
+                               {newProducts.map(p => <li key={p.sku}>{p.name}</li>)}
                            </ul>
                        ) : <p className="text-sm text-muted-foreground">Semua produk dikenali.</p>}
                     </CardContent>
@@ -320,7 +321,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {aggregatedAnalysis.aggregatedItems.map((item, index) => (
+                        {aggregatedItems.map((item, index) => (
                             <TableRow key={index}>
                                 <TableCell className="font-medium">{item.name}</TableCell>
                                 <TableCell className="text-muted-foreground">{item.sku}</TableCell>
@@ -381,7 +382,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                      </>
                  ) : analysisState === 'review' ? (
                      <>
-                        <Button variant="secondary" onClick={() => { setAnalysisState('idle'); setFile(null); setExtractedItems([]); }}>Analisis Ulang</Button>
+                        <Button variant="secondary" onClick={() => { setAnalysisState('idle'); setFile(null); setAggregatedItems([]); }}>Analisis Ulang</Button>
                         <Button onClick={handleConfirmImport} disabled={analysisState === 'saving'}>
                             {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                             Konfirmasi & Impor ke Keranjang
