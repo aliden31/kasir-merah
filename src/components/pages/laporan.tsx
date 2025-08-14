@@ -4,7 +4,7 @@
 import type { FC } from 'react';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Wallet, Download, Undo2, Printer, PlusSquare } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Wallet, Download, Undo2, Printer, PlusSquare, Tag } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon } from 'lucide-react';
@@ -154,6 +154,7 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
         const totalSalesValue = filteredSales.reduce((sum, sale) => sum + sale.finalTotal, 0);
         const totalReturnValue = filteredReturns.reduce((sum, ret) => sum + ret.totalRefund, 0);
         const totalOtherIncomesValue = filteredOtherIncomes.reduce((sum, income) => sum + income.amount, 0);
+        const totalDiscountValue = filteredSales.reduce((sum, sale) => sum + (sale.subtotal * (sale.discount / 100)), 0);
 
         const totalCostOfGoodsSold = filteredSales.reduce((totalCost, sale) => {
             const saleCost = sale.items.reduce((itemCost, item: SaleItem) => {
@@ -181,6 +182,7 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
         
         return { 
             totalSales: netSales,
+            totalDiscount: totalDiscountValue,
             totalCostOfGoods: netCOGS,
             totalExpenses: totalExpensesValue,
             totalReturns: totalReturnValue,
@@ -196,7 +198,7 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
       }, [sales]);
 
     const exportData = useMemo(() => {
-        const { filteredSales, filteredExpenses, filteredReturns } = filteredData;
+        const { filteredSales, filteredExpenses, filteredReturns, filteredOtherIncomes } = filteredData;
 
         const salesWithDetails = filteredSales.map(sale => {
             const totalPokok = sale.items.reduce((acc, item: SaleItem) => {
@@ -220,22 +222,25 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
         const totalDiscount = salesWithDetails.reduce((acc, sale) => acc + (sale.subtotal * sale.discount / 100), 0);
         const totalPokokKotor = salesWithDetails.reduce((acc, sale) => acc + sale.totalPokok, 0);
         const totalPengeluaran = filteredExpenses.reduce((acc, exp) => acc + exp.amount, 0);
+        const totalPemasukanLain = filteredOtherIncomes.reduce((acc, income) => acc + income.amount, 0);
         
         const penjualanBersih = totalSubTotal - totalDiscount - totalReturnsValue;
         const totalPokokBersih = totalPokokKotor - totalCostOfReturnedGoods;
-        const labaKotor = penjualanBersih - totalPokokBersih;
+        const labaKotor = penjualanBersih - totalPokokBersih + totalPemasukanLain;
         const labaBersih = labaKotor - totalPengeluaran;
         
         return {
             salesWithDetails,
             filteredExpenses,
             filteredReturns,
+            filteredOtherIncomes,
             summary: {
                 totalSubTotal,
                 totalDiscount,
                 totalReturnsValue,
                 penjualanBersih,
                 totalPokokBersih,
+                totalPemasukanLain,
                 labaKotor,
                 totalPengeluaran,
                 labaBersih
@@ -245,21 +250,18 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
 
 
     const handleExportXLSX = () => {
-        const { salesWithDetails, filteredExpenses, filteredReturns, summary } = exportData;
+        const { salesWithDetails, filteredExpenses, filteredReturns, filteredOtherIncomes, summary } = exportData;
         const { from, to } = date || {};
         const dateRangeStr = from && to ? `${format(from, 'dd-MM-yyyy')} - ${format(to, 'dd-MM-yyyy')}` : 'Semua Waktu';
     
         const wb = XLSX.utils.book_new();
         const numFormat = '#,##0';
     
-        // --- DATA PREPARATION ---
         const sheetData: (any)[][] = [];
     
-        // Title
         sheetData.push([`Laporan Laba Rugi - Periode: ${dateRangeStr}`]);
         sheetData.push([]); 
     
-        // Sales Details Section
         sheetData.push(['Rincian Penjualan']);
         const salesHeader = ['Tanggal', 'ID Transaksi', 'Item', 'Qty', 'Harga Satuan', 'Total', 'Diskon (%)', 'Total Akhir', 'HPP', 'Laba Kotor'];
         sheetData.push(salesHeader);
@@ -285,7 +287,6 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
         });
         sheetData.push([]); 
     
-        // Returns Details Section
         if (filteredReturns.length > 0) {
             sheetData.push(['Rincian Retur']);
             const returnsHeader = ['Tanggal', 'ID Transaksi Asal', 'Item', 'Qty', 'Total Refund'];
@@ -303,8 +304,22 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
             });
             sheetData.push([]);
         }
+
+        if (filteredOtherIncomes.length > 0) {
+            sheetData.push(['Rincian Pemasukan Lain']);
+            const otherIncomesHeader = ['Tanggal', 'Deskripsi', 'Catatan', 'Jumlah'];
+            sheetData.push(otherIncomesHeader);
+            filteredOtherIncomes.forEach(income => {
+                sheetData.push([
+                    format(new Date(income.date), 'dd/MM/yyyy'),
+                    income.name,
+                    income.notes || '',
+                    { t: 'n', v: income.amount, z: numFormat }
+                ]);
+            });
+            sheetData.push([]);
+        }
         
-        // Expenses Details Section
         if (filteredExpenses.length > 0) {
             sheetData.push(['Rincian Pengeluaran']);
             const expensesHeader = ['Tanggal', 'Kategori', 'Sub-Kategori', 'Deskripsi', 'Jumlah'];
@@ -321,18 +336,20 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
             sheetData.push([]);
         }
     
-        // Summary Section at the bottom
         sheetData.push(['Ringkasan Laporan']);
         sheetData.push(['Keterangan', 'Jumlah']);
-        sheetData.push(['Penjualan Bersih (Setelah Retur & Diskon)', { t: 'n', v: summary.penjualanBersih, z: numFormat }]);
-        sheetData.push(['Total Modal (HPP) Bersih', { t: 'n', v: summary.totalPokokBersih, z: numFormat }]);
-        sheetData.push(['Laba Kotor', { t: 'n', v: summary.labaKotor, z: numFormat }]);
+        sheetData.push(['Total Penjualan (Kotor)', { t: 'n', v: summary.totalSubTotal, z: numFormat }]);
+        sheetData.push(['Total Diskon Penjualan', { t: 'n', v: -summary.totalDiscount, z: numFormat }]);
+        sheetData.push(['Total Retur Penjualan', { t: 'n', v: -summary.totalReturnsValue, z: numFormat }]);
+        sheetData.push(['Penjualan Bersih', { t: 'n', v: summary.penjualanBersih, z: numFormat }]);
+        sheetData.push(['Total Modal (HPP) Bersih', { t: 'n', v: -summary.totalPokokBersih, z: numFormat }]);
+        sheetData.push(['Total Pemasukan Lain', { t: 'n', v: summary.totalPemasukanLain, z: numFormat }]);
+        sheetData.push(['Laba Kotor', { t: 'n', v: summary.labaKotor, z: numFormat, s: { font: { bold: true } } }]);
         sheetData.push(['Total Pengeluaran', { t: 'n', v: -summary.totalPengeluaran, z: numFormat }]);
         sheetData.push(['LABA BERSIH', { t: 'n', v: summary.labaBersih, z: numFormat, s: { font: { bold: true } } }]);
 
         const ws = XLSX.utils.aoa_to_sheet(sheetData, { cellStyles: true });
         
-        // Auto-fit columns
         const cols = Object.keys(ws).filter(key => key.match(/[A-Z]+1$/)).map(key => key.replace('1', ''));
         const colWidths = cols.map(col => {
             const cells = Object.keys(ws).filter(key => key.startsWith(col));
@@ -352,6 +369,7 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
 
     const kpiCards = [
         { title: 'Penjualan Bersih', value: formatCurrency(financialSummary.totalSales), icon: TrendingUp, color: 'text-green-500', view: 'penjualan' as View | undefined },
+        { title: 'Total Diskon', value: formatCurrency(financialSummary.totalDiscount), icon: Tag, color: 'text-pink-500', view: undefined },
         { title: 'Total Modal (HPP)', value: formatCurrency(financialSummary.totalCostOfGoods), icon: ShoppingCart, color: 'text-blue-500', view: undefined },
         { title: 'Pemasukan Lain', value: formatCurrency(financialSummary.totalOtherIncomes), icon: PlusSquare, color: 'text-sky-500', view: 'pemasukan-lain' as View | undefined },
         { title: 'Total Retur', value: formatCurrency(financialSummary.totalReturns), icon: Undo2, color: 'text-yellow-500', view: 'retur' as View | undefined },
@@ -419,13 +437,21 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
                             </DialogDescription>
                         </DialogHeader>
                         <div className="py-4 space-y-2">
-                            <div className="flex justify-between items-center text-sm">
+                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-muted-foreground">Penjualan Bersih</span>
                                 <span className="font-medium">{formatCurrency(exportData.summary.penjualanBersih)}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Total Diskon</span>
+                                <span className="font-medium text-pink-600">-{formatCurrency(exportData.summary.totalDiscount)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
                                 <span className="text-muted-foreground">Total Pokok (HPP)</span>
                                 <span className="font-medium">{formatCurrency(exportData.summary.totalPokokBersih)}</span>
+                            </div>
+                             <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Total Pemasukan Lain</span>
+                                <span className="font-medium text-green-600">{formatCurrency(exportData.summary.totalPemasukanLain)}</span>
                             </div>
                             <Separator />
                             <div className="flex justify-between items-center text-sm font-semibold">
@@ -458,7 +484,7 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
             </div>
         </div>
         
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
         {kpiCards.map(card => (
             <Card 
                 key={card.title} 
