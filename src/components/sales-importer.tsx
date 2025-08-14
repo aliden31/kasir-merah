@@ -127,16 +127,17 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 const json = XLSX.utils.sheet_to_json(worksheet) as any[];
 
                 const items: ExtractedSaleItem[] = json.map((row) => ({
-                    name: (row['Nama SKU'] || '').toString(),
-                    sku: (row['SKU'] || '').toString(),
+                    // If 'Nama SKU' doesn't exist, use 'SKU Gudang' as the name.
+                    name: (row['Nama SKU'] || row['SKU Gudang'] || '').toString(),
+                    sku: (row['SKU Gudang'] || '').toString(),
                     quantity: Number(row['Jumlah'] || 0),
                     price: Number(row['Harga Satuan'] || 0),
-                })).filter(item => item.name && item.quantity > 0);
+                })).filter(item => item.sku && item.quantity > 0);
 
                 if (items.length > 0) {
                     processExtractedItems(items);
                 } else {
-                    setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "Nama SKU", "SKU", "Jumlah", dan "Harga Satuan".');
+                    setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "SKU Gudang", "Jumlah", dan "Harga Satuan".');
                     setAnalysisState('error');
                 }
             } catch (err) {
