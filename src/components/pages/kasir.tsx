@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { SaleItem, Product, Settings, FlashSale, Sale, Expense, Return, UserRole } from '@/lib/types';
-import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap, Undo2, Wallet, Trash2 } from 'lucide-react';
+import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap, Undo2, Wallet, Trash2, FileUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -22,13 +22,14 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { addSale, addReturn, addExpense } from '@/lib/data-service';
+import { addSale, addReturn, addExpense, getProducts } from '@/lib/data-service';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Skeleton } from '../ui/skeleton';
 import { ReturnForm } from './retur';
 import { ExpenseForm } from './pengeluaran';
+import { SalesImporter } from '../sales-importer';
 
 
 const formatCurrency = (amount: number) => {
@@ -73,6 +74,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
   const [sortOrder, setSortOrder] = useState('terlaris');
   const [isReturnFormOpen, setReturnFormOpen] = useState(false);
   const [isExpenseFormOpen, setExpenseFormOpen] = useState(false);
+  const [isImporterOpen, setImporterOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -243,6 +245,15 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
     }
   }
 
+  const handleImportSuccess = () => {
+    toast({
+      title: "Impor Berhasil",
+      description: "Data penjualan dan produk baru telah berhasil diimpor."
+    });
+    onDataNeedsRefresh();
+    setImporterOpen(false);
+  }
+
   const renderProductGrid = (isMobile = false) => (
     <Card className={`h-full flex flex-col shadow-none border-0 ${isMobile ? '' : 'lg:col-span-2'}`}>
       <CardHeader>
@@ -332,6 +343,14 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                 <Badge variant="outline">{cartItemCount} Item</Badge>
             </div>
             <div className="flex gap-2">
+                 <Dialog open={isImporterOpen} onOpenChange={setImporterOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full">
+                            <FileUp className="mr-2 h-4 w-4" /> Impor
+                        </Button>
+                    </DialogTrigger>
+                    <SalesImporter onImportSuccess={handleImportSuccess} userRole={userRole}/>
+                </Dialog>
                 <Dialog open={isReturnFormOpen} onOpenChange={setReturnFormOpen}>
                     <DialogTrigger asChild>
                         <Button variant="outline" className="w-full">
