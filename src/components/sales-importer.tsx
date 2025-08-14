@@ -126,18 +126,20 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 const worksheet = workbook.Sheets[sheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-                const items: ExtractedSaleItem[] = json.map((row) => ({
-                    // If 'Nama SKU' doesn't exist, use 'SKU Gudang' as the name.
-                    name: (row['Nama SKU'] || row['SKU Gudang'] || '').toString(),
-                    sku: (row['SKU Gudang'] || '').toString(),
-                    quantity: Number(row['Jumlah'] || 0),
-                    price: Number(row['Harga Satuan'] || 0),
-                })).filter(item => item.sku && item.quantity > 0);
+                const items: ExtractedSaleItem[] = json.map((row) => {
+                    const sku = (row['SKU Gudang'] || row['SKU'] || '').toString();
+                    return {
+                        name: (row['Nama SKU'] || sku).toString(),
+                        sku: sku,
+                        quantity: Number(row['Jumlah'] || 0),
+                        price: Number(row['Harga Satuan'] || 0),
+                    };
+                }).filter(item => item.sku && item.quantity > 0);
 
                 if (items.length > 0) {
                     processExtractedItems(items);
                 } else {
-                    setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "SKU Gudang", "Jumlah", dan "Harga Satuan".');
+                    setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "SKU Gudang" atau "SKU", "Jumlah", dan "Harga Satuan".');
                     setAnalysisState('error');
                 }
             } catch (err) {
