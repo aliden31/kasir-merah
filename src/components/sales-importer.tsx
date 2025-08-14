@@ -120,7 +120,8 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 const fileDataUri = reader.result as string;
-                const result = await extractSales({ fileDataUri });
+                const existingProducts = dbProducts.map(p => ({ id: p.id, name: p.name }));
+                const result = await extractSales({ fileDataUri, products: existingProducts });
                 
                 if (result && result.sales.length > 0) {
                     setExtractedSales(result.sales);
