@@ -116,7 +116,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         }
     };
     
-    const handleExcelParse = (file: File) => {
+    const handleStructuredFileParse = (file: File) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -136,11 +136,11 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 if (items.length > 0) {
                     processExtractedItems(items);
                 } else {
-                    setErrorMessage('Format Excel tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "Nama SKU", "Jumlah", dan "Harga Satuan (IDR)".');
+                    setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "Nama SKU", "Jumlah", dan "Harga Satuan (IDR)".');
                     setAnalysisState('error');
                 }
             } catch (err) {
-                 setErrorMessage('Gagal memproses file Excel. Pastikan formatnya benar.');
+                 setErrorMessage('Gagal memproses file. Pastikan formatnya benar.');
                  setAnalysisState('error');
             }
         };
@@ -181,12 +181,12 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         setAnalysisState('analyzing');
         setErrorMessage('');
         
-        if(file.type.includes('spreadsheetml') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-            handleExcelParse(file);
+        if(file.type.includes('spreadsheetml') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv')) {
+            handleStructuredFileParse(file);
         } else if (file.type.startsWith('image/') || file.type === 'application/pdf') {
             handlePdfImageParse(file);
         } else {
-            setErrorMessage('Tipe file tidak didukung. Harap unggah file Excel, PDF, atau gambar.');
+            setErrorMessage('Tipe file tidak didukung. Harap unggah file Excel, CSV, PDF, atau gambar.');
             setAnalysisState('error');
         }
     };
@@ -256,9 +256,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         <div className="text-center py-10 px-6">
             <FileQuestion className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-medium">Impor Penjualan dari File</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Unggah file Excel, PDF, atau gambar (JPG, PNG) yang berisi data penjualan Anda. AI akan digunakan untuk PDF/gambar.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Unggah file Excel, CSV, PDF, atau gambar (JPG, PNG). AI akan digunakan untuk PDF/gambar.</p>
             <div className="mt-6">
-                 <Input id="file-upload" type="file" onChange={handleFileChange} accept="application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
+                 <Input id="file-upload" type="file" onChange={handleFileChange} accept=".csv,application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
             </div>
         </div>
     );
@@ -352,8 +352,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
 
     const getAnalysisButton = () => {
         const fileType = file?.type;
-        if(fileType?.includes('spreadsheetml') || file?.name.endsWith('.xlsx') || file?.name.endsWith('.xls')) {
-            return <><FileSpreadsheet className="mr-2 h-4 w-4"/>Proses Excel</>
+        const fileName = file?.name || '';
+        if(fileType?.includes('spreadsheetml') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
+            return <><FileSpreadsheet className="mr-2 h-4 w-4"/>Proses File</>
         }
         return <><Wand2 className="mr-2 h-4 w-4"/>Analisis dengan AI</>
     }
@@ -363,7 +364,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             <DialogHeader>
                 <DialogTitle>Impor Penjualan dari File</DialogTitle>
                 <DialogDescription>
-                    Unggah file Excel (disarankan untuk akurasi) atau PDF/gambar untuk dianalisis oleh AI.
+                    Unggah file Excel/CSV (disarankan untuk akurasi) atau PDF/gambar untuk dianalisis oleh AI.
                 </DialogDescription>
             </DialogHeader>
             
