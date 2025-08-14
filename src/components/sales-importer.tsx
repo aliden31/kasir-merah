@@ -16,6 +16,7 @@ import type { ExtractedSale, ExtractedSaleItem } from '@/ai/schemas/extract-sale
 import { getProducts, addProduct, addSale } from '@/lib/data-service';
 import type { Product, UserRole } from '@/lib/types';
 import { FileQuestion, Loader2, Wand2, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
