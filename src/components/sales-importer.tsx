@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,7 @@ import { extractSales } from '@/ai/flows/extract-sales-flow';
 import type { ExtractedSale, ExtractedSaleItem } from '@/ai/schemas/extract-sales-schema';
 import { getProducts, addProduct } from '@/lib/data-service';
 import type { Product, UserRole, SaleItem } from '@/lib/types';
-import { FileQuestion, Loader2, Wand2, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { FileQuestion, Loader2, Wand2, CheckCircle2, AlertCircle, Sparkles, FileSpreadsheet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const formatCurrency = (amount: number) => {
@@ -39,7 +40,7 @@ interface SalesImporterProps {
 export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, userRole }) => {
     const [file, setFile] = useState<File | null>(null);
     const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
-    const [extractedSales, setExtractedSales] = useState<ExtractedSale[]>([]);
+    const [extractedItems, setExtractedItems] = useState<ExtractedSaleItem[]>([]);
     const [dbProducts, setDbProducts] = useState<Product[]>([]);
     const [errorMessage, setErrorMessage] = useState('');
     const { toast } = useToast();
@@ -53,12 +54,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
     }, []);
 
     const aggregatedAnalysis = useMemo(() => {
-        if (extractedSales.length === 0) return { newProducts: [], matchedProducts: new Map(), aggregatedItems: [] };
-
-        const allItems = extractedSales.flatMap(s => s.items);
+        if (extractedItems.length === 0) return { newProducts: [], matchedProducts: new Map(), aggregatedItems: [] };
         
-        // Group items by SKU
-        const itemsBySku = allItems.reduce((acc, item) => {
+        const itemsBySku = extractedItems.reduce((acc, item) => {
             if (!acc[item.sku]) {
                 acc[item.sku] = [];
             }
@@ -76,7 +74,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             const averagePrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) / totalQuantity;
             const name = items[0].name;
 
-            const dbProduct = dbProducts.find(p => p.id === sku || p.name.toLowerCase() === sku.toLowerCase());
+            const dbProduct = dbProducts.find(p => p.id.toLowerCase() === sku.toLowerCase() || p.name.toLowerCase() === name.toLowerCase());
             const isNew = !dbProduct;
             
             if (isNew) {
@@ -100,7 +98,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             aggregatedItems
         };
 
-    }, [extractedSales, dbProducts]);
+    }, [extractedItems, dbProducts]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
@@ -108,26 +106,58 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             setFile(selectedFile);
         }
     };
+    
+    const handleExcelParse = (file: File) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-    const handleAnalyze = async () => {
-        if (!file) return;
+                const items: ExtractedSaleItem[] = json.map((row) => ({
+                    sku: (row.sku || row.SKU || row['ID Produk'] || row.name || row.Nama || row['Nama Produk']).toString(),
+                    name: (row.name || row.Nama || row['Nama Produk']).toString(),
+                    quantity: Number(row.quantity || row.Qty || row.Jumlah || 0),
+                    price: Number(row.price || row.Harga || row['Harga Jual'] || 0),
+                })).filter(item => item.name && item.quantity > 0);
 
-        setAnalysisState('analyzing');
-        setErrorMessage('');
-
-        try {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async () => {
-                const fileDataUri = reader.result as string;
-                const existingProducts = dbProducts.map(p => ({ id: p.id, name: p.name }));
-                const result = await extractSales({ fileDataUri, products: existingProducts });
-                
-                if (result && result.sales.length > 0) {
-                    setExtractedSales(result.sales);
+                if (items.length > 0) {
+                    setExtractedItems(items);
                     setAnalysisState('review');
                 } else {
-                    setErrorMessage('AI tidak dapat menemukan data penjualan di dalam file. Coba file lain atau pastikan formatnya jelas.');
+                    setErrorMessage('Format Excel tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "name", "quantity", dan "price".');
+                    setAnalysisState('error');
+                }
+            } catch (err) {
+                 setErrorMessage('Gagal memproses file Excel. Pastikan formatnya benar.');
+                 setAnalysisState('error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    const handlePdfImageParse = (file: File) => {
+         const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                try {
+                    const fileDataUri = reader.result as string;
+                    const existingProducts = dbProducts.map(p => ({ id: p.id, name: p.name }));
+                    const result = await extractSales({ fileDataUri, products: existingProducts });
+                    
+                    if (result && result.sales.length > 0) {
+                        setExtractedItems(result.sales.flatMap(s => s.items));
+                        setAnalysisState('review');
+                    } else {
+                        setErrorMessage('AI tidak dapat menemukan data penjualan di dalam file. Coba file lain atau pastikan formatnya jelas.');
+                        setAnalysisState('error');
+                    }
+                } catch (error) {
+                    console.error('Analysis failed:', error);
+                    setErrorMessage('Terjadi kesalahan saat menganalisis file. Lihat konsol untuk detail.');
                     setAnalysisState('error');
                 }
             };
@@ -135,9 +165,20 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                  setErrorMessage('Gagal membaca file. Silakan coba lagi.');
                  setAnalysisState('error');
             };
-        } catch (error) {
-            console.error('Analysis failed:', error);
-            setErrorMessage('Terjadi kesalahan saat menganalisis file. Lihat konsol untuk detail.');
+    }
+
+    const handleAnalyze = async () => {
+        if (!file) return;
+
+        setAnalysisState('analyzing');
+        setErrorMessage('');
+        
+        if(file.type.includes('spreadsheetml') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+            handleExcelParse(file);
+        } else if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+            handlePdfImageParse(file);
+        } else {
+            setErrorMessage('Tipe file tidak didukung. Harap unggah file Excel, PDF, atau gambar.');
             setAnalysisState('error');
         }
     };
@@ -155,9 +196,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 const productData = {
                     name: newProd.name,
                     sellingPrice: aggregatedItem?.price || newProd.price,
-                    costPrice: 0, // Default cost price, can be edited later
-                    stock: 0,     // Default stock
-                    category: 'Impor', // Default category
+                    costPrice: 0,
+                    stock: 0,
+                    category: 'Impor',
                 };
                 const createdProduct = await addProduct(productData, userRole);
                 newProductIds.set(newProd.sku, createdProduct.id);
@@ -199,7 +240,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 description: 'Terjadi kesalahan saat menyimpan data. Perubahan telah dibatalkan.',
                 variant: 'destructive',
             });
-            setAnalysisState('review'); // Go back to review state
+            setAnalysisState('review');
         }
     };
 
@@ -208,9 +249,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         <div className="text-center py-10 px-6">
             <FileQuestion className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-medium">Impor Penjualan dari File</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Unggah file PDF atau gambar (JPG, PNG) yang berisi data daftar pengiriman Anda. AI akan mencoba mengekstrak data secara otomatis.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Unggah file Excel, PDF, atau gambar (JPG, PNG) yang berisi data penjualan Anda. AI akan digunakan untuk PDF/gambar.</p>
             <div className="mt-6">
-                 <Input id="file-upload" type="file" onChange={handleFileChange} accept="application/pdf,image/png,image/jpeg" />
+                 <Input id="file-upload" type="file" onChange={handleFileChange} accept="application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
             </div>
         </div>
     );
@@ -218,8 +259,8 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
     const renderAnalyzingState = () => (
         <div className="text-center py-20">
             <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" />
-            <h3 className="mt-4 text-lg font-medium">Menganalisis File...</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Harap tunggu, AI sedang membaca dan mengekstrak data dari file Anda. Ini mungkin memakan waktu sejenak.</p>
+            <h3 className="mt-4 text-lg font-medium">Memproses File...</h3>
+            <p className="mt-2 text-sm text-muted-foreground">Harap tunggu, sistem sedang membaca dan mengekstrak data dari file Anda. Ini mungkin memakan waktu sejenak.</p>
         </div>
     );
     
@@ -227,7 +268,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         <div className="space-y-4">
              <Alert>
                 <Sparkles className="h-4 w-4" />
-                <AlertTitle>Hasil Analisis AI</AlertTitle>
+                <AlertTitle>Hasil Analisis</AlertTitle>
                 <AlertDescription>
                     Harap tinjau data yang diekstrak di bawah ini. Jika ada harga yang berbeda untuk SKU yang sama, harga jual akan dirata-ratakan.
                     Produk baru akan dibuat untuk item yang tidak dikenali.
@@ -298,12 +339,20 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         </Alert>
     );
 
+    const getAnalysisButton = () => {
+        const fileType = file?.type;
+        if(fileType?.includes('spreadsheetml') || file?.name.endsWith('.xlsx') || file?.name.endsWith('.xls')) {
+            return <><FileSpreadsheet className="mr-2 h-4 w-4"/>Proses Excel</>
+        }
+        return <><Wand2 className="mr-2 h-4 w-4"/>Analisis dengan AI</>
+    }
+
     return (
         <DialogContent className="max-w-4xl">
             <DialogHeader>
                 <DialogTitle>Impor Penjualan dari File</DialogTitle>
                 <DialogDescription>
-                    Unggah file PDF atau gambar untuk dianalisis oleh AI.
+                    Unggah file Excel (disarankan untuk akurasi) atau PDF/gambar untuk dianalisis oleh AI.
                 </DialogDescription>
             </DialogHeader>
             
@@ -321,13 +370,12 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                             <Button variant="secondary">Batal</Button>
                         </DialogClose>
                         <Button onClick={handleAnalyze} disabled={!file || analysisState === 'analyzing'}>
-                            {analysisState === 'analyzing' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4"/>}
-                            Analisis File
+                            {analysisState === 'analyzing' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : getAnalysisButton()}
                         </Button>
                      </>
                  ) : analysisState === 'review' ? (
                      <>
-                        <Button variant="secondary" onClick={() => setAnalysisState('idle')}>Analisis Ulang</Button>
+                        <Button variant="secondary" onClick={() => { setAnalysisState('idle'); setFile(null); setExtractedItems([]); }}>Analisis Ulang</Button>
                         <Button onClick={handleConfirmImport} disabled={analysisState === 'saving'}>
                             {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                             Konfirmasi & Impor ke Keranjang
