@@ -22,6 +22,17 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { addSale, addReturn, addExpense, getProducts } from '@/lib/data-service';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -355,9 +366,32 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                     </Button>
                 )}
                 <CardTitle>Keranjang</CardTitle>
-                <Badge variant="outline">{cartItemCount} Item</Badge>
+                <div className="flex items-center gap-2">
+                    {cart.length > 0 && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Kosongkan Keranjang?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Tindakan ini akan menghapus semua item dari keranjang Anda saat ini.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={clearCart}>Ya, Hapus Semua</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
+                    <Badge variant="outline">{cartItemCount} Item</Badge>
+                </div>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 lg:grid-cols-2 gap-2">
                  <Dialog open={isImporterOpen} onOpenChange={setImporterOpen}>
                     <DialogTrigger asChild>
                         <Button variant="outline" className="w-full">
@@ -376,7 +410,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                 </Dialog>
                 <Dialog open={isExpenseFormOpen} onOpenChange={setExpenseFormOpen}>
                     <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full">
+                        <Button variant="outline" className="w-full col-span-2">
                             <Wallet className="mr-2 h-4 w-4" /> Pengeluaran
                         </Button>
                     </DialogTrigger>
@@ -592,3 +626,4 @@ export default KasirPage;
     
 
     
+
