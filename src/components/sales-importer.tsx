@@ -131,7 +131,8 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 const uniqueResi = new Set<string>();
 
                 const items: ExtractedSaleItem[] = json.map((row) => {
-                    const sku = (row['SKU Gudang'] || row['SKU'] || row['Nama Produk'] || '').toString();
+                    const providedSku = (row['SKU Gudang'] || row['SKU'] || '').toString();
+                    const sku = providedSku || (row['Nama Produk'] || '').toString();
                     const name = (row['Nama SKU'] || row['Nama Produk'] || sku).toString();
                     const resiNumber = (row['Nomor Resi'] || '').toString();
                     if(resiNumber) {
