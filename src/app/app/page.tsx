@@ -54,7 +54,6 @@ import PengaturanPage from '@/components/pages/pengaturan';
 import ActivityLogPage from '@/components/pages/activity-log';
 import ErpPage from '@/components/pages/erp';
 import KalkulatorRoasPage from '@/components/pages/kalkulator-roas';
-import SalesImporterPage from '@/components/pages/sales-importer-page';
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings, Sale, Return } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings, getSales, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
@@ -80,8 +79,7 @@ type View =
   | 'pengaturan'
   | 'activity-log'
   | 'erp'
-  | 'kalkulator-roas'
-  | 'impor-penjualan';
+  | 'kalkulator-roas';
 
 const defaultSettings: AppSettings = { 
   storeName: 'Memuat...', 
@@ -223,7 +221,6 @@ function AppPageContent() {
     { id: 'retur', label: 'Retur', icon: Undo2, roles: ['admin', 'kasir'] },
     { id: 'pengeluaran', label: 'Pengeluaran', icon: Wallet, roles: ['admin', 'kasir'] },
     { id: 'pemasukan-lain', label: 'Pemasukan Lain', icon: PlusSquare, roles: ['admin'] },
-    { id: 'impor-penjualan', label: 'Impor Penjualan', icon: FileUp, roles: ['admin'] },
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
     { id: 'kalkulator-roas', label: 'Kalkulator ROAS', icon: Calculator, roles: ['admin'] },
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
@@ -288,13 +285,6 @@ function AppPageContent() {
         return <PengeluaranPage userRole={userRole!} />;
       case 'pemasukan-lain':
         return <PemasukanLainPage onDataChange={refreshAllData} userRole={userRole!} />;
-       case 'impor-penjualan':
-        return <SalesImporterPage 
-          onDataChange={refreshAllData} 
-          userRole={userRole!}
-          setCart={setCart}
-          onNavigate={handleNavigate}
-        />;
       case 'laporan':
         return <LaporanPage onNavigate={handleNavigate} />;
       case 'kalkulator-roas':

@@ -27,8 +27,7 @@ type View =
   | 'pengaturan'
   | 'activity-log'
   | 'erp'
-  | 'kalkulator-roas'
-  | 'impor-penjualan';
+  | 'kalkulator-roas';
 
 interface ErpPageProps {
   onNavigate: (view: View) => void;
@@ -188,10 +187,6 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                         <Button className="w-full justify-between" onClick={() => onNavigate('kasir')}>
                             <span>Buka Kasir</span>
                             <ArrowRight className="h-4 w-4"/>
-                        </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('impor-penjualan')}>
-                            <span>Impor Penjualan</span>
-                             <ArrowRight className="h-4 w-4"/>
                         </Button>
                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('penjualan')}>
                             <span>Riwayat Penjualan</span>
