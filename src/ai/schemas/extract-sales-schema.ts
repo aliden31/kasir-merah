@@ -4,8 +4,8 @@ const ExtractedSaleItemSchema = z.object({
   orderId: z.string().describe('The unique identifier for the order.'),
   sku: z.string().describe("The product's SKU from the 'Nomor Referensi SKU' column."),
   productName: z.string().describe("The name of the product from the 'Nama Produk' column."),
-  quantity: z.number().int().positive().describe('The quantity of the item sold.'),
-  sellingPrice: z.number().positive().describe('The calculated selling price per unit (Total Harga Produk / Jumlah).'),
+  quantity: z.number().int().gte(0).describe('The quantity of the item sold.'),
+  sellingPrice: z.number().gte(0).describe('The calculated selling price per unit (Total Harga Produk / Jumlah).'),
 });
 
 export const ExtractedSalesSchema = z.object({
