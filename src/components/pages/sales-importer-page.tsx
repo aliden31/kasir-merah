@@ -68,30 +68,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         fetchInitialData();
     }, []);
 
-<<<<<<< HEAD
-<<<<<<< HEAD:src/components/sales-importer.tsx
-<<<<<<< HEAD
-    const handleCostPriceChange = (sku: string, value: string) => {
-        const newCostPrice = value === '' ? 0 : parseInt(value, 10);
-        if (isNaN(newCostPrice)) return;
-
-        setAggregatedItems(prevItems =>
-            prevItems.map(item =>
-                item.sku === sku ? { ...item, costPrice: newCostPrice } : item
-            )
-        );
-    };
-
-    const processExtractedItems = (items: ExtractedSaleItem[], uniqueOrderCountValue: number = 0) => {
-=======
-    const processExtractedItems = (items: ExtractedSaleItem[], uniqueOrderCountValue: number = 0, uniqueResiCount: number = 0) => {
->>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
-=======
-    const processExtractedItems = (items: ExtractedSaleItem[], uniqueResiCount: number = 0) => {
->>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas):src/components/pages/sales-importer-page.tsx
-=======
     const processExtractedItems = (items: ExtractedSaleItem[], uniqueOrderCount: number = 0) => {
->>>>>>> 4b1f8ed (Logika resi ganti dengan kolom nomer pesanan saja. Dan jika ada nomer pe)
         const itemsBySku = new Map<string, { totalQuantity: number; totalValue: number; name: string; originalItems: ExtractedSaleItem[] }>();
         setOrderCount(uniqueOrderCount);
 
@@ -171,24 +148,6 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 
                 const uniqueOrders = new Set<string>();
 
-<<<<<<< HEAD
-                const items: ExtractedSaleItem[] = json.map((row) => {
-                    const providedSku = (row['SKU Gudang'] || row['SKU'] || '').toString().trim();
-                    const productName = (row['Nama Produk'] || '').toString().trim();
-                    const sku = providedSku || productName;
-                    const name = (row['Nama SKU'] || productName || sku).toString().trim();
-                    const resiNumber = (row['Nomor Resi'] || '').toString().trim();
-                    if(resiNumber) {
-                        uniqueResi.add(resiNumber);
-                    }
-                    return {
-                        name: name,
-                        sku: sku,
-                        quantity: Number(row['Jumlah'] || 0),
-                        price: Number(row['Harga Satuan'] || 0),
-                    };
-                }).filter(item => item.sku && item.quantity > 0);
-=======
                 const items: ExtractedSaleItem[] = json
                     .map((row) => {
                         const sku = (row['SKU Gudang'] || '').toString().trim();
@@ -207,20 +166,10 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                     })
                     .filter((item): item is ExtractedSaleItem => item !== null && item.quantity > 0);
 
->>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
-
                 if (items.length > 0) {
                     processExtractedItems(items, uniqueOrders.size);
                 } else {
-<<<<<<< HEAD
-<<<<<<< HEAD
-                    setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "SKU Gudang"/"SKU"/"Nama Produk", "Jumlah", dan "Harga Satuan".');
-=======
-                    setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "SKU Gudang" atau "SKU" dan "Jumlah".');
->>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
-=======
                     setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "SKU Gudang".');
->>>>>>> 62398f3 (Saat inpor data excell. Alialih membuat prodak baru. Lebih baik berikan)
                     setAnalysisState('error');
                 }
             } catch (err) {
@@ -306,34 +255,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
             const newProductIds = new Map<string, string>();
             let updatedDbProducts = [...dbProducts];
 
-<<<<<<< HEAD:src/components/sales-importer.tsx
-<<<<<<< HEAD
-<<<<<<< HEAD
-            // 1. Create new products
-            for (const newProd of newProducts) {
-                const productData = {
-<<<<<<< HEAD
-                    name: newProd.name,
-                    sellingPrice: aggregatedItem?.price || newProd.price,
-                    costPrice: aggregatedItem?.costPrice || 0,
-=======
-                    name: newProd.sku, // Use SKU as the name for new products
-                    sellingPrice: newProd.price,
-                    costPrice: 0,
->>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
-                    stock: 0,
-                    category: 'Impor',
-                };
-                const createdProduct = await addProduct(productData, userRole);
-                newProductIds.set(newProd.sku, createdProduct.id);
-                updatedDbProducts.push(createdProduct);
-=======
-            // 1. Create new products that were explicitly marked for creation
-=======
             // 1. Process mappings and create new products
->>>>>>> 6cbabb8 (Fungsi pemetaan prodaknya masih belum benar. Ketika saya upload dengan n)
-=======
->>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas):src/components/pages/sales-importer-page.tsx
             for (const item of unrecognizedItems) {
                 const mappingValue = productMappings[item.sku];
                 if (!mappingValue) continue;
@@ -346,6 +268,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                         costPrice: 0,
                         stock: 0,
                         category: 'Impor',
+                        subcategory: '',
                     };
                     const createdProduct = await addProduct(productData, userRole, productData.id);
                     newProductIds.set(item.sku, createdProduct.id);
@@ -360,7 +283,6 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                        });
                     }
                 }
->>>>>>> 62398f3 (Saat inpor data excell. Alialih membuat prodak baru. Lebih baik berikan)
             }
 
             const cartItems = aggregatedItems.map(item => {
@@ -415,166 +337,6 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         }
     };
 
-<<<<<<< HEAD:src/components/sales-importer.tsx
-
-    const renderIdleState = () => (
-        <div className="text-center py-10 px-6">
-            <FileQuestion className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-medium">Impor Penjualan dari File</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Unggah file Excel (disarankan), CSV, PDF, atau gambar (JPG, PNG). AI akan digunakan untuk PDF/gambar.</p>
-            <div className="mt-6">
-                 <Input id="file-upload" type="file" onChange={handleFileChange} accept=".csv,application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
-            </div>
-        </div>
-    );
-    
-    const renderAnalyzingState = () => (
-        <div className="text-center py-20">
-            <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" />
-            <h3 className="mt-4 text-lg font-medium">Memproses File...</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Harap tunggu, sistem sedang membaca dan mengekstrak data dari file Anda. Ini mungkin memakan waktu sejenak.</p>
-        </div>
-    );
-    
-    const ReviewState = () => {
-        const totalQuantity = useMemo(() => aggregatedItems.reduce((sum, item) => sum + item.quantity, 0), [aggregatedItems]);
-        const sortedDbProducts = useMemo(() => [...dbProducts].sort((a,b) => a.name.localeCompare(b.name)), [dbProducts]);
-
-        return (
-            <div className="space-y-4">
-                 <Alert>
-                    <Sparkles className="h-4 w-4" />
-                    <AlertTitle>Hasil Analisis</AlertTitle>
-                    <AlertDescription>
-                        Sistem berhasil mengekstrak total <span className="font-bold">{totalQuantity} item</span> dari <span className="font-bold">{aggregatedItems.length} jenis produk</span>.
-<<<<<<< HEAD
-                        {uniqueOrderCount > 0 && <> Ditemukan <span className="font-bold">{uniqueOrderCount} transaksi</span> yang unik.</>}
-=======
-                        {resiCount > 0 && ` Ditemukan <span className="font-bold">${resiCount} resi</span> yang unik.`}
-<<<<<<< HEAD
->>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
-                        Harap tinjau data di bawah ini. Produk baru akan dibuat untuk item yang tidak dikenali.
-=======
-                        Harap tinjau dan petakan produk yang tidak dikenali di bawah ini.
->>>>>>> 62398f3 (Saat inpor data excell. Alialih membuat prodak baru. Lebih baik berikan)
-                    </AlertDescription>
-                </Alert>
-                
-                {unrecognizedItems.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base flex items-center"><AlertCircle className="h-4 w-4 mr-2 text-amber-500"/>Petakan Produk Tidak Dikenali</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <ScrollArea className="h-40">
-                                <div className="space-y-4 pr-4">
-                                {unrecognizedItems.map(item => (
-                                    <div key={item.sku} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                                        <div>
-                                            <p className="font-semibold">{item.name}</p>
-                                            <p className="text-xs text-muted-foreground">SKU Impor: {item.sku}</p>
-                                        </div>
-                                        <Select 
-                                            value={productMappings[item.sku] || ''} 
-                                            onValueChange={value => setProductMappings(prev => ({...prev, [item.sku]: value}))}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Pilih Aksi..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value={CREATE_NEW_PRODUCT_VALUE}>
-                                                    <span className="font-semibold text-primary">Buat Produk Baru (ID: {item.sku})</span>
-                                                </SelectItem>
-                                                {sortedDbProducts.map(p => (
-                                                    <SelectItem key={p.id} value={p.id}>{p.name} ({p.id})</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                ))}
-                                </div>
-                            </ScrollArea>
-                        </CardContent>
-                    </Card>
-                )}
-
-
-                <Card>
-                    <CardHeader>
-                         <CardTitle className="text-base flex items-center"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500"/>Ringkasan Impor</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ScrollArea className="h-64 border rounded-md">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Nama Produk</TableHead>
-                                        <TableHead>SKU</TableHead>
-                                        <TableHead className="text-right">Jumlah</TableHead>
-                                        <TableHead className="text-right">Harga Jual (Rata-rata)</TableHead>
-                                        <TableHead className="text-right">Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {aggregatedItems.map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{item.name}</TableCell>
-                                            <TableCell className="text-muted-foreground">{item.sku}</TableCell>
-                                            <TableCell className="text-right">{item.quantity}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Badge variant={item.isNew ? "secondary" : "default"}>{item.isNew ? "Baru" : "Dikenali"}</Badge>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
-
-<<<<<<< HEAD
-                <ScrollArea className="h-64 border rounded-md">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Nama Produk</TableHead>
-                                <TableHead>SKU</TableHead>
-                                <TableHead className="text-right">Jumlah</TableHead>
-                                <TableHead className="text-right">Harga Jual (Rata-rata)</TableHead>
-                                <TableHead>Harga Modal</TableHead>
-                                <TableHead className="text-right">Status</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {aggregatedItems.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.name}</TableCell>
-                                    <TableCell className="text-muted-foreground">{item.sku}</TableCell>
-                                    <TableCell className="text-right">{item.quantity}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                                    <TableCell>
-                                        <Input
-                                            type="number"
-                                            className="w-28 h-8 text-right"
-                                            value={item.costPrice}
-                                            onChange={(e) => handleCostPriceChange(item.sku, e.target.value)}
-                                            placeholder="0"
-                                        />
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Badge variant={item.isNew ? "secondary" : "default"}>{item.isNew ? "Baru" : "OK"}</Badge>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </ScrollArea>
-=======
->>>>>>> 62398f3 (Saat inpor data excell. Alialih membuat prodak baru. Lebih baik berikan)
-            </div>
-        );
-=======
     const resetState = () => {
         setFile(null);
         setAnalysisState('idle');
@@ -582,7 +344,6 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         setUnrecognizedItems([]);
         setProductMappings({});
         setErrorMessage('');
->>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas):src/components/pages/sales-importer-page.tsx
     }
 
     const totalQuantity = useMemo(() => aggregatedItems.reduce((sum, item) => sum + item.quantity, 0), [aggregatedItems]);
@@ -606,51 +367,6 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
     }
 
     return (
-<<<<<<< HEAD:src/components/sales-importer.tsx
-        <DialogContent className="max-w-4xl">
-            <DialogHeader>
-                <DialogTitle>Impor Penjualan dari File</DialogTitle>
-                <DialogDescription>
-                    Unggah file Excel (disarankan), CSV, PDF, atau gambar untuk dianalisis.
-                </DialogDescription>
-            </DialogHeader>
-            
-            <div className="py-4">
-                 {analysisState === 'idle' && renderIdleState()}
-                {analysisState === 'analyzing' && renderAnalyzingState()}
-                {analysisState === 'review' && <ReviewState />}
-                {analysisState === 'error' && renderErrorState()}
-                 {analysisState === 'saving' && (
-                    <div className="text-center py-20">
-                        <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" />
-                        <h3 className="mt-4 text-lg font-medium">Menyimpan Data...</h3>
-<<<<<<< HEAD
-                        <p className="mt-2 text-sm text-muted-foreground">Produk baru sedang dibuat dan item ditambahkan ke keranjang.</p>
-                    </div>
-                )}
-=======
-                        <p className="mt-2 text-sm text-muted-foreground">Harap tunggu, sistem sedang membuat produk baru dan menambahkan item ke keranjang.</p>
-                    </div>
-                 )}
->>>>>>> 6cbabb8 (Fungsi pemetaan prodaknya masih belum benar. Ketika saya upload dengan n)
-            </div>
-
-            <DialogFooter>
-                {analysisState === 'analyzing' || analysisState === 'saving' ? (
-                    <Button disabled>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {analysisState === 'analyzing' ? 'Sedang Menganalisis...' : 'Menyimpan...'}
-                    </Button>
-<<<<<<< HEAD
-                ) : analysisState === 'review' ? (
-                     <>
-                        <Button variant="secondary" onClick={() => { setAnalysisState('idle'); setFile(null); setAggregatedItems([]); }}>Analisis Ulang</Button>
-                        <Button onClick={handleConfirmImport}>
-=======
-                ) : analysisState === 'review' || analysisState === 'saving' ? (
-                    <>
-                        <Button variant="secondary" onClick={() => { setAnalysisState('idle'); setFile(null); setAggregatedItems([]); setUnrecognizedItems([]); setProductMappings({}); }}>Analisis Ulang</Button>
-=======
         <div className="space-y-6">
              <Card className="max-w-4xl mx-auto">
                 <CardHeader>
@@ -775,10 +491,8 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 
                      <div className="flex justify-end gap-4 mt-6">
                         <Button variant="outline" onClick={resetState}>Mulai Ulang</Button>
->>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas):src/components/pages/sales-importer-page.tsx
                         <Button onClick={handleConfirmImport} disabled={analysisState === 'saving' || !isMappingComplete}>
                             {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
->>>>>>> 62398f3 (Saat inpor data excell. Alialih membuat prodak baru. Lebih baik berikan)
                             Konfirmasi & Impor ke Keranjang
                         </Button>
                     </div>
