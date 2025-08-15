@@ -61,6 +61,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
     useEffect(() => {
         const fetchInitialData = async () => {
             const products = await getProducts();
+            onImportComplete([]); // Clear cart on page load
             const mappings = await getSkuMappings();
             setDbProducts(products);
             setDbSkuMappings(mappings);
