@@ -29,8 +29,7 @@ type View =
   | 'activity-log'
   | 'erp'
   | 'kalkulator-roas'
-  | 'pdf-converter'
-  | 'sales-importer';
+  | 'pdf-converter';
 
 interface ErpPageProps {
   onNavigate: (view: View) => void;
@@ -112,164 +111,160 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
 
     if (loading) {
         return (
-            <div className="space-y-6">
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                    {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}
+            <div class="space-y-6">
+                <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                    {[...Array(4)].map((_, i) => <Skeleton key={i} class="h-32" />)}
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                     <Skeleton className="h-64" />
-                     <Skeleton className="h-64" />
+                <div class="grid gap-4 md:grid-cols-2">
+                     <Skeleton class="h-64" />
+                     <Skeleton class="h-64" />
                 </div>
-                 <div className="grid gap-4 md:grid-cols-2">
-                     <Skeleton className="h-64" />
-                     <Skeleton className="h-64" />
+                 <div class="grid gap-4 md:grid-cols-2">
+                     <Skeleton class="h-64" />
+                     <Skeleton class="h-64" />
                 </div>
             </div>
         );
     }
     
     return (
-        <div className="space-y-6">
+        <div class="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold">Pusat Kontrol ERP</h1>
-                <p className="text-muted-foreground">Dasbor terpusat untuk mengelola seluruh operasi toko Anda.</p>
+                <h1 class="text-2xl font-bold">Pusat Kontrol ERP</h1>
+                <p class="text-muted-foreground">Dasbor terpusat untuk mengelola seluruh operasi toko Anda.</p>
             </div>
 
             {/* KPI Cards */}
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Penjualan (14 Hari)</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle class="text-sm font-medium">Penjualan (14 Hari)</CardTitle>
+                        <DollarSign class="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(last14DaysStats.netRevenue)}</div>
-                        <p className="text-xs text-muted-foreground">Total penjualan bersih 14 hari terakhir</p>
+                        <div class="text-2xl font-bold">{formatCurrency(last14DaysStats.netRevenue)}</div>
+                        <p class="text-xs text-muted-foreground">Total penjualan bersih 14 hari terakhir</p>
                     </CardContent>
                 </Card>
                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Laba (14 Hari)</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle class="text-sm font-medium">Laba (14 Hari)</CardTitle>
+                        <TrendingUp class="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(last14DaysStats.profit)}</div>
-                         <p className="text-xs text-muted-foreground">Perkiraan laba bersih 14 hari terakhir</p>
+                        <div class="text-2xl font-bold">{formatCurrency(last14DaysStats.profit)}</div>
+                         <p class="text-xs text-muted-foreground">Perkiraan laba bersih 14 hari terakhir</p>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pengeluaran (14 Hari)</CardTitle>
-                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle class="text-sm font-medium">Pengeluaran (14 Hari)</CardTitle>
+                        <Wallet class="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(last14DaysStats.totalExpenses)}</div>
-                         <p className="text-xs text-muted-foreground">Total pengeluaran 14 hari terakhir</p>
+                        <div class="text-2xl font-bold">{formatCurrency(last14DaysStats.totalExpenses)}</div>
+                         <p class="text-xs text-muted-foreground">Total pengeluaran 14 hari terakhir</p>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Retur (14 Hari)</CardTitle>
-                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle class="text-sm font-medium">Total Retur (14 Hari)</CardTitle>
+                        <ShoppingCart class="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                         <div className="text-2xl font-bold">{formatCurrency(last14DaysStats.totalReturns)}</div>
-                        <p className="text-xs text-muted-foreground">Total pengembalian dana 14 hari terakhir</p>
+                         <div class="text-2xl font-bold">{formatCurrency(last14DaysStats.totalReturns)}</div>
+                        <p class="text-xs text-muted-foreground">Total pengembalian dana 14 hari terakhir</p>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Module Cards */}
-            <div className="grid gap-6 md:grid-cols-2">
-                 <Card className="flex flex-col">
+            <div class="grid gap-6 md:grid-cols-2">
+                 <Card class="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><LayoutGrid/> Kasir & Penjualan</CardTitle>
+                        <CardTitle class="flex items-center gap-2"><LayoutGrid/> Kasir & Penjualan</CardTitle>
                         <CardDescription>Akses cepat ke modul kasir dan riwayat transaksi.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow space-y-3">
-                        <Button className="w-full justify-between" onClick={() => onNavigate('kasir')}>
+                    <CardContent class="flex-grow space-y-3">
+                        <Button class="w-full justify-between" onClick={() => onNavigate('kasir')}>
                             <span>Buka Kasir</span>
-                            <ArrowRight className="h-4 w-4"/>
+                            <ArrowRight class="h-4 w-4"/>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('penjualan')}>
+                        <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('penjualan')}>
                             <span>Riwayat Penjualan</span>
-                             <ArrowRight className="h-4 w-4"/>
+                             <ArrowRight class="h-4 w-4"/>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('retur')}>
+                        <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('retur')}>
                             <span>Manajemen Retur</span>
-                             <ArrowRight className="h-4 w-4"/>
+                             <ArrowRight class="h-4 w-4"/>
                         </Button>
                     </CardContent>
                 </Card>
-                <Card className="flex flex-col">
+                <Card class="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Package/> Produk & Stok</CardTitle>
+                        <CardTitle class="flex items-center gap-2"><Package/> Produk & Stok</CardTitle>
                         <CardDescription>Kelola inventaris, harga, stok, dan penjualan kilat.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow space-y-3">
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('produk')}>
+                    <CardContent class="flex-grow space-y-3">
+                        <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('produk')}>
                             <span>Daftar Produk</span>
-                            <ArrowRight className="h-4 w-4"/>
+                            <ArrowRight class="h-4 w-4"/>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('stok-opname')}>
+                        <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('stok-opname')}>
                             <span>Stok Opname</span>
-                             <ArrowRight className="h-4 w-4"/>
+                             <ArrowRight class="h-4 w-4"/>
                         </Button>
-                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('flash-sale')}>
+                         <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('flash-sale')}>
                             <span>Manajemen Flash Sale</span>
-                             <ArrowRight className="h-4 w-4"/>
+                             <ArrowRight class="h-4 w-4"/>
                         </Button>
                     </CardContent>
                 </Card>
-                <Card className="flex flex-col">
+                <Card class="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><AreaChart/> Laporan & Keuangan</CardTitle>
+                        <CardTitle class="flex items-center gap-2"><AreaChart/> Laporan & Keuangan</CardTitle>
                         <CardDescription>Analisis performa bisnis dan lacak keuangan.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow space-y-3">
-                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('dashboard')}>
+                    <CardContent class="flex-grow space-y-3">
+                         <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('dashboard')}>
                             <span>Dasbor Utama</span>
-                             <ArrowRight className="h-4 w-4"/>
+                             <ArrowRight class="h-4 w-4"/>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('laporan')}>
+                        <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('laporan')}>
                             <span>Laporan Arus Kas</span>
-                            <ArrowRight className="h-4 w-4"/>
+                            <ArrowRight class="h-4 w-4"/>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('pengeluaran')}>
+                        <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('pengeluaran')}>
                             <span>Catat Pengeluaran</span>
-                             <ArrowRight className="h-4 w-4"/>
+                             <ArrowRight class="h-4 w-4"/>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('pemasukan-lain')}>
+                        <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('pemasukan-lain')}>
                             <span>Pemasukan Lain</span>
-                            <ArrowRight className="h-4 w-4"/>
+                            <ArrowRight class="h-4 w-4"/>
                         </Button>
                     </CardContent>
                 </Card>
-                <Card className="flex flex-col">
+                <Card class="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Settings/> Utilitas & Sistem</CardTitle>
+                        <CardTitle class="flex items-center gap-2"><Settings/> Utilitas & Sistem</CardTitle>
                         <CardDescription>Konfigurasi, impor data, dan kelola sistem.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow space-y-3">
-                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('kalkulator-roas')}>
+                    <CardContent class="flex-grow space-y-3">
+                         <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('kalkulator-roas')}>
                             <span>Kalkulator ROAS</span>
-                             <ArrowRight className="h-4 w-4"/>
+                             <ArrowRight class="h-4 w-4"/>
                         </Button>
-                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('pdf-converter')}>
+                         <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('pdf-converter')}>
                             <span>PDF ke Excel</span>
-                            <ArrowRight className="h-4 w-4"/>
+                            <ArrowRight class="h-4 w-4"/>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('sales-importer')}>
-                            <span>Impor Penjualan</span>
-                             <ArrowRight className="h-4 w-4"/>
-                        </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('pengaturan')}>
+                        <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('pengaturan')}>
                             <span>Pengaturan Umum</span>
-                            <ArrowRight className="h-4 w-4"/>
+                            <ArrowRight class="h-4 w-4"/>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('activity-log')}>
+                        <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('activity-log')}>
                             <span>Log Aktivitas Sistem</span>
-                             <ArrowRight className="h-4 w-4"/>
+                             <ArrowRight class="h-4 w-4"/>
                         </Button>
                     </CardContent>
                 </Card>
@@ -279,7 +274,7 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                 <CardHeader>
                     <CardTitle>Penjualan 14 Hari Terakhir</CardTitle>
                 </CardHeader>
-                <CardContent className="pl-2">
+                <CardContent class="pl-2">
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={salesChartData}>
                             <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
@@ -301,4 +296,3 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
 
 ErpPage.displayName = 'ErpPage';
 export default ErpPage;
-

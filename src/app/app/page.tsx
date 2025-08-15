@@ -56,7 +56,6 @@ import ActivityLogPage from '@/components/pages/activity-log';
 import ErpPage from '@/components/pages/erp';
 import KalkulatorRoasPage from '@/components/pages/kalkulator-roas';
 import PdfConverterPage from '@/components/pages/pdf-converter';
-import SalesImporterPage from '@/components/pages/sales-importer-page';
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings, Sale, Return } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings, getSales, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
@@ -83,8 +82,7 @@ type View =
   | 'activity-log'
   | 'erp'
   | 'kalkulator-roas'
-  | 'pdf-converter'
-  | 'sales-importer';
+  | 'pdf-converter';
 
 const defaultSettings: AppSettings = { 
   storeName: 'Memuat...', 
@@ -229,7 +227,6 @@ function AppPageContent() {
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
     { id: 'kalkulator-roas', label: 'Kalkulator ROAS', icon: Calculator, roles: ['admin'] },
     { id: 'pdf-converter', label: 'PDF ke Excel', icon: FileAxis3d, roles: ['admin'] },
-    { id: 'sales-importer', label: 'Impor Penjualan', icon: FileUp, roles: ['admin'] },
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
     { id: 'pengaturan', label: 'Pengaturan', icon: Settings, roles: ['admin', 'kasir'] },
     { id: 'activity-log', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
@@ -247,10 +244,10 @@ function AppPageContent() {
   const renderView = () => {
     if (isLoading || authLoading) {
       return (
-        <div className="space-y-6 p-4 md:p-6">
-          <Skeleton className="h-8 w-48 mb-4" />
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-32 w-full" />
+        <div class="space-y-6 p-4 md:p-6">
+          <Skeleton class="h-8 w-48 mb-4" />
+          <Skeleton class="h-64 w-full" />
+          <Skeleton class="h-32 w-full" />
         </div>
       )
     }
@@ -298,14 +295,6 @@ function AppPageContent() {
         return <KalkulatorRoasPage />;
       case 'pdf-converter':
         return <PdfConverterPage />;
-      case 'sales-importer':
-        return <SalesImporterPage 
-          onImportComplete={(items) => {
-            setCart(items);
-            refreshAllData(true);
-          }} 
-          userRole={userRole!} 
-        />;
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':
@@ -332,19 +321,19 @@ function AppPageContent() {
   };
 
   if (authLoading || !user) {
-    return <div className="flex h-screen items-center justify-center">Memuat data pengguna...</div>;
+    return <div class="flex h-screen items-center justify-center">Memuat data pengguna...</div>;
   }
 
   return (
-      <div className={cn("flex min-h-screen bg-background")}>
+      <div class="flex min-h-screen bg-background">
         <Sidebar>
           <SidebarHeader>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                <Store className="h-5 w-5 text-primary" />
+            <div class="flex items-center gap-2">
+              <Button variant="ghost" size="icon" class="h-8 w-8 shrink-0">
+                <Store class="h-5 w-5 text-primary" />
               </Button>
-              <div className="flex flex-col">
-                <span className="font-semibold tracking-tight">{settings.storeName}</span>
+              <div class="flex flex-col">
+                <span class="font-semibold tracking-tight">{settings.storeName}</span>
               </div>
             </div>
           </SidebarHeader>
@@ -369,43 +358,43 @@ function AppPageContent() {
           </SidebarContent>
           <Separator />
           <SidebarFooter>
-            <div className="flex flex-col gap-4 p-2">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9">
+            <div class="flex flex-col gap-4 p-2">
+                <div class="flex items-center gap-3">
+                  <Avatar class="h-9 w-9">
                     <AvatarImage src={`https://api.dicebear.com/8.x/initials/svg?seed=${user.email}`} alt="Avatar" />
                     <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-semibold capitalize">{userRole}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                    <p class="text-sm font-semibold capitalize">{userRole}</p>
+                    <p class="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                 </div>
-                <Button variant="ghost" onClick={handleLogout} className="w-full justify-start">
-                  <LogOut className="mr-2 h-4 w-4" />
+                <Button variant="ghost" onClick={handleLogout} class="w-full justify-start">
+                  <LogOut class="mr-2 h-4 w-4" />
                   Logout
                 </Button>
             </div>
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>
-            <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-                <SidebarTrigger className="md:hidden" />
-                <h1 className="text-xl font-semibold">{activeMenu?.label}</h1>
+            <header class="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+                <SidebarTrigger class="md:hidden" />
+                <h1 class="text-xl font-semibold">{activeMenu?.label}</h1>
             </header>
-            <main className="p-4 md:p-6">{renderView()}</main>
+            <main class="p-4 md:p-6">{renderView()}</main>
              
              {isMobile && activeView !== 'kasir' && (
                 <Button
-                    className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg z-20"
+                    class="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg z-20"
                     size="icon"
                     onClick={() => handleNavigate('kasir')}
                 >
-                    <ShoppingCart className="h-6 w-6" />
-                    <span className="sr-only">Keranjang</span>
+                    <ShoppingCart class="h-6 w-6" />
+                    <span class="sr-only">Keranjang</span>
                     {cartItemCount > 0 && (
                     <Badge
                         variant="destructive"
-                        className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full p-2 text-xs"
+                        class="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full p-2 text-xs"
                     >
                         {cartItemCount}
                     </Badge>
