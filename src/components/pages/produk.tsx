@@ -24,10 +24,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+<<<<<<< HEAD
 import type { Product, Sale, Settings, UserRole } from '@/lib/types';
 <<<<<<< HEAD
 import { PlusCircle, Edit, Trash2, MoreHorizontal, Loader2 } from 'lucide-react';
 =======
+=======
+import type { Product, Sale, UserRole } from '@/lib/types';
+>>>>>>> ffc6b69 (Cek semua kode untuk build vercel)
 import { PlusCircle, Edit, Trash2, MoreHorizontal, FileDown } from 'lucide-react';
 >>>>>>> 7429e29 (Di halaman prodak berikan fitur export prodak. Untuk saya download)
 import { useToast } from '@/hooks/use-toast';
@@ -185,7 +189,7 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
 
   useEffect(() => {
     fetchInitialData();
-  }, [userRole]);
+  }, []);
   
   const sortedProducts = useMemo(() => {
     const productsWithSales = products.map(product => {
@@ -208,7 +212,7 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
             case 'stok-tersedikit':
                 return a.stock - b.stock;
             case 'harga-terendah':
-                return a.sellingPrice - a.sellingPrice;
+                return a.sellingPrice - b.sellingPrice;
             case 'harga-tertinggi':
                 return b.sellingPrice - a.sellingPrice;
             default:
@@ -501,5 +505,3 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
 
 ProdukPage.displayName = 'ProdukPage';
 export default ProdukPage;
-
-    

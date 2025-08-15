@@ -33,6 +33,14 @@ export async function extractSales(input: ExtractSalesInput): Promise<ExtractedS
   return extractSalesFlow(input);
 }
 
+<<<<<<< HEAD
+=======
+Go through the document line by line. For **every single product line item** you find, extract the following information:
+1.  **sku**: Match the product from the file to an "Existing Product". Use the existing product's SKU/ID if a confident match is found. If no match is found, generate a logical, consistent, and unique SKU based on the product name (e.g., 'GLASWOOL 1M KUNING' could become 'GLW-KNG-1M'). If the SKU is empty or missing, provide an empty string "".
+2.  **name**: The full name or description of the product as written on the note (e.g., 'GLASWOOL 1M KUNING').
+3.  **quantity**: The quantity for that specific line item.
+4.  **price**: The price per unit for that specific line item.
+>>>>>>> ffc6b69 (Cek semua kode untuk build vercel)
 
 const extractSalesPrompt = ai.definePrompt({
   name: 'extractSalesPrompt',
@@ -55,6 +63,7 @@ const extractSalesPrompt = ai.definePrompt({
       - 'totalRevenue': Calculate the total revenue by summing (quantity * sellingPrice) for all items.
   10. **Output**: Return the data strictly in the required JSON format. Ensure all numbers are actual numbers, not strings.
 
+<<<<<<< HEAD
   **CSV Content:**
   {{{fileContentAsCsv}}}
   `,
@@ -70,6 +79,40 @@ const extractSalesFlow = ai.defineFlow(
     // 1. Convert the data URI to a Buffer.
     const base64Data = input.fileDataUri.split(',')[1];
     const buffer = Buffer.from(base64Data, 'base64');
+=======
+**IMPORTANT**: Do NOT add up quantities yourself. Extract each product line item exactly as you see it. If a product appears multiple times, extract it multiple times. Every item object in the output must contain all required fields ('sku', 'name', 'quantity', 'price').
+
+Analyze this file: {{media url=fileDataUri}}
+`,
+});
+
+const extractSalesFlow = ai.defineFlow(
+    {
+        name: 'extractSalesFlow',
+        inputSchema: ExtractSalesInputSchema,
+        outputSchema: ExtractSalesOutputSchema,
+    },
+    async (input) => {
+        const { output } = await extractionPrompt(input);
+        
+        if (!output || !Array.isArray(output.sales)) {
+            return { sales: [] };
+        }
+
+        const sanitizedSales = output.sales.map(sale => {
+            const sanitizedItems = sale.items.map(item => ({
+                sku: item.sku ?? '',
+                name: item.name ?? 'N/A',
+                quantity: item.quantity ?? 0,
+                price: item.price ?? 0,
+            }));
+            return { ...sale, items: sanitizedItems };
+        });
+
+        return { sales: sanitizedSales };
+    }
+);
+>>>>>>> ffc6b69 (Cek semua kode untuk build vercel)
 
     // 2. Read the Excel file from the buffer.
     const workbook = XLSX.read(buffer, { type: 'buffer' });
