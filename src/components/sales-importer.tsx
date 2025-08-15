@@ -15,8 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { extractSales } from '@/ai/flows/extract-sales-flow';
 import type { ExtractedSaleItem } from '@/ai/schemas/extract-sales-schema';
-import { getProducts, addProduct, hasImportedFile, addImportedFile, addExpense } from '@/lib/data-service';
-import type { Product, UserRole, SaleItem } from '@/lib/types';
+import { getProducts, addProduct, hasImportedFile, addImportedFile, addExpense, getSkuMappings, saveSkuMapping } from '@/lib/data-service';
+import type { Product, UserRole, SaleItem, SkuMapping } from '@/lib/types';
 import { FileQuestion, Loader2, Wand2, CheckCircle2, AlertCircle, Sparkles, FileSpreadsheet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -45,6 +45,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
     const [file, setFile] = useState<File | null>(null);
     const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
     const [dbProducts, setDbProducts] = useState<Product[]>([]);
+    const [dbSkuMappings, setDbSkuMappings] = useState<SkuMapping[]>([]);
     const [errorMessage, setErrorMessage] = useState('');
     const { toast } = useToast();
 
@@ -61,11 +62,13 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
     }, [unrecognizedItems, productMappings]);
 
     useEffect(() => {
-        const fetchDbProducts = async () => {
+        const fetchInitialData = async () => {
             const products = await getProducts();
+            const mappings = await getSkuMappings();
             setDbProducts(products);
+            setDbSkuMappings(mappings);
         };
-        fetchDbProducts();
+        fetchInitialData();
     }, []);
 
 <<<<<<< HEAD
@@ -90,7 +93,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
 
         // 1. Group items and aggregate quantities and values
         items.forEach(item => {
-            const skuKey = item.sku; // Use SKU as the primary key
+            const skuKey = (item.sku || '').trim();
             if (!skuKey) return; // Ignore items without SKU
 
             if (!itemsBySku.has(skuKey)) {
@@ -106,12 +109,15 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         const finalAggregatedItems: AggregatedSaleItem[] = [];
         const finalUnrecognizedItems: AggregatedSaleItem[] = [];
         const finalMatchedProducts = new Map<string, Product>();
+        const initialMappings: Record<string, string> = {};
 
         for (const [skuKey, aggregatedData] of itemsBySku.entries()) {
             const { totalQuantity, totalValue, name } = aggregatedData;
             const averagePrice = totalQuantity > 0 ? totalValue / totalQuantity : 0;
             const dbProduct = dbProducts.find(p => p.id.toLowerCase() === skuKey.toLowerCase());
-            const isNew = !dbProduct;
+            const existingMapping = dbSkuMappings.find(m => m.importSku.toLowerCase() === skuKey.toLowerCase());
+            
+            let isNew = !dbProduct;
 
             const aggregatedItem: AggregatedSaleItem = {
                 sku: skuKey,
@@ -123,15 +129,19 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             };
 
             if (isNew) {
+                if (existingMapping) {
+                    initialMappings[skuKey] = existingMapping.mappedProductId;
+                }
                 finalUnrecognizedItems.push(aggregatedItem);
             } else {
-                finalMatchedProducts.set(skuKey, dbProduct);
+                finalMatchedProducts.set(skuKey, dbProduct!);
             }
             
             finalAggregatedItems.push(aggregatedItem);
         }
         
         // 3. Set the state
+        setProductMappings(initialMappings);
         setAggregatedItems(finalAggregatedItems.sort((a,b) => a.name.localeCompare(b.name)));
         setUnrecognizedItems(finalUnrecognizedItems);
         setMatchedProducts(finalMatchedProducts);
@@ -294,6 +304,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             let updatedDbProducts = [...dbProducts];
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             // 1. Create new products
             for (const newProd of newProducts) {
                 const productData = {
@@ -314,19 +325,35 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 updatedDbProducts.push(createdProduct);
 =======
             // 1. Create new products that were explicitly marked for creation
+=======
+            // 1. Process mappings and create new products
+>>>>>>> 6cbabb8 (Fungsi pemetaan prodaknya masih belum benar. Ketika saya upload dengan n)
             for (const item of unrecognizedItems) {
-                if (productMappings[item.sku] === CREATE_NEW_PRODUCT_VALUE) {
-                    const productData = {
+                const mappingValue = productMappings[item.sku];
+                if (!mappingValue) continue;
+
+                if (mappingValue === CREATE_NEW_PRODUCT_VALUE) {
+                     const productData = {
                         name: item.name,
                         sellingPrice: item.price,
                         costPrice: 0,
                         stock: 0,
                         category: 'Impor',
-                        id: item.sku,
+                        id: item.sku, // Use the imported SKU as the new product ID
                     };
                     const createdProduct = await addProduct(productData, userRole);
                     newProductIds.set(item.sku, createdProduct.id);
                     updatedDbProducts.push(createdProduct);
+                } else {
+                    // Save the mapping for future use
+                    const mappedProduct = dbProducts.find(p => p.id === mappingValue);
+                    if (mappedProduct) {
+                       await saveSkuMapping({
+                           importSku: item.sku,
+                           mappedProductId: mappedProduct.id,
+                           mappedProductName: mappedProduct.name
+                       });
+                    }
                 }
 >>>>>>> 62398f3 (Saat inpor data excell. Alialih membuat prodak baru. Lebih baik berikan)
             }
@@ -342,6 +369,8 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                         finalProductId = mappedId; // Use the mapped existing product ID
                     } else if (newProductIds.has(item.sku)) {
                         finalProductId = newProductIds.get(item.sku); // Use the newly created product ID
+                    } else if (mappingValue === CREATE_NEW_PRODUCT_VALUE) {
+                        finalProductId = item.sku; // Use the SKU itself as ID if it was just created
                     }
                 }
 
@@ -437,7 +466,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                                     <div key={item.sku} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                                         <div>
                                             <p className="font-semibold">{item.name}</p>
-                                            <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
+                                            <p className="text-xs text-muted-foreground">SKU Impor: {item.sku}</p>
                                         </div>
                                         <Select 
                                             value={productMappings[item.sku] || ''} 
@@ -448,10 +477,10 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value={CREATE_NEW_PRODUCT_VALUE}>
-                                                    <span className="font-semibold text-primary">Buat Produk Baru</span>
+                                                    <span className="font-semibold text-primary">Buat Produk Baru (ID: {item.sku})</span>
                                                 </SelectItem>
                                                 {sortedDbProducts.map(p => (
-                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                    <SelectItem key={p.id} value={p.id}>{p.name} ({p.id})</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -576,9 +605,15 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                     <div className="text-center py-20">
                         <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" />
                         <h3 className="mt-4 text-lg font-medium">Menyimpan Data...</h3>
+<<<<<<< HEAD
                         <p className="mt-2 text-sm text-muted-foreground">Produk baru sedang dibuat dan item ditambahkan ke keranjang.</p>
                     </div>
                 )}
+=======
+                        <p className="mt-2 text-sm text-muted-foreground">Harap tunggu, sistem sedang membuat produk baru dan menambahkan item ke keranjang.</p>
+                    </div>
+                 )}
+>>>>>>> 6cbabb8 (Fungsi pemetaan prodaknya masih belum benar. Ketika saya upload dengan n)
             </div>
 
             <DialogFooter>
