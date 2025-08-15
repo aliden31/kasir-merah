@@ -329,8 +329,15 @@ function AppPageContent() {
       case 'pdf-converter':
         return <PdfConverterPage />;
       case 'sales-importer':
+<<<<<<< HEAD
         return <SalesImporterPage onImportComplete={(items) => setCart(items)} userRole={userRole!} />;
 >>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
+=======
+        return <SalesImporterPage 
+          onImportComplete={refreshAllData} 
+          userRole={userRole!} 
+        />;
+>>>>>>> a82167a (Make the following changes:)
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':

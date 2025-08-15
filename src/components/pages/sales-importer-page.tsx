@@ -31,8 +31,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { extractSales } from '@/ai/flows/extract-sales-flow';
 import type { ExtractedSaleItem } from '@/ai/schemas/extract-sales-schema';
-import { getProducts, addProduct, hasImportedFile, addImportedFile, addExpense, getSkuMappings, saveSkuMapping } from '@/lib/data-service';
-import type { Product, UserRole, SaleItem, SkuMapping } from '@/lib/types';
+import { getProducts, addProduct, hasImportedFile, addImportedFile, addExpense, getSkuMappings, saveSkuMapping, addSale, getPublicSettings } from '@/lib/data-service';
+import type { Product, UserRole, SaleItem, SkuMapping, PublicSettings } from '@/lib/types';
 import { FileQuestion, Loader2, Wand2, CheckCircle2, AlertCircle, Sparkles, FileSpreadsheet, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -185,7 +185,7 @@ type AggregatedSaleItem = {
 };
 
 interface SalesImporterPageProps {
-    onImportComplete: (items: SaleItem[]) => void;
+    onImportComplete: () => void;
     userRole: UserRole;
 }
 
@@ -194,6 +194,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
     const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
     const [dbProducts, setDbProducts] = useState<Product[]>([]);
     const [dbSkuMappings, setDbSkuMappings] = useState<SkuMapping[]>([]);
+    const [publicSettings, setPublicSettings] = useState<PublicSettings>({ defaultDiscount: 0 });
     const [errorMessage, setErrorMessage] = useState('');
     const { toast } = useToast();
 
@@ -211,8 +212,10 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         const fetchInitialData = async () => {
             const products = await getProducts();
             const mappings = await getSkuMappings();
+            const settings = await getPublicSettings();
             setDbProducts(products);
             setDbSkuMappings(mappings);
+            setPublicSettings(settings);
         };
         fetchInitialData();
     }, []);
@@ -600,7 +603,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                 }
             }
 
-            const cartItems = aggregatedItems.map(item => {
+            const saleItems: SaleItem[] = aggregatedItems.map(item => {
                 const dbProduct = matchedProducts.get(item.sku);
                 let finalProductId = dbProduct?.id;
 
@@ -635,14 +638,33 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                 };
             }).filter((i): i is NonNullable<typeof i> => i !== null);
             
-            onImportComplete(cartItems);
+            const subtotal = saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+            const discount = publicSettings.defaultDiscount || 0;
+            const finalTotal = subtotal * (1 - discount / 100);
+
+            const newSale = {
+                items: saleItems,
+                subtotal,
+                discount,
+                finalTotal,
+                date: new Date(),
+            };
+
+            await addSale(newSale, userRole);
+            
+            onImportComplete();
             setAnalysisState('success');
+            toast({
+              title: "Penjualan Berhasil Dicatat",
+              description: `Transaksi baru dari file impor telah berhasil dibuat.`,
+            });
 
         } catch (error) {
             console.error('Import failed:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan data.';
             toast({
                 title: 'Impor Gagal',
-                description: 'Terjadi kesalahan saat menyimpan data. Perubahan telah dibatalkan.',
+                description: errorMessage,
                 variant: 'destructive',
             });
             setAnalysisState('review');
@@ -668,11 +690,11 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                 <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
                 <h2 className="text-2xl font-bold mb-2">Impor Berhasil!</h2>
                 <p className="text-muted-foreground mb-6">
-                    {totalQuantity} item telah berhasil ditambahkan ke keranjang belanja Anda.
+                    {totalQuantity} item telah berhasil dicatat sebagai penjualan baru.
                 </p>
                 <Button onClick={resetState}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Kembali ke Halaman Impor
+                    Impor File Lain
                 </Button>
             </div>
         )
@@ -769,7 +791,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center"><CheckCircle2 className="h-5 w-5 mr-2 text-green-500"/>Ringkasan Impor</CardTitle>
-                             <CardDescription>Ini adalah rincian item yang akan ditambahkan ke keranjang setelah konfirmasi.</CardDescription>
+                             <CardDescription>Ini adalah rincian item yang akan dicatat sebagai penjualan setelah konfirmasi.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <ScrollArea className="h-64 border rounded-md">
@@ -917,7 +939,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                         <Button variant="outline" onClick={resetState}>Mulai Ulang</Button>
                         <Button onClick={handleConfirmImport} disabled={analysisState === 'saving' || !isMappingComplete}>
                             {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Konfirmasi & Impor ke Keranjang
+                            Konfirmasi & Catat Penjualan
                         </Button>
                     </div>
 
