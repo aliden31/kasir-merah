@@ -131,13 +131,14 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 const uniqueResi = new Set<string>();
 
                 const items: ExtractedSaleItem[] = json.map((row) => {
-                    const sku = (row['SKU Gudang'] || row['SKU'] || '').toString();
+                    const sku = (row['SKU Gudang'] || row['SKU'] || row['Nama Produk'] || '').toString();
+                    const name = (row['Nama SKU'] || row['Nama Produk'] || sku).toString();
                     const resiNumber = (row['Nomor Resi'] || '').toString();
                     if(resiNumber) {
                         uniqueResi.add(resiNumber);
                     }
                     return {
-                        name: (row['Nama SKU'] || sku).toString(),
+                        name: name,
                         sku: sku,
                         quantity: Number(row['Jumlah'] || 0),
                         price: Number(row['Harga Satuan'] || 0),
@@ -147,7 +148,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 if (items.length > 0) {
                     processExtractedItems(items, uniqueResi.size);
                 } else {
-                    setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "SKU Gudang" atau "SKU", "Jumlah", dan "Harga Satuan".');
+                    setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "SKU Gudang"/"SKU"/"Nama Produk", "Jumlah", dan "Harga Satuan".');
                     setAnalysisState('error');
                 }
             } catch (err) {
@@ -299,7 +300,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                     <AlertTitle>Hasil Analisis</AlertTitle>
                     <AlertDescription>
                         Sistem berhasil mengekstrak total <span className="font-bold">{totalQuantity} item</span> dari <span className="font-bold">{aggregatedItems.length} jenis produk</span>.
-                        {uniqueOrderCount > 0 && ` Ditemukan <span className="font-bold">${uniqueOrderCount} transaksi</span> yang unik.`}
+                        {uniqueOrderCount > 0 && <> Ditemukan <span className="font-bold">{uniqueOrderCount} transaksi</span> yang unik.</>}
                         Harap tinjau data di bawah ini. Produk baru akan dibuat untuk item yang tidak dikenali.
                     </AlertDescription>
                 </Alert>
@@ -388,23 +389,29 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             </DialogHeader>
             
             <div className="py-4">
-                {analysisState === 'idle' && renderIdleState()}
+                 {analysisState === 'idle' && renderIdleState()}
                 {analysisState === 'analyzing' && renderAnalyzingState()}
                 {analysisState === 'review' && <ReviewState />}
                 {analysisState === 'error' && renderErrorState()}
+                 {analysisState === 'saving' && (
+                    <div className="text-center py-20">
+                        <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" />
+                        <h3 className="mt-4 text-lg font-medium">Menyimpan Data...</h3>
+                        <p className="mt-2 text-sm text-muted-foreground">Produk baru sedang dibuat dan item ditambahkan ke keranjang.</p>
+                    </div>
+                )}
             </div>
 
             <DialogFooter>
-                {analysisState === 'analyzing' ? (
+                {analysisState === 'analyzing' || analysisState === 'saving' ? (
                     <Button disabled>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sedang Menganalisis...
+                        {analysisState === 'analyzing' ? 'Sedang Menganalisis...' : 'Menyimpan...'}
                     </Button>
-                ) : analysisState === 'review' || analysisState === 'saving' ? (
-                    <>
+                ) : analysisState === 'review' ? (
+                     <>
                         <Button variant="secondary" onClick={() => { setAnalysisState('idle'); setFile(null); setAggregatedItems([]); }}>Analisis Ulang</Button>
-                        <Button onClick={handleConfirmImport} disabled={analysisState === 'saving'}>
-                            {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        <Button onClick={handleConfirmImport}>
                             Konfirmasi & Impor ke Keranjang
                         </Button>
                     </>
