@@ -150,7 +150,7 @@ export const ExpenseForm = ({
         if (typeof numValue === 'number' && !isNaN(numValue)) {
             setAmount(numValue * 1250);
         } else {
-            setAmount('');
+            setAmount(0);
         }
     };
 
@@ -559,4 +559,5 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
 
 PengeluaranPage.displayName = 'PengeluaranPage';
 export default PengeluaranPage;
+
 

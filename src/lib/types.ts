@@ -131,16 +131,4 @@ export interface ActivityLog {
     description: string;
 }
 
-export interface ChatMessage {
-    id: string;
-    text: string;
-    createdAt: Date;
-    user: {
-      id: string;
-      email: string;
-      role: UserRole;
-    };
-}
-
-
 export type UserRole = 'admin' | 'kasir';
