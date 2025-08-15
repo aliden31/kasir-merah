@@ -1,5 +1,3 @@
-
-'use server';
 /**
  * @fileOverview Zod schemas for the sales extraction flow.
  */
