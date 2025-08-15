@@ -6,7 +6,7 @@ import type { FC } from 'react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, ShoppingCart, TrendingUp, Package, Wallet, AreaChart, Settings, ArrowRight, Calculator, PlusSquare, FileAxis3d, LayoutGrid, ClipboardList, ScrollText, Undo2, Zap, History, FileUp, Home } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Package, Wallet, AreaChart, Settings, ArrowRight, Calculator, PlusSquare, LayoutGrid, ClipboardList, ScrollText, Undo2, Zap, History } from 'lucide-react';
 import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Bar } from 'recharts';
 import type { Sale, Return, Product, Expense, OtherIncome } from '@/lib/types';
 import { getSales, getReturns, getProducts, getExpenses, getOtherIncomes } from '@/lib/data-service';
@@ -28,8 +28,7 @@ type View =
   | 'pengaturan'
   | 'activity-log'
   | 'erp'
-  | 'kalkulator-roas'
-  | 'pdf-converter';
+  | 'kalkulator-roas';
 
 interface ErpPageProps {
   onNavigate: (view: View) => void;
@@ -253,10 +252,6 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                          <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('kalkulator-roas')}>
                             <span>Kalkulator ROAS</span>
                              <ArrowRight class="h-4 w-4"/>
-                        </Button>
-                         <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('pdf-converter')}>
-                            <span>PDF ke Excel</span>
-                            <ArrowRight class="h-4 w-4"/>
                         </Button>
                         <Button variant="outline" class="w-full justify-between" onClick={() => onNavigate('pengaturan')}>
                             <span>Pengaturan Umum</span>

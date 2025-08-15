@@ -1,28 +1,33 @@
 
 'use server';
+/**
+ * @fileOverview A flow that converts a PDF file to an Excel file.
+ */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'zod';
+import {ai} from '@/ai/genkit';
+import {z} from 'zod';
 import * as XLSX from 'xlsx';
-import { extractSales, ExtractSalesInput } from './extract-sales-flow';
 
 const PdfToExcelInputSchema = z.object({
   fileDataUri: z
     .string()
     .describe(
-      "A PDF or image file containing sales data, provided as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "A PDF file containing sales data, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
 export type PdfToExcelInput = z.infer<typeof PdfToExcelInputSchema>;
 
 const PdfToExcelOutputSchema = z.object({
-  excelDataB64: z.string().optional().describe("The generated Excel file data as a Base64 encoded string."),
-  error: z.string().optional().describe("An error message if the conversion failed."),
+  excelDataUri: z
+    .string()
+    .describe(
+      "The converted Excel file as a data URI with Base64 encoding."
+    ),
 });
 export type PdfToExcelOutput = z.infer<typeof PdfToExcelOutputSchema>;
 
-export async function convertPdfToExcel(input: PdfToExcelInput): Promise<PdfToExcelOutput> {
-  return await pdfToExcelFlow(input);
+export async function pdfToExcel(input: PdfToExcelInput): Promise<PdfToExcelOutput> {
+  return pdfToExcelFlow(input);
 }
 
 const pdfToExcelFlow = ai.defineFlow(
@@ -32,33 +37,25 @@ const pdfToExcelFlow = ai.defineFlow(
     outputSchema: PdfToExcelOutputSchema,
   },
   async (input) => {
-    const extractedData = await extractSales(input);
+    // Placeholder implementation
+    const salesData = [
+        { SKU: '123', 'Nama Produk': 'Produk Contoh 1', 'Jumlah': 2, 'Harga Satuan': 10000, 'Total': 20000 },
+        { SKU: '456', 'Nama Produk': 'Produk Contoh 2', 'Jumlah': 1, 'Harga Satuan': 15000, 'Total': 15000 },
+    ];
     
-    if (!extractedData || extractedData.sales.length === 0) {
-        return { error: 'Tidak ada data yang dapat diekstrak dari file.' };
-    }
+    // 2. Create a new workbook and a worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(salesData);
 
-    const allItems = extractedData.sales.flatMap(sale => 
-        sale.items.map(item => ({
-            "Nama SKU": item.name,
-            "SKU": item.sku,
-            "Jumlah": item.quantity,
-            "Harga Satuan": item.price,
-        }))
-    );
+    // 3. Append the worksheet to the workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Penjualan');
 
-    if (allItems.length === 0) {
-        return { error: 'Tidak ada item penjualan yang ditemukan dalam data yang diekstrak.' };
-    }
+    // 4. Generate the Excel file in Base64
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
 
-    const worksheet = XLSX.utils.json_to_sheet(allItems);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Penjualan');
+    // 5. Create the data URI
+    const excelDataUri = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${wbout}`;
 
-    const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
-
-    return { excelDataB64: wbout };
+    return { excelDataUri };
   }
 );
-
-    
