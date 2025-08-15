@@ -239,10 +239,10 @@ function AppPageContent() {
   const renderView = () => {
     if (isLoading || authLoading) {
       return (
-        <div class="space-y-6 p-4 md:p-6">
-          <Skeleton class="h-8 w-48 mb-4" />
-          <Skeleton class="h-64 w-full" />
-          <Skeleton class="h-32 w-full" />
+        <div className="space-y-6 p-4 md:p-6">
+          <Skeleton className="h-8 w-48 mb-4" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-32 w-full" />
         </div>
       )
     }
@@ -314,19 +314,19 @@ function AppPageContent() {
   };
 
   if (authLoading || !user) {
-    return <div class="flex h-screen items-center justify-center">Memuat data pengguna...</div>;
+    return <div className="flex h-screen items-center justify-center">Memuat data pengguna...</div>;
   }
 
   return (
-      <div class="flex min-h-screen bg-background">
+      <div className="flex min-h-screen bg-background">
         <Sidebar>
           <SidebarHeader>
-            <div class="flex items-center gap-2">
-              <Button variant="ghost" size="icon" class="h-8 w-8 shrink-0">
-                <Store class="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                <Store className="h-5 w-5 text-primary" />
               </Button>
-              <div class="flex flex-col">
-                <span class="font-semibold tracking-tight">{settings.storeName}</span>
+              <div className="flex flex-col">
+                <span className="font-semibold tracking-tight">{settings.storeName}</span>
               </div>
             </div>
           </SidebarHeader>
@@ -351,43 +351,43 @@ function AppPageContent() {
           </SidebarContent>
           <Separator />
           <SidebarFooter>
-            <div class="flex flex-col gap-4 p-2">
-                <div class="flex items-center gap-3">
-                  <Avatar class="h-9 w-9">
+            <div className="flex flex-col gap-4 p-2">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
                     <AvatarImage src={`https://api.dicebear.com/8.x/initials/svg?seed=${user.email}`} alt="Avatar" />
                     <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p class="text-sm font-semibold capitalize">{userRole}</p>
-                    <p class="text-xs text-muted-foreground">{user.email}</p>
+                    <p className="text-sm font-semibold capitalize">{userRole}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                 </div>
-                <Button variant="ghost" onClick={handleLogout} class="w-full justify-start">
-                  <LogOut class="mr-2 h-4 w-4" />
+                <Button variant="ghost" onClick={handleLogout} className="w-full justify-start">
+                  <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </Button>
             </div>
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>
-            <header class="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-                <SidebarTrigger class="md:hidden" />
-                <h1 class="text-xl font-semibold">{activeMenu?.label}</h1>
+            <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+                <SidebarTrigger className="md:hidden" />
+                <h1 className="text-xl font-semibold">{activeMenu?.label}</h1>
             </header>
-            <main class="p-4 md:p-6">{renderView()}</main>
+            <main className="p-4 md:p-6">{renderView()}</main>
              
              {isMobile && activeView !== 'kasir' && (
                 <Button
-                    class="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg z-20"
+                    className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg z-20"
                     size="icon"
                     onClick={() => handleNavigate('kasir')}
                 >
-                    <ShoppingCart class="h-6 w-6" />
-                    <span class="sr-only">Keranjang</span>
+                    <ShoppingCart className="h-6 w-6" />
+                    <span className="sr-only">Keranjang</span>
                     {cartItemCount > 0 && (
                     <Badge
                         variant="destructive"
-                        class="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full p-2 text-xs"
+                        className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full p-2 text-xs"
                     >
                         {cartItemCount}
                     </Badge>
