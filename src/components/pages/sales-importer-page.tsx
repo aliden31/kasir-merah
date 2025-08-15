@@ -9,13 +9,12 @@ import { extractSales } from '@/ai/flows/extract-sales-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Upload, FileCheck, AlertCircle, CheckCircle, Package, ArrowRight, HelpCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 
 const formatCurrency = (amount: number) => {
@@ -25,6 +24,7 @@ const formatCurrency = (amount: number) => {
 interface SalesImporterPageProps {
   onImportSuccess: () => void;
   userRole: UserRole;
+  defaultDiscount: number;
 }
 
 type ImportStage = 'selectFile' | 'analyzing' | 'mapping' | 'confirming' | 'importing' | 'complete';
@@ -35,7 +35,7 @@ interface UnmappedSku {
     count: number;
 }
 
-const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRole }) => {
+const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRole, defaultDiscount }) => {
     const [stage, setStage] = useState<ImportStage>('selectFile');
     const [file, setFile] = useState<File | null>(null);
     const [extractedData, setExtractedData] = useState<ExtractedSales | null>(null);
@@ -68,6 +68,7 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
         setExtractedData(null);
         setUnmappedSkus([]);
         setUserMappings({});
+        setStage('selectFile');
     };
 
     const handleAnalyzeFile = async () => {
@@ -157,8 +158,11 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
 
         setStage('importing');
         const salesByOrderId: Record<string, any[]> = {};
-        const allMappings = new Map(skuMappings.map(m => [m.importSku, m.mappedProductId]));
-
+        const allMappings = new Map([
+            ...skuMappings.map(m => [m.importSku, m.mappedProductId] as [string, string]),
+            ...Object.entries(userMappings),
+        ]);
+        
         // Group items by orderId
         extractedData.items.forEach(item => {
             if (!salesByOrderId[item.orderId]) {
@@ -200,11 +204,12 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
                 }
                 
                 if (saleItems.length > 0) {
+                     const finalTotal = subtotal * (1 - (defaultDiscount || 0) / 100);
                      const newSale = {
                         items: saleItems,
                         subtotal: subtotal,
-                        discount: 0,
-                        finalTotal: subtotal,
+                        discount: defaultDiscount || 0,
+                        finalTotal: finalTotal,
                         date: new Date(), // Use current date for imported sales
                     };
                     await addSale(newSale, userRole);
@@ -216,7 +221,7 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
 
             // Create expense for shipping labels
             const shippingExpense: Omit<Expense, 'id'> = {
-                name: `Biaya Resi Shopee - ${file.name}`,
+                name: `Biaya Resi - ${file.name}`,
                 amount: extractedData.summary.totalOrders * 1250,
                 category: 'Operasional',
                 subcategory: 'Pengiriman',
@@ -382,6 +387,7 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
 
             case 'complete':
                 return (
+                    <ScrollArea className="max-h-[80vh]">
                      <Card className="text-center border-0 shadow-none">
                          <CardHeader>
                             <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
@@ -403,9 +409,10 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
                         </CardContent>
                         <CardFooter className="flex-col gap-2">
                              <Button className="w-full" onClick={onImportSuccess}>Selesai</Button>
-                             <Button variant="outline" className="w-full" onClick={() => setStage('selectFile')}>Impor File Lain</Button>
+                             <Button variant="outline" className="w-full" onClick={() => handleFileSelect(file!)}>Impor Ulang File</Button>
                         </CardFooter>
                     </Card>
+                    </ScrollArea>
                 );
         }
     };

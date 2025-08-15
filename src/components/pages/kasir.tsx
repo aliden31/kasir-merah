@@ -36,7 +36,7 @@ import {
 import { addSale, addReturn, addExpense, getProducts } from '@/lib/data-service';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '../ui/skeleton';
 import { ReturnForm } from './retur';
 import { ExpenseForm } from './pengeluaran';
@@ -395,7 +395,11 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                             <FileUp className="mr-2 h-4 w-4" /> Impor
                         </Button>
                     </DialogTrigger>
-                    <SalesImporterPage onImportSuccess={handleImportSuccess} userRole={userRole} />
+                    <SalesImporterPage 
+                        onImportSuccess={handleImportSuccess} 
+                        userRole={userRole} 
+                        defaultDiscount={settings.defaultDiscount}
+                    />
                 </Dialog>
             </div>
         </CardHeader>
