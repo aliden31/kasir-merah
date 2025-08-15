@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { Product, UserRole, SkuMapping, ExtractedSaleItem, ExtractedSales } from '@/lib/types';
+import type { Product, UserRole, SkuMapping, ExtractedSaleItem, ExtractedSales, Expense } from '@/lib/types';
 import { getProducts, saveSkuMapping, getSkuMappings, addImportedFile, hasImportedFile, addExpense, addSale } from '@/lib/data-service';
 import { extractSales } from '@/ai/flows/extract-sales-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -58,7 +59,7 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
             }
         };
         fetchInitialData();
-    }, []);
+    }, [toast]);
 
     const handleFileSelect = (selectedFile: File) => {
         setFile(selectedFile);
@@ -238,7 +239,7 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
         switch (stage) {
             case 'selectFile':
                 return (
-                    <Card className="text-center">
+                    <Card className="text-center border-0 shadow-none">
                         <CardHeader>
                             <CardTitle>Langkah 1: Unggah File Excel</CardTitle>
                             <CardDescription>Pilih file laporan penjualan yang ingin Anda impor.</CardDescription>
@@ -271,7 +272,7 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
 
             case 'analyzing':
                 return (
-                    <Card className="text-center">
+                    <Card className="text-center border-0 shadow-none">
                         <CardContent className="p-10">
                             <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto" />
                             <p className="mt-4 text-lg font-semibold">Menganalisis File...</p>
@@ -282,7 +283,7 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
             
             case 'mapping':
                 return (
-                     <Card>
+                     <Card className="border-0 shadow-none">
                         <CardHeader>
                             <CardTitle>Langkah 2: Pemetaan SKU</CardTitle>
                             <CardDescription>Beberapa SKU dari file Anda tidak dikenali. Silakan petakan ke produk yang ada di sistem.</CardDescription>
@@ -329,7 +330,7 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
             case 'confirming':
                  if (!extractedData) return null;
                  return (
-                    <Card>
+                    <Card className="border-0 shadow-none">
                         <CardHeader>
                             <CardTitle>Langkah 3: Konfirmasi Impor</CardTitle>
                             <CardDescription>Tinjau ringkasan data sebelum mengimpor ke sistem.</CardDescription>
@@ -365,7 +366,7 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
 
             case 'importing':
                 return (
-                     <Card className="text-center">
+                     <Card className="text-center border-0 shadow-none">
                         <CardContent className="p-10">
                             <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto" />
                             <p className="mt-4 text-lg font-semibold">Mengimpor Data...</p>
@@ -378,7 +379,7 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
 
             case 'complete':
                 return (
-                     <Card className="text-center">
+                     <Card className="text-center border-0 shadow-none">
                          <CardHeader>
                             <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
                             <CardTitle>Impor Selesai</CardTitle>
@@ -405,10 +406,22 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
                 );
         }
     };
+    
+    const dialogTitle: Record<ImportStage, string> = {
+        selectFile: 'Impor Penjualan dari Excel',
+        analyzing: 'Menganalisis File',
+        mapping: 'Pemetaan SKU Produk',
+        confirming: 'Konfirmasi Impor',
+        importing: 'Sedang Mengimpor',
+        complete: 'Impor Selesai',
+    };
 
 
     return (
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>{dialogTitle[stage]}</DialogTitle>
+            </DialogHeader>
            {renderContent()}
         </DialogContent>
     );
