@@ -492,7 +492,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 
                      <div className="flex justify-end gap-4 mt-6">
                         <Button variant="outline" onClick={resetState}>Mulai Ulang</Button>
-                        <Button onClick={handleConfirmImport} disabled={!isMappingComplete}>
+                        <Button onClick={handleConfirmImport} disabled={!isMappingComplete || analysisState === 'saving'}>
                             {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Konfirmasi & Impor ke Keranjang
                         </Button>
