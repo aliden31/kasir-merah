@@ -491,10 +491,12 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                     </Card>
 
                     <div className="flex justify-end gap-4 mt-6">
-                        <Button variant="outline" onClick={resetState} disabled={analysisState === 'saving'}>Mulai Ulang</Button>
+                        <Button variant="outline" onClick={resetState} disabled={analysisState === 'saving'}>
+                            Mulai Ulang
+                        </Button>
                         <Button onClick={handleConfirmImport} disabled={!isMappingComplete || analysisState === 'saving'}>
                             {analysisState === 'saving' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Konfirmasi &amp; Impor ke Keranjang
+                            Konfirmasi & Impor ke Keranjang
                         </Button>
                     </div>
                 </div>
@@ -504,5 +506,3 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 }
 
 export default SalesImporterPage;
-
-    
