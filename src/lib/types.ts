@@ -138,6 +138,7 @@ export interface ImportedFile {
     name: string;
     importedAt: Date;
 }
+<<<<<<< HEAD
 
 export interface SkuMapping {
     id: string;
@@ -145,3 +146,5 @@ export interface SkuMapping {
     mappedProductId: string;
     mappedProductName: string;
 }
+=======
+>>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)

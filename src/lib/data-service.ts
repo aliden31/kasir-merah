@@ -20,7 +20,11 @@ import {
   onSnapshot,
   where,
 } from 'firebase/firestore';
+<<<<<<< HEAD
 import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog, PublicSettings, OtherIncome, ImportedFile, SkuMapping } from './types';
+=======
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog, PublicSettings, OtherIncome, ImportedFile } from './types';
+>>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -666,6 +670,7 @@ export const addImportedFile = async (fileName: string): Promise<void> => {
     await addDocument<ImportedFile>('importedFiles', fileData);
 };
 
+<<<<<<< HEAD
 // SKU Mapping Functions
 export const getSkuMappings = async (): Promise<SkuMapping[]> => {
     return getCollection<SkuMapping>('skuMappings');
@@ -690,6 +695,8 @@ export const saveSkuMapping = async (mapping: Omit<SkuMapping, 'id'>): Promise<S
     }
 };
 
+=======
+>>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
 
 // Helper
 const formatCurrency = (amount: number) => {
