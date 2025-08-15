@@ -65,6 +65,7 @@ import { logout } from '@/lib/auth-service';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Dialog } from '@/components/ui/dialog';
 import SalesImporterPage from '@/components/pages/sales-importer-page';
 
 type View =
@@ -108,10 +109,11 @@ function AppPageContent() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  // Cart state lifted from KasirPage
+  // State lifted up from child components
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [discount, setDiscount] = useState(settings.defaultDiscount || 0);
   const [transactionDate, setTransactionDate] = useState<Date>(new Date());
+  const [isImporterOpen, setImporterOpen] = useState(false);
   
   useEffect(() => {
     setDiscount(settings.defaultDiscount || 0);
@@ -120,53 +122,56 @@ function AppPageContent() {
   const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
 
 
-  const refreshAllData = async (shouldKeepCart = false) => {
+  const refreshAllData = (shouldKeepCart = false) => {
     if (!userRole) return;
     setIsLoading(true);
-    try {
-      const settingsPromise = getSettings();
-      const flashSalePromise = getFlashSaleSettings();
-      const productsPromise = getProducts();
-      const publicSettingsPromise = getPublicSettings();
-      const salesPromise = getSales();
-      const returnsPromise = getReturns();
+    return new Promise<void>(async (resolve, reject) => {
+      try {
+        const settingsPromise = getSettings();
+        const flashSalePromise = getFlashSaleSettings();
+        const productsPromise = getProducts();
+        const publicSettingsPromise = getPublicSettings();
+        const salesPromise = getSales();
+        const returnsPromise = getReturns();
 
-      const [
-        appSettings, 
-        flashSaleSettings, 
-        productsData, 
-        publicSettings,
-        salesData,
-        returnsData
-      ] = await Promise.all([
-        settingsPromise, 
-        flashSalePromise, 
-        productsPromise,
-        publicSettingsPromise,
-        salesPromise,
-        returnsPromise
-      ]);
+        const [
+          appSettings, 
+          flashSaleSettings, 
+          productsData, 
+          publicSettings,
+          salesData,
+          returnsData
+        ] = await Promise.all([
+          settingsPromise, 
+          flashSalePromise, 
+          productsPromise,
+          publicSettingsPromise,
+          salesPromise,
+          returnsPromise
+        ]);
 
-      setSettings({ ...appSettings, defaultDiscount: publicSettings.defaultDiscount });
-      setFlashSale(flashSaleSettings);
-      setProducts(productsData);
-      setSales(salesData);
-      setReturns(returnsData);
+        setSettings({ ...appSettings, defaultDiscount: publicSettings.defaultDiscount });
+        setFlashSale(flashSaleSettings);
+        setProducts(productsData);
+        setSales(salesData);
+        setReturns(returnsData);
 
-      if (!shouldKeepCart) {
-          setCart([]);
+        if (!shouldKeepCart) {
+            setCart([]);
+        }
+        resolve();
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: "Gagal memuat data",
+          description: "Terjadi kesalahan saat memuat data aplikasi. Periksa koneksi dan izin Anda.",
+          variant: "destructive",
+        });
+        reject(error);
+      } finally {
+        setIsLoading(false);
       }
-
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: "Gagal memuat data",
-        description: "Terjadi kesalahan saat memuat data aplikasi. Periksa koneksi dan izin Anda.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
 
@@ -182,7 +187,7 @@ function AppPageContent() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    document.documentElement.className = document.documentElement.className.replace(/\btheme-\S+/g, '');
+    document.documentElement.className = document.documentElement.className.replace(/btheme-S+/g, '');
     if (settings.theme !== 'dark' && settings.theme !== 'default') {
       document.documentElement.classList.add(`theme-${settings.theme}`);
     }
@@ -226,19 +231,23 @@ function AppPageContent() {
     { id: 'pemasukan-lain', label: 'Pemasukan Lain', icon: PlusSquare, roles: ['admin'] },
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
     { id: 'kalkulator-roas', label: 'Kalkulator ROAS', icon: Calculator, roles: ['admin'] },
-    { id: 'sales-importer', label: 'Impor Penjualan', icon: FileUp, roles: ['admin'] },
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
     { id: 'pengaturan', label: 'Pengaturan', icon: Settings, roles: ['admin', 'kasir'] },
     { id: 'activity-log', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
   ];
 
-  const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(item.role));
+  const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(userRole));
   
   const activeMenu = menuItems.find(item => item.id === activeView);
 
   const handleNavigate = (view: View) => {
     setActiveView(view);
     setOpenMobile(false);
+  }
+  
+  const handleImportSuccess = () => {
+    setImporterOpen(false);
+    refreshAllData();
   }
 
   const renderView = () => {
@@ -258,7 +267,7 @@ function AppPageContent() {
 
     switch (activeView) {
       case 'erp':
-        return <ErpPage onNavigate={handleNavigate} />;
+        return <ErpPage onNavigate={handleNavigate} onOpenImporter={() => setImporterOpen(true)} />;
       case 'dashboard':
         return <DashboardPage onNavigate={handleNavigate} />;
       case 'kasir':
@@ -276,6 +285,7 @@ function AppPageContent() {
           transactionDate={transactionDate}
           setTransactionDate={setTransactionDate}
           cartItemCount={cartItemCount}
+          onOpenImporter={() => setImporterOpen(true)}
         />;
       case 'produk':
         return <ProdukPage onDataChange={refreshAllData} userRole={userRole!} />;
@@ -293,8 +303,6 @@ function AppPageContent() {
         return <LaporanPage onNavigate={handleNavigate} />;
       case 'kalkulator-roas':
         return <KalkulatorRoasPage />;
-      case 'sales-importer':
-        return <SalesImporterPage onImportSuccess={refreshAllData} userRole={userRole!} />;
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':
@@ -316,7 +324,8 @@ function AppPageContent() {
           transactionDate={transactionDate}
           setTransactionDate={setTransactionDate}
           cartItemCount={cartItemCount}
-        /> : <ErpPage onNavigate={handleNavigate} />;
+          onOpenImporter={() => setImporterOpen(true)}
+        /> : <ErpPage onNavigate={handleNavigate} onOpenImporter={() => setImporterOpen(true)} />;
     }
   };
 
@@ -381,7 +390,16 @@ function AppPageContent() {
                 <SidebarTrigger className="md:hidden" />
                 <h1 className="text-xl font-semibold">{activeMenu?.label}</h1>
             </header>
-            <main className="p-4 md:p-6">{renderView()}</main>
+            <main className="p-4 md:p-6">
+              <Dialog open={isImporterOpen} onOpenChange={setImporterOpen}>
+                <SalesImporterPage 
+                    onImportSuccess={handleImportSuccess} 
+                    userRole={userRole!} 
+                    defaultDiscount={settings.defaultDiscount}
+                />
+              </Dialog>
+              {renderView()}
+            </main>
              
              {isMobile && activeView !== 'kasir' && (
                 <Button

@@ -40,7 +40,6 @@ import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '../ui/skeleton';
 import { ReturnForm } from './retur';
 import { ExpenseForm } from './pengeluaran';
-import SalesImporterPage from './sales-importer-page';
 
 
 const formatCurrency = (amount: number) => {
@@ -61,6 +60,7 @@ interface KasirPageProps {
   transactionDate: Date;
   setTransactionDate: React.Dispatch<React.SetStateAction<Date>>;
   cartItemCount: number;
+  onOpenImporter: () => void;
 }
 
 const KasirPage: FC<KasirPageProps> = React.memo(({ 
@@ -76,7 +76,8 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
   setDiscount,
   transactionDate,
   setTransactionDate,
-  cartItemCount
+  cartItemCount,
+  onOpenImporter
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -85,7 +86,6 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
   const [sortOrder, setSortOrder] = useState('terlaris');
   const [isReturnFormOpen, setReturnFormOpen] = useState(false);
   const [isExpenseFormOpen, setExpenseFormOpen] = useState(false);
-  const [isImporterOpen, setImporterOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -256,11 +256,6 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
     }
   }
 
-  const handleImportSuccess = () => {
-    setImporterOpen(false);
-    onDataNeedsRefresh();
-  }
-
   const renderProductGrid = (isMobile = false) => (
     <Card className={`h-full flex flex-col shadow-none border-0 ${isMobile ? '' : 'lg:col-span-2'}`}>
       <CardHeader>
@@ -389,18 +384,9 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                     </DialogTrigger>
                     <ExpenseForm onSave={handleSaveExpense} onOpenChange={setExpenseFormOpen} userRole={userRole}/>
                 </Dialog>
-                <Dialog open={isImporterOpen} onOpenChange={setImporterOpen}>
-                    <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full">
-                            <FileUp className="mr-2 h-4 w-4" /> Impor
-                        </Button>
-                    </DialogTrigger>
-                    <SalesImporterPage 
-                        onImportSuccess={handleImportSuccess} 
-                        userRole={userRole} 
-                        defaultDiscount={settings.defaultDiscount}
-                    />
-                </Dialog>
+                <Button variant="outline" className="w-full" onClick={onOpenImporter}>
+                    <FileUp className="mr-2 h-4 w-4" /> Impor
+                </Button>
             </div>
         </CardHeader>
         <CardContent className="flex-grow">

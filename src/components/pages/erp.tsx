@@ -32,13 +32,14 @@ type View =
 
 interface ErpPageProps {
   onNavigate: (view: View) => void;
+  onOpenImporter: () => void;
 }
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
-const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
+const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate, onOpenImporter }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [returns, setReturns] = useState<Return[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -253,7 +254,7 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                             <span>Kalkulator ROAS</span>
                              <ArrowRight className="h-4 w-4"/>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('sales-importer')}>
+                        <Button variant="outline" className="w-full justify-between" onClick={onOpenImporter}>
                             <span>Impor Penjualan</span>
                              <ArrowRight className="h-4 w-4"/>
                         </Button>
