@@ -35,6 +35,10 @@ import {
   LayoutDashboard,
   Calculator,
   PlusSquare,
+<<<<<<< HEAD
+=======
+  FileAxis3d,
+>>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
   FileUp,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -55,6 +59,11 @@ import PengaturanPage from '@/components/pages/pengaturan';
 import ActivityLogPage from '@/components/pages/activity-log';
 import ErpPage from '@/components/pages/erp';
 import KalkulatorRoasPage from '@/components/pages/kalkulator-roas';
+<<<<<<< HEAD
+=======
+import PdfConverterPage from '@/components/pages/pdf-converter';
+import SalesImporterPage from '@/components/pages/sales-importer-page';
+>>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings, Sale, Return } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings, getSales, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
@@ -83,6 +92,10 @@ type View =
   | 'activity-log'
   | 'erp'
   | 'kalkulator-roas'
+<<<<<<< HEAD
+=======
+  | 'pdf-converter'
+>>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
   | 'sales-importer';
 
 const defaultSettings: AppSettings = { 
@@ -231,6 +244,11 @@ function AppPageContent() {
     { id: 'pemasukan-lain', label: 'Pemasukan Lain', icon: PlusSquare, roles: ['admin'] },
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
     { id: 'kalkulator-roas', label: 'Kalkulator ROAS', icon: Calculator, roles: ['admin'] },
+<<<<<<< HEAD
+=======
+    { id: 'pdf-converter', label: 'PDF ke Excel', icon: FileAxis3d, roles: ['admin'] },
+    { id: 'sales-importer', label: 'Impor Penjualan', icon: FileUp, roles: ['admin'] },
+>>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
     { id: 'pengaturan', label: 'Pengaturan', icon: Settings, roles: ['admin', 'kasir'] },
     { id: 'activity-log', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
@@ -244,11 +262,14 @@ function AppPageContent() {
     setActiveView(view);
     setOpenMobile(false);
   }
+<<<<<<< HEAD
   
   const handleImportSuccess = () => {
     setImporterOpen(false);
     refreshAllData();
   }
+=======
+>>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
 
   const renderView = () => {
     if (isLoading || authLoading) {
@@ -303,6 +324,13 @@ function AppPageContent() {
         return <LaporanPage onNavigate={handleNavigate} />;
       case 'kalkulator-roas':
         return <KalkulatorRoasPage />;
+<<<<<<< HEAD
+=======
+      case 'pdf-converter':
+        return <PdfConverterPage />;
+      case 'sales-importer':
+        return <SalesImporterPage onImportComplete={(items) => setCart(items)} userRole={userRole!} />;
+>>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':

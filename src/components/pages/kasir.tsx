@@ -367,7 +367,11 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                     <Badge variant="outline">{cartItemCount} Item</Badge>
                 </div>
             </div>
+<<<<<<< HEAD
             <div className="grid grid-cols-3 lg:grid-cols-3 gap-2">
+=======
+            <div className="grid grid-cols-2 lg:grid-cols-2 gap-2">
+>>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
                 <Dialog open={isReturnFormOpen} onOpenChange={setReturnFormOpen}>
                     <DialogTrigger asChild>
                         <Button variant="outline" className="w-full">
