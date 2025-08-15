@@ -59,9 +59,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         fetchDbProducts();
     }, []);
 
-    const processExtractedItems = (items: ExtractedSaleItem[], uniqueOrders?: Set<string>) => {
+    const processExtractedItems = (items: ExtractedSaleItem[], uniqueOrderCountValue: number = 0) => {
         const itemsBySku = new Map<string, { totalQuantity: number; totalValue: number; name: string; originalItems: ExtractedSaleItem[] }>();
-        setUniqueOrderCount(uniqueOrders?.size || 0);
+        setUniqueOrderCount(uniqueOrderCountValue);
 
         // 1. Group items and aggregate quantities and values
         items.forEach(item => {
@@ -145,7 +145,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 }).filter(item => item.sku && item.quantity > 0);
 
                 if (items.length > 0) {
-                    processExtractedItems(items, uniqueOrders);
+                    processExtractedItems(items, uniqueOrders.size);
                 } else {
                     setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "SKU Gudang" atau "SKU", "Jumlah", dan "Harga Satuan".');
                     setAnalysisState('error');
@@ -169,7 +169,8 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                     
                     if (result && result.sales.length > 0) {
                         const allItems = result.sales.flatMap(s => s.items);
-                        processExtractedItems(allItems);
+                        // Here, uniqueOrderCount is the number of separate invoices/notes found
+                        processExtractedItems(allItems, result.sales.length);
                     } else {
                         setErrorMessage('AI tidak dapat menemukan data penjualan di dalam file. Coba file lain atau pastikan formatnya jelas.');
                         setAnalysisState('error');
@@ -298,7 +299,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                     <AlertTitle>Hasil Analisis</AlertTitle>
                     <AlertDescription>
                         Sistem berhasil mengekstrak total <span className="font-bold">{totalQuantity} item</span> dari <span className="font-bold">{aggregatedItems.length} jenis produk</span>.
-                        {uniqueOrderCount > 0 && ` Ditemukan <span className="font-bold">${uniqueOrderCount} nomor pesanan</span> yang unik.`}
+                        {uniqueOrderCount > 0 && ` Ditemukan <span className="font-bold">${uniqueOrderCount} pesanan</span> yang unik.`}
                         Harap tinjau data di bawah ini. Produk baru akan dibuat untuk item yang tidak dikenali.
                     </AlertDescription>
                 </Alert>
@@ -394,29 +395,29 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             </div>
 
             <DialogFooter>
-                 {analysisState === 'analyzing' ? (
-                     <Button disabled>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
+                {analysisState === 'analyzing' ? (
+                    <Button disabled>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Sedang Menganalisis...
-                     </Button>
-                 ) : analysisState === 'review' || analysisState === 'saving' ? (
-                     <>
+                    </Button>
+                ) : analysisState === 'review' || analysisState === 'saving' ? (
+                    <>
                         <Button variant="secondary" onClick={() => { setAnalysisState('idle'); setFile(null); setAggregatedItems([]); }}>Analisis Ulang</Button>
                         <Button onClick={handleConfirmImport} disabled={analysisState === 'saving'}>
-                            {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                            {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Konfirmasi & Impor ke Keranjang
                         </Button>
-                     </>
-                 ) : (
-                     <>
+                    </>
+                ) : (
+                    <>
                         <DialogClose asChild>
                             <Button variant="secondary">Batal</Button>
                         </DialogClose>
                         <Button onClick={handleAnalyze} disabled={!file}>
                             {getAnalysisButton()}
                         </Button>
-                     </>
-                 )}
+                    </>
+                )}
             </DialogFooter>
         </DialogContent>
     );
