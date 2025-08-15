@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -205,7 +204,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
             };
             reader.onerror = () => {
                  setErrorMessage('Gagal membaca file. Silakan coba lagi.');
-                 setState('error');
+                 setAnalysisState('error');
             };
     }
 
@@ -494,9 +493,9 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                         <Button variant="outline" onClick={resetState} disabled={analysisState === 'saving'}>
                             Mulai Ulang
                         </Button>
-                        <Button onClick={handleConfirmImport} disabled={!isMappingComplete || analysisState === 'saving'}>
-                            {analysisState === 'saving' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Konfirmasi & Impor ke Keranjang
+                        <Button onClick={handleConfirmImport} disabled={analysisState === 'saving' || !isMappingComplete}>
+                             {analysisState === 'saving' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                             Konfirmasi &amp; Impor ke Keranjang
                         </Button>
                     </div>
                 </div>
@@ -506,3 +505,5 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 }
 
 export default SalesImporterPage;
+
+    
