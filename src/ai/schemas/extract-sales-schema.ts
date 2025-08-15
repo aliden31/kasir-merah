@@ -22,3 +22,14 @@ export const ExtractedSalesSchema = z.object({
   }).describe('A summary analysis of the sales data.')
 });
 export type ExtractedSales = z.infer<typeof ExtractedSalesSchema>;
+
+
+export const ExtractSalesInputSchema = z.object({
+  fileDataUri: z
+    .string()
+    .describe(
+      "An Excel file (.xlsx) containing sales data, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'. The AI should prioritize columns with headers like 'SKU Gudang' for SKU, 'Nomor Pesanan' for Order ID, 'Jumlah' for quantity, and a price-related column like 'Harga Setelah Diskon' for the selling price."
+    ),
+});
+export type ExtractSalesInput = z.infer<typeof ExtractSalesInputSchema>;
+export type ExtractSalesOutput = z.infer<typeof ExtractedSalesSchema>;

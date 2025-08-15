@@ -7,18 +7,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { ExtractedSalesSchema } from '@/ai/schemas/extract-sales-schema';
-import { z } from 'zod';
-
-export const ExtractSalesInputSchema = z.object({
-  fileDataUri: z
-    .string()
-    .describe(
-      "An Excel file (.xlsx) containing sales data, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'. The AI should prioritize columns with headers like 'SKU Gudang' for SKU, 'Nomor Pesanan' for Order ID, 'Jumlah' for quantity, and a price-related column like 'Harga Setelah Diskon' for the selling price."
-    ),
-});
-export type ExtractSalesInput = z.infer<typeof ExtractSalesInputSchema>;
-export type ExtractSalesOutput = z.infer<typeof ExtractedSalesSchema>;
+import { ExtractedSalesSchema, ExtractSalesInputSchema, type ExtractSalesInput, type ExtractSalesOutput } from '@/ai/schemas/extract-sales-schema';
 
 export async function extractSales(input: ExtractSalesInput): Promise<ExtractSalesOutput> {
   return extractSalesFlow(input);
@@ -44,9 +33,9 @@ const extractSalesFlow = ai.defineFlow(
       6.  **Selling Price**: Find the column for the unit selling price. This is often named 'Harga Setelah Diskon', 'Harga Jual', or 'Price'. This is the final price for one unit.
       7.  **Data Extraction**: Extract each row as a separate sale item.
       8.  **Analysis**: After extracting all items, perform a summary analysis:
-          -   'totalOrders': Count the number of *unique* order IDs.
-          -   'totalItems': Sum the 'quantity' for all extracted items.
-          -   'totalRevenue': Calculate the total revenue by summing (quantity * sellingPrice) for all items.
+          -   totalOrders: Count the number of *unique* order IDs.
+          -   totalItems: Sum the 'quantity' for all extracted items.
+          -   totalRevenue: Calculate the total revenue by summing (quantity * sellingPrice) for all items.
       9.  **Output**: Return the data strictly in the required JSON format. Ensure all numbers are actual numbers, not strings.
 
       Excel File Data:
