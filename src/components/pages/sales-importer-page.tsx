@@ -51,7 +51,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
     const [unrecognizedItems, setUnrecognizedItems] = useState<AggregatedSaleItem[]>([]);
     const [matchedProducts, setMatchedProducts] = useState<Map<string, Product>>(new Map());
     const [productMappings, setProductMappings] = useState<Record<string, string>>({});
-    const [resiCount, setResiCount] = useState(0);
+    const [orderCount, setOrderCount] = useState(0);
 
     const isMappingComplete = useMemo(() => {
       return unrecognizedItems.every(item => productMappings[item.sku]);
@@ -67,6 +67,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         fetchInitialData();
     }, []);
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/components/sales-importer.tsx
 <<<<<<< HEAD
     const handleCostPriceChange = (sku: string, value: string) => {
@@ -87,8 +88,11 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 =======
     const processExtractedItems = (items: ExtractedSaleItem[], uniqueResiCount: number = 0) => {
 >>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas):src/components/pages/sales-importer-page.tsx
+=======
+    const processExtractedItems = (items: ExtractedSaleItem[], uniqueOrderCount: number = 0) => {
+>>>>>>> 4b1f8ed (Logika resi ganti dengan kolom nomer pesanan saja. Dan jika ada nomer pe)
         const itemsBySku = new Map<string, { totalQuantity: number; totalValue: number; name: string; originalItems: ExtractedSaleItem[] }>();
-        setResiCount(uniqueResiCount);
+        setOrderCount(uniqueOrderCount);
 
         items.forEach(item => {
             const skuKey = (item.sku || '').trim();
@@ -164,7 +168,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                 const worksheet = workbook.Sheets[sheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-                const uniqueResi = new Set<string>();
+                const uniqueOrders = new Set<string>();
 
 <<<<<<< HEAD
                 const items: ExtractedSaleItem[] = json.map((row) => {
@@ -189,9 +193,9 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                         const sku = (row['SKU Gudang'] || '').toString().trim();
                         if (!sku) return null;
                         
-                        const resiNumber = (row['Nomor Resi'] || '').toString().trim();
-                        if(resiNumber) {
-                            uniqueResi.add(resiNumber);
+                        const orderNumber = (row['nomer pesanan'] || '').toString().trim();
+                        if(orderNumber) {
+                            uniqueOrders.add(orderNumber);
                         }
                         return {
                             name: (row['Nama SKU'] || sku).toString(),
@@ -205,7 +209,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 >>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
 
                 if (items.length > 0) {
-                    processExtractedItems(items, uniqueResi.size);
+                    processExtractedItems(items, uniqueOrders.size);
                 } else {
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -276,10 +280,10 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         try {
             const fileAlreadyImported = await hasImportedFile(file.name);
 
-            if (resiCount > 0 && !fileAlreadyImported) {
+            if (orderCount > 0 && !fileAlreadyImported) {
                 const resiExpense = {
                     name: `Biaya Resi Marketplace - ${file.name}`,
-                    amount: resiCount * 1250,
+                    amount: orderCount * 1250,
                     category: 'Operasional',
                     date: new Date(),
                     subcategory: 'Biaya Pengiriman'
@@ -287,10 +291,10 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                 await addExpense(resiExpense, 'sistem');
                 await addImportedFile(file.name);
                 toast({
-                    title: 'Pengeluaran Resi Dibuat',
-                    description: `Otomatis membuat pengeluaran untuk ${resiCount} resi sebesar ${formatCurrency(resiExpense.amount)}.`,
+                    title: 'Pengeluaran Pesanan Dibuat',
+                    description: `Otomatis membuat pengeluaran untuk ${orderCount} pesanan sebesar ${formatCurrency(resiExpense.amount)}.`,
                 });
-            } else if (resiCount > 0 && fileAlreadyImported) {
+            } else if (orderCount > 0 && fileAlreadyImported) {
                  toast({
                     title: 'Pengeluaran Dilewati',
                     description: `Pengeluaran untuk file ini sudah pernah dibuat sebelumnya.`,
@@ -688,7 +692,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                         <AlertTitle>Hasil Analisis</AlertTitle>
                         <AlertDescription>
                             Sistem berhasil mengekstrak total <span className="font-bold">{totalQuantity} item</span> dari <span className="font-bold">{aggregatedItems.length} jenis produk</span>.
-                            {resiCount > 0 && ` Ditemukan ${resiCount} resi unik.`}
+                            {orderCount > 0 && ` Ditemukan ${orderCount} pesanan unik.`}
                             Harap tinjau dan petakan produk yang tidak dikenali di bawah ini.
                         </AlertDescription>
                     </Alert>
