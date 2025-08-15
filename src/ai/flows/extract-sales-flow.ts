@@ -44,9 +44,9 @@ const extractSalesFlow = ai.defineFlow(
       6.  **Selling Price**: Find the column for the unit selling price. This is often named 'Harga Setelah Diskon', 'Harga Jual', or 'Price'. This is the final price for one unit.
       7.  **Data Extraction**: Extract each row as a separate sale item.
       8.  **Analysis**: After extracting all items, perform a summary analysis:
-          -   `totalOrders`: Count the number of *unique* order IDs.
-          -   `totalItems`: Sum the 'quantity' for all extracted items.
-          -   `totalRevenue`: Calculate the total revenue by summing (quantity * sellingPrice) for all items.
+          -   'totalOrders': Count the number of *unique* order IDs.
+          -   'totalItems': Sum the 'quantity' for all extracted items.
+          -   'totalRevenue': Calculate the total revenue by summing (quantity * sellingPrice) for all items.
       9.  **Output**: Return the data strictly in the required JSON format. Ensure all numbers are actual numbers, not strings.
 
       Excel File Data:
