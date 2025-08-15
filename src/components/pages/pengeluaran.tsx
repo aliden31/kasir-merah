@@ -99,6 +99,7 @@ export const ExpenseForm = ({
     const [isSaving, setIsSaving] = useState(false);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [selectedSubCategory, setSelectedSubCategory] = useState<string>('');
+    const [resiMultiplier, setResiMultiplier] = useState<number | ''>('');
     
     useEffect(() => {
         const fetchFormSettings = async () => {
@@ -115,7 +116,7 @@ export const ExpenseForm = ({
             setName(expense.name);
             setAmount(expense.amount);
             setCategory(expense.category);
-setDate(new Date(expense.date));
+            setDate(new Date(expense.date));
             setSelectedSubCategory(expense.subcategory || '');
         } else {
             setName('');
@@ -140,6 +141,18 @@ setDate(new Date(expense.date));
     
     const showSubCategoryInput = activeSubcategories.length > 0;
     const showFreeTextInput = selectedSubCategory === 'lainnya' || !showSubCategoryInput;
+
+    const isResi = name.toLowerCase().includes('resi');
+
+    const handleMultiplierChange = (value: string) => {
+        const numValue = value === '' ? '' : parseInt(value, 10);
+        setResiMultiplier(numValue);
+        if (typeof numValue === 'number' && !isNaN(numValue)) {
+            setAmount(numValue * 1250);
+        } else {
+            setAmount('');
+        }
+    };
 
 
     const handleSubmit = async () => {
@@ -223,6 +236,20 @@ setDate(new Date(expense.date));
                     </div>
                  )}
 
+                {isResi && (
+                    <div className="space-y-2">
+                        <Label htmlFor="resi-multiplier">Jumlah Resi</Label>
+                        <Input 
+                            id="resi-multiplier" 
+                            type="number" 
+                            value={resiMultiplier} 
+                            onChange={(e) => handleMultiplierChange(e.target.value)} 
+                            placeholder="Contoh: 10"
+                        />
+                    </div>
+                )}
+
+
                 <div className="space-y-2">
                     <Label htmlFor="amount">Jumlah</Label>
                     <Input 
@@ -231,6 +258,7 @@ setDate(new Date(expense.date));
                         value={amount} 
                         onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))} 
                         placeholder="0"
+                        disabled={isResi}
                      />
                 </div>
                 <div className="space-y-2">
@@ -531,3 +559,4 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
 
 PengeluaranPage.displayName = 'PengeluaranPage';
 export default PengeluaranPage;
+
