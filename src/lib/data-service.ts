@@ -336,14 +336,22 @@ export const batchDeleteSales = async (sales: Sale[], user: UserRole): Promise<v
     await runTransaction(db, async (transaction) => {
         const stockChanges: Record<string, number> = {};
 
+<<<<<<< HEAD
         // Calculate all stock restorations needed
         for (const sale of sales) {
             for (const item of sale.items) {
                  if (!item.product || item.product.id === 'unknown') continue;
+=======
+        // Aggregate all stock changes first
+        for (const sale of sales) {
+            for (const item of sale.items) {
+                if (!item.product || item.product.id === 'unknown') continue;
+>>>>>>> 10743f6 (Halaman riwayat penjualan berikan fungsi untuk hapis massal menggunakan)
                  stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) + item.quantity;
             }
         }
         
+<<<<<<< HEAD
         // Apply all stock changes
         for (const productId in stockChanges) {
             const productRef = doc(db, "products", productId);
@@ -358,6 +366,26 @@ export const batchDeleteSales = async (sales: Sale[], user: UserRole): Promise<v
         }
 
         // Delete all sale documents
+=======
+        // Read all product docs
+        const productRefs = Object.keys(stockChanges).map(id => doc(db, "products", id));
+        const productDocs = await Promise.all(
+            productRefs.map(ref => transaction.get(ref))
+        );
+
+        // Apply stock updates
+        for (const productDoc of productDocs) {
+             if (productDoc.exists()) {
+                const productId = productDoc.id;
+                const currentStock = productDoc.data().stock || 0;
+                const change = stockChanges[productId] || 0;
+                const newStock = currentStock + change;
+                transaction.update(productDoc.ref, { stock: newStock });
+            }
+        }
+        
+        // Delete all selected sales
+>>>>>>> 10743f6 (Halaman riwayat penjualan berikan fungsi untuk hapis massal menggunakan)
         for (const sale of sales) {
             const saleRef = doc(db, "sales", sale.id);
             transaction.delete(saleRef);

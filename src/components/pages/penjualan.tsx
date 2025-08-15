@@ -303,12 +303,16 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
     const [loading, setLoading] = useState(true);
     const [editingSale, setEditingSale] = useState<Sale | null>(null);
     const { toast } = useToast();
-     const [date, setDate] = React.useState<DateRange | undefined>({
+    const [date, setDate] = React.useState<DateRange | undefined>({
         from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         to: new Date(),
     });
     const [selectedSales, setSelectedSales] = useState<Record<string, boolean>>({});
+<<<<<<< HEAD
     const [isMassDeleting, setIsMassDeleting] = useState(false);
+=======
+    const [isDeleting, setIsDeleting] = useState(false);
+>>>>>>> 10743f6 (Halaman riwayat penjualan berikan fungsi untuk hapis massal menggunakan)
 
     const fetchSalesData = async () => {
         setLoading(true);
@@ -345,6 +349,45 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
         const interval = { start: startOfDay(date.from), end: toDate };
         return sales.filter(sale => isWithinInterval(new Date(sale.date), interval));
     }, [sales, date]);
+
+    const handleSelectSale = (saleId: string, checked: boolean) => {
+        setSelectedSales(prev => ({
+            ...prev,
+            [saleId]: checked
+        }));
+    };
+
+    const selectedSaleIds = useMemo(() => Object.keys(selectedSales).filter(id => selectedSales[id]), [selectedSales]);
+
+    const handleSelectAll = (checked: boolean) => {
+        const newSelected: Record<string, boolean> = {};
+        if (checked) {
+            filteredSales.forEach(sale => {
+                newSelected[sale.id] = true;
+            });
+        }
+        setSelectedSales(newSelected);
+    };
+
+    const handleBatchDelete = async () => {
+        setIsDeleting(true);
+        const salesToDelete = sales.filter(s => selectedSaleIds.includes(s.id));
+        try {
+            await batchDeleteSales(salesToDelete, userRole);
+            toast({
+                title: "Hapus Massal Berhasil",
+                description: `${salesToDelete.length} transaksi telah dihapus.`,
+            });
+            handleSave(); // refetches all data
+            setSelectedSales({});
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Gagal menghapus transaksi secara massal.";
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
 
     const handleEditClick = (sale: Sale) => {
       setEditingSale(sale);
@@ -495,6 +538,7 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
         <TabsContent value="riwayat" className="mt-4">
              <Card>
                 <CardHeader>
+<<<<<<< HEAD
                      <div className="flex items-center gap-4">
                          <Checkbox
                             id="select-all-sales"
@@ -505,13 +549,54 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
                             <CardTitle>
                                 <label htmlFor="select-all-sales">Daftar Transaksi</label>
                             </CardTitle>
+=======
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Daftar Transaksi</CardTitle>
+>>>>>>> 10743f6 (Halaman riwayat penjualan berikan fungsi untuk hapis massal menggunakan)
                             <CardDescription>
                                 Menampilkan {filteredSales.length} transaksi untuk periode yang dipilih.
                             </CardDescription>
                         </div>
+<<<<<<< HEAD
+=======
+                        {selectedSaleIds.length > 0 && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                <Button variant="destructive" disabled={isDeleting}>
+                                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                    Hapus Terpilih ({selectedSaleIds.length})
+                                </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Hapus {selectedSaleIds.length} Transaksi?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Tindakan ini akan menghapus semua transaksi yang dipilih secara permanen. Stok produk akan dikembalikan. Aksi ini tidak dapat diurungkan.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleBatchDelete} className="bg-destructive hover:bg-destructive/90">
+                                        Ya, Hapus
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+>>>>>>> 10743f6 (Halaman riwayat penjualan berikan fungsi untuk hapis massal menggunakan)
                     </div>
                 </CardHeader>
                 <CardContent>
+                     <div className="flex items-center gap-2 p-4 border-b">
+                        <Checkbox
+                            id="select-all"
+                            checked={filteredSales.length > 0 && selectedSaleIds.length === filteredSales.length}
+                            onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                            aria-label="Pilih semua item"
+                        />
+                        <Label htmlFor="select-all" className="text-sm font-medium">Pilih Semua</Label>
+                    </div>
                     <Accordion type="single" collapsible className="w-full">
                         {filteredSales.length > 0 ? filteredSales.map((sale: Sale) => {
                             const totalCost = sale.items.reduce((acc, item) => acc + (item.costPriceAtSale * item.quantity), 0);
@@ -519,6 +604,7 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
 
                             return (
                             <AccordionItem value={sale.id} key={sale.id}>
+<<<<<<< HEAD
                                 <div className="flex items-center w-full">
                                     <div className="pl-4 pr-2 py-4">
                                         <Checkbox 
@@ -529,6 +615,17 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
                                     </div>
                                     <AccordionTrigger className="flex-1">
                                         <div className="flex justify-between items-center w-full pr-4 text-sm">
+=======
+                                <div className="flex items-center w-full pr-4 text-sm">
+                                    <Checkbox
+                                        id={`select-${sale.id}`}
+                                        className="ml-4"
+                                        checked={!!selectedSales[sale.id]}
+                                        onCheckedChange={(checked) => handleSelectSale(sale.id, !!checked)}
+                                    />
+                                    <AccordionTrigger className="flex-1">
+                                        <div className="flex justify-between items-center w-full pl-4">
+>>>>>>> 10743f6 (Halaman riwayat penjualan berikan fungsi untuk hapis massal menggunakan)
                                             <span className="font-semibold text-primary">ID: trx {String(sale.displayId).padStart(4, '0')}</span>
                                             <Badge variant="outline">{new Date(sale.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</Badge>
                                             <span className="font-bold text-base">{formatCurrency(sale.finalTotal)}</span>
