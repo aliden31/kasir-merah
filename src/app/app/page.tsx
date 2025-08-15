@@ -232,7 +232,7 @@ function AppPageContent() {
     { id: 'activity-log', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
   ];
 
-  const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(item.roles));
+  const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(userRole));
   
   const activeMenu = menuItems.find(item => item.id === activeView);
 
