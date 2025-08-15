@@ -48,6 +48,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
     const [aggregatedItems, setAggregatedItems] = useState<AggregatedSaleItem[]>([]);
     const [newProducts, setNewProducts] = useState<ExtractedSaleItem[]>([]);
     const [matchedProducts, setMatchedProducts] = useState<Map<string, Product>>(new Map());
+    const [uniqueOrderCount, setUniqueOrderCount] = useState(0);
 
 
     useEffect(() => {
@@ -58,8 +59,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         fetchDbProducts();
     }, []);
 
-    const processExtractedItems = (items: ExtractedSaleItem[]) => {
+    const processExtractedItems = (items: ExtractedSaleItem[], uniqueOrders?: Set<string>) => {
         const itemsBySku = new Map<string, { totalQuantity: number; totalValue: number; name: string; originalItems: ExtractedSaleItem[] }>();
+        setUniqueOrderCount(uniqueOrders?.size || 0);
 
         // 1. Group items and aggregate quantities and values
         items.forEach(item => {
@@ -126,8 +128,14 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 const worksheet = workbook.Sheets[sheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet) as any[];
 
+                const uniqueOrders = new Set<string>();
+
                 const items: ExtractedSaleItem[] = json.map((row) => {
                     const sku = (row['SKU Gudang'] || row['SKU'] || '').toString();
+                    const orderNumber = (row['Nomor Pesanan'] || '').toString();
+                    if(orderNumber) {
+                        uniqueOrders.add(orderNumber);
+                    }
                     return {
                         name: (row['Nama SKU'] || sku).toString(),
                         sku: sku,
@@ -137,7 +145,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 }).filter(item => item.sku && item.quantity > 0);
 
                 if (items.length > 0) {
-                    processExtractedItems(items);
+                    processExtractedItems(items, uniqueOrders);
                 } else {
                     setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "SKU Gudang" atau "SKU", "Jumlah", dan "Harga Satuan".');
                     setAnalysisState('error');
@@ -290,6 +298,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                     <AlertTitle>Hasil Analisis</AlertTitle>
                     <AlertDescription>
                         Sistem berhasil mengekstrak total <span className="font-bold">{totalQuantity} item</span> dari <span className="font-bold">{aggregatedItems.length} jenis produk</span>.
+                        {uniqueOrderCount > 0 && ` Ditemukan <span className="font-bold">${uniqueOrderCount} nomor pesanan</span> yang unik.`}
                         Harap tinjau data di bawah ini. Produk baru akan dibuat untuk item yang tidak dikenali.
                     </AlertDescription>
                 </Alert>
