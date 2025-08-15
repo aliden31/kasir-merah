@@ -139,6 +139,9 @@ export interface ImportedFile {
     importedAt: Date;
 }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6cbabb8 (Fungsi pemetaan prodaknya masih belum benar. Ketika saya upload dengan n)
 
 export interface SkuMapping {
     id: string;
@@ -146,5 +149,8 @@ export interface SkuMapping {
     mappedProductId: string;
     mappedProductName: string;
 }
+<<<<<<< HEAD
 =======
 >>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
+=======
+>>>>>>> 6cbabb8 (Fungsi pemetaan prodaknya masih belum benar. Ketika saya upload dengan n)

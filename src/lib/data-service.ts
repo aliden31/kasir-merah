@@ -21,10 +21,14 @@ import {
   where,
 } from 'firebase/firestore';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog, PublicSettings, OtherIncome, ImportedFile, SkuMapping } from './types';
 =======
 import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog, PublicSettings, OtherIncome, ImportedFile } from './types';
 >>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
+=======
+import type { Product, Sale, Return, Expense, FlashSale, Settings, SaleItem, ReturnItem, Category, SubCategory, StockOpnameLog, UserRole, ActivityLog, PublicSettings, OtherIncome, ImportedFile, SkuMapping } from './types';
+>>>>>>> 6cbabb8 (Fungsi pemetaan prodaknya masih belum benar. Ketika saya upload dengan n)
 import { placeholderProducts } from './placeholder-data';
 
 // Generic Firestore interaction functions
@@ -671,6 +675,9 @@ export const addImportedFile = async (fileName: string): Promise<void> => {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6cbabb8 (Fungsi pemetaan prodaknya masih belum benar. Ketika saya upload dengan n)
 // SKU Mapping Functions
 export const getSkuMappings = async (): Promise<SkuMapping[]> => {
     return getCollection<SkuMapping>('skuMappings');
@@ -695,8 +702,11 @@ export const saveSkuMapping = async (mapping: Omit<SkuMapping, 'id'>): Promise<S
     }
 };
 
+<<<<<<< HEAD
 =======
 >>>>>>> d78c6df (Saat impor data excell. Jumlah transaksi atau nomer resi masukan kedalam)
+=======
+>>>>>>> 6cbabb8 (Fungsi pemetaan prodaknya masih belum benar. Ketika saya upload dengan n)
 
 // Helper
 const formatCurrency = (amount: number) => {
