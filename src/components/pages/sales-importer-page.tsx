@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Upload, FileCheck, AlertCircle, CheckCircle, Package, ArrowRight, HelpCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '../ui/scroll-area';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
@@ -289,35 +290,37 @@ const SalesImporterPage: FC<SalesImporterPageProps> = ({ onImportSuccess, userRo
                             <CardDescription>Beberapa SKU dari file Anda tidak dikenali. Silakan petakan ke produk yang ada di sistem.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>SKU Excel</TableHead>
-                                        <TableHead>Nama Produk Excel</TableHead>
-                                        <TableHead>Jumlah</TableHead>
-                                        <TableHead>Petakan ke Produk Sistem</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {unmappedSkus.map(item => (
-                                        <TableRow key={item.sku}>
-                                            <TableCell className="font-mono">{item.sku}</TableCell>
-                                            <TableCell>{item.productName}</TableCell>
-                                            <TableCell>{item.count}</TableCell>
-                                            <TableCell>
-                                                <Select onValueChange={(value) => handleMappingChange(item.sku, value)}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Pilih produk..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
+                            <ScrollArea className="h-72">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>SKU Excel</TableHead>
+                                            <TableHead>Nama Produk Excel</TableHead>
+                                            <TableHead>Jumlah</TableHead>
+                                            <TableHead>Petakan ke Produk Sistem</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {unmappedSkus.map(item => (
+                                            <TableRow key={item.sku}>
+                                                <TableCell className="font-mono">{item.sku}</TableCell>
+                                                <TableCell>{item.productName}</TableCell>
+                                                <TableCell>{item.count}</TableCell>
+                                                <TableCell>
+                                                    <Select onValueChange={(value) => handleMappingChange(item.sku, value)}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Pilih produk..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
                         </CardContent>
                          <CardFooter>
                             <Button className="w-full" onClick={handleConfirmMappings} disabled={Object.keys(userMappings).length !== unmappedSkus.length}>
