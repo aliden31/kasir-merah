@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -29,6 +30,7 @@ type AggregatedSaleItem = {
     name: string;
     quantity: number;
     price: number;
+    costPrice: number;
     isNew: boolean;
 };
 
@@ -58,6 +60,17 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
         };
         fetchDbProducts();
     }, []);
+
+    const handleCostPriceChange = (sku: string, value: string) => {
+        const newCostPrice = value === '' ? 0 : parseInt(value, 10);
+        if (isNaN(newCostPrice)) return;
+
+        setAggregatedItems(prevItems =>
+            prevItems.map(item =>
+                item.sku === sku ? { ...item, costPrice: newCostPrice } : item
+            )
+        );
+    };
 
     const processExtractedItems = (items: ExtractedSaleItem[], uniqueOrderCountValue: number = 0) => {
         const itemsBySku = new Map<string, { totalQuantity: number; totalValue: number; name: string; originalItems: ExtractedSaleItem[] }>();
@@ -99,6 +112,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 name,
                 quantity: totalQuantity,
                 price: averagePrice,
+                costPrice: dbProduct ? dbProduct.costPrice : 0,
                 isNew,
             });
         }
@@ -131,10 +145,11 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 const uniqueResi = new Set<string>();
 
                 const items: ExtractedSaleItem[] = json.map((row) => {
-                    const providedSku = (row['SKU Gudang'] || row['SKU'] || '').toString();
-                    const sku = providedSku || (row['Nama Produk'] || '').toString();
-                    const name = (row['Nama SKU'] || row['Nama Produk'] || sku).toString();
-                    const resiNumber = (row['Nomor Resi'] || '').toString();
+                    const providedSku = (row['SKU Gudang'] || row['SKU'] || '').toString().trim();
+                    const productName = (row['Nama Produk'] || '').toString().trim();
+                    const sku = providedSku || productName;
+                    const name = (row['Nama SKU'] || productName || sku).toString().trim();
+                    const resiNumber = (row['Nomor Resi'] || '').toString().trim();
                     if(resiNumber) {
                         uniqueResi.add(resiNumber);
                     }
@@ -217,7 +232,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 const productData = {
                     name: newProd.name,
                     sellingPrice: aggregatedItem?.price || newProd.price,
-                    costPrice: 0,
+                    costPrice: aggregatedItem?.costPrice || 0,
                     stock: 0,
                     category: 'Impor',
                 };
@@ -237,6 +252,9 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                 const productInfo = updatedDbProducts.find(p => p.id === finalProductId);
 
                 if (!productInfo) return null;
+                
+                // Use the cost price from the (possibly edited) aggregated item
+                const costPrice = item.costPrice;
 
                 return {
                     product: {
@@ -244,11 +262,11 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                         name: productInfo.name,
                         category: productInfo.category,
                         subcategory: productInfo.subcategory,
-                        costPrice: productInfo.costPrice,
+                        costPrice: costPrice,
                     },
                     quantity: item.quantity,
                     price: item.price,
-                    costPriceAtSale: productInfo.costPrice,
+                    costPriceAtSale: costPrice,
                 };
             }).filter((i): i is NonNullable<typeof i> => i !== null);
             
@@ -341,6 +359,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                                 <TableHead>SKU</TableHead>
                                 <TableHead className="text-right">Jumlah</TableHead>
                                 <TableHead className="text-right">Harga Jual (Rata-rata)</TableHead>
+                                <TableHead>Harga Modal</TableHead>
                                 <TableHead className="text-right">Status</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -351,6 +370,15 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                                     <TableCell className="text-muted-foreground">{item.sku}</TableCell>
                                     <TableCell className="text-right">{item.quantity}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
+                                    <TableCell>
+                                        <Input
+                                            type="number"
+                                            className="w-28 h-8 text-right"
+                                            value={item.costPrice}
+                                            onChange={(e) => handleCostPriceChange(item.sku, e.target.value)}
+                                            placeholder="0"
+                                        />
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <Badge variant={item.isNew ? "secondary" : "default"}>{item.isNew ? "Baru" : "OK"}</Badge>
                                     </TableCell>
