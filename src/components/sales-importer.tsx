@@ -132,7 +132,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                         name: (row['Nama SKU'] || sku).toString(),
                         sku: sku,
                         quantity: Number(row['Jumlah'] || 0),
-                        price: Number(row['harga jual'] || row['Harga Satuan'] || 0),
+                        price: Number(row['Harga Satuan'] || 0),
                     };
                 }).filter(item => item.sku && item.quantity > 0);
 
@@ -385,16 +385,12 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
             </div>
 
             <DialogFooter>
-                 {analysisState === 'idle' || analysisState === 'error' ? (
-                     <>
-                        <DialogClose asChild>
-                            <Button variant="secondary">Batal</Button>
-                        </DialogClose>
-                        <Button onClick={handleAnalyze} disabled={!file}>
-                            {analysisState === 'analyzing' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : getAnalysisButton()}
-                        </Button>
-                     </>
-                 ) : analysisState === 'review' ? (
+                 {analysisState === 'analyzing' ? (
+                     <Button disabled>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
+                        Sedang Menganalisis...
+                     </Button>
+                 ) : analysisState === 'review' || analysisState === 'saving' ? (
                      <>
                         <Button variant="secondary" onClick={() => { setAnalysisState('idle'); setFile(null); setAggregatedItems([]); }}>Analisis Ulang</Button>
                         <Button onClick={handleConfirmImport} disabled={analysisState === 'saving'}>
@@ -402,7 +398,16 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                             Konfirmasi & Impor ke Keranjang
                         </Button>
                      </>
-                 ) : null}
+                 ) : (
+                     <>
+                        <DialogClose asChild>
+                            <Button variant="secondary">Batal</Button>
+                        </DialogClose>
+                        <Button onClick={handleAnalyze} disabled={!file}>
+                            {getAnalysisButton()}
+                        </Button>
+                     </>
+                 )}
             </DialogFooter>
         </DialogContent>
     );
