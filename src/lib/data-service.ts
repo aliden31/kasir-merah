@@ -158,6 +158,16 @@ export const deleteProduct = async (id: string, user: UserRole) => {
     }
 };
 
+export const batchDeleteProducts = async (productIds: string[], user: UserRole): Promise<void> => {
+    const batch = writeBatch(db);
+    productIds.forEach(id => {
+        const docRef = doc(db, 'products', id);
+        batch.delete(docRef);
+    });
+    await batch.commit();
+    await addActivityLog(user, `menghapus ${productIds.length} produk secara massal.`);
+};
+
 
 
 

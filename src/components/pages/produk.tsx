@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Product, Sale, Settings, UserRole } from '@/lib/types';
-import { PlusCircle, Edit, Trash2, MoreHorizontal } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, MoreHorizontal, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -39,8 +39,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getProducts, addProduct, updateProduct, deleteProduct, getSales } from '@/lib/data-service';
+import { getProducts, addProduct, updateProduct, deleteProduct, getSales, batchDeleteProducts } from '@/lib/data-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '../ui/checkbox';
 
 interface ProdukPageProps {
     onDataChange: () => void;
@@ -156,6 +157,8 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
   const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
   const { toast } = useToast();
   const [sortOrder, setSortOrder] = useState('nama-az');
+  const [selectedProducts, setSelectedProducts] = useState<Record<string, boolean>>({});
+  const [isMassDeleting, setIsMassDeleting] = useState(false);
 
     const fetchInitialData = async () => {
         setLoading(true);
@@ -253,6 +256,39 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
       }
       setFormOpen(true);
   }
+  
+  const handleSelectProduct = (productId: string, isSelected: boolean) => {
+    setSelectedProducts(prev => ({...prev, [productId]: isSelected}));
+  };
+
+  const handleSelectAll = (isSelected: boolean) => {
+      const newSelectedProducts: Record<string, boolean> = {};
+      if (isSelected) {
+          sortedProducts.forEach(p => newSelectedProducts[p.id] = true);
+      }
+      setSelectedProducts(newSelectedProducts);
+  }
+
+  const selectedProductIds = useMemo(() => {
+      return Object.keys(selectedProducts).filter(id => selectedProducts[id]);
+  }, [selectedProducts]);
+
+  const handleMassDelete = async () => {
+    if(selectedProductIds.length === 0) return;
+    setIsMassDeleting(true);
+    
+    try {
+        await batchDeleteProducts(selectedProductIds, userRole);
+        toast({ title: "Sukses", description: `${selectedProductIds.length} produk berhasil dihapus.`});
+        await fetchInitialData();
+        onDataChange();
+        setSelectedProducts({});
+    } catch (error) {
+        toast({ title: "Error", description: "Gagal menghapus produk secara massal.", variant: "destructive" });
+    } finally {
+        setIsMassDeleting(false);
+    }
+  };
 
   if (loading) {
     return <div>Memuat data produk...</div>
@@ -269,10 +305,34 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
             <h1 className="text-2xl font-bold">Manajemen Produk</h1>
             <p className="text-muted-foreground">Kelola daftar produk, stok, dan harga Anda.</p>
         </div>
-        <Button onClick={() => handleOpenForm()} className="w-full md:w-auto">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Tambah Produk
-        </Button>
+        <div className="flex items-center gap-2">
+            {selectedProductIds.length > 0 && (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" disabled={isMassDeleting}>
+                            {isMassDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Hapus Terpilih ({selectedProductIds.length})
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Konfirmasi Penghapusan</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Anda akan menghapus {selectedProductIds.length} produk secara permanen. Tindakan ini tidak dapat diurungkan.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleMassDelete}>Ya, Hapus</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+            <Button onClick={() => handleOpenForm()} className="w-full md:w-auto">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Tambah Produk
+            </Button>
+        </div>
       </div>
       
       <Card>
@@ -303,6 +363,12 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
                 <Table>
                     <TableHeader>
                     <TableRow>
+                        <TableHead className="w-[40px]">
+                          <Checkbox
+                              checked={sortedProducts.length > 0 && selectedProductIds.length === sortedProducts.length}
+                              onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                          />
+                        </TableHead>
                         <TableHead>Nama Produk</TableHead>
                         <TableHead>SKU Gudang</TableHead>
                         <TableHead>Kategori</TableHead>
@@ -316,58 +382,64 @@ const ProdukPage: FC<ProdukPageProps> = React.memo(({ onDataChange, userRole }) 
                     <TableBody>
                     {sortedProducts.map((product) => (
                         <TableRow key={product.id}>
-                        <TableCell
-                            className="font-medium cursor-pointer hover:underline"
-                            onClick={() => handleOpenForm(product)}
-                        >
-                            {product.name}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{product.id}</TableCell>
-                        <TableCell>
-                            {product.category}
-                            {product.subcategory && <span className="text-muted-foreground text-xs"> / {product.subcategory}</span>}
-                        </TableCell>
-                        <TableCell className="text-right">{formatCurrency(product.costPrice)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(product.sellingPrice)}</TableCell>
-                        <TableCell className="text-right">{product.stock}</TableCell>
-                        <TableCell className="text-right font-medium">{product.salesCount || 0}</TableCell>
-                        <TableCell className="text-right">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <span className="sr-only">Buka menu</span>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => handleOpenForm(product)}>
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        <span>Edit</span>
-                                    </DropdownMenuItem>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                                 <Trash2 className="mr-2 h-4 w-4" />
-                                                 <span>Hapus</span>
-                                            </DropdownMenuItem>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                            <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Tindakan ini tidak dapat diurungkan. Ini akan menghapus produk <span className="font-semibold">{product.name}</span> secara permanen dari database.
-                                            </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                            <AlertDialogCancel>Batal</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className="bg-destructive hover:bg-destructive/90">Hapus</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableCell>
+                          <TableCell>
+                            <Checkbox
+                                checked={!!selectedProducts[product.id]}
+                                onCheckedChange={(checked) => handleSelectProduct(product.id, !!checked)}
+                            />
+                          </TableCell>
+                          <TableCell
+                              className="font-medium cursor-pointer hover:underline"
+                              onClick={() => handleOpenForm(product)}
+                          >
+                              {product.name}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{product.id}</TableCell>
+                          <TableCell>
+                              {product.category}
+                              {product.subcategory && <span className="text-muted-foreground text-xs"> / {product.subcategory}</span>}
+                          </TableCell>
+                          <TableCell className="text-right">{formatCurrency(product.costPrice)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(product.sellingPrice)}</TableCell>
+                          <TableCell className="text-right">{product.stock}</TableCell>
+                          <TableCell className="text-right font-medium">{product.salesCount || 0}</TableCell>
+                          <TableCell className="text-right">
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0">
+                                          <span className="sr-only">Buka menu</span>
+                                          <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                      <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                                      <DropdownMenuItem onClick={() => handleOpenForm(product)}>
+                                          <Edit className="mr-2 h-4 w-4" />
+                                          <span>Edit</span>
+                                      </DropdownMenuItem>
+                                      <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                                   <Trash2 className="mr-2 h-4 w-4" />
+                                                   <span>Hapus</span>
+                                              </DropdownMenuItem>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                              <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                  Tindakan ini tidak dapat diurungkan. Ini akan menghapus produk <span className="font-semibold">{product.name}</span> secara permanen dari database.
+                                              </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                              <AlertDialogCancel>Batal</AlertDialogCancel>
+                                              <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className="bg-destructive hover:bg-destructive/90">Hapus</AlertDialogAction>
+                                              </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                      </AlertDialog>
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                          </TableCell>
                         </TableRow>
                     ))}
                     </TableBody>
