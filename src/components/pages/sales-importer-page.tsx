@@ -218,7 +218,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
     }, []);
 
     const processExtractedItems = (items: ExtractedSaleItem[], uniqueOrderCount: number = 0) => {
-        const itemsBySku = new Map<string, { totalQuantity: number; totalValue: number; name: string; originalItems: ExtractedSaleItem[] }>();
+        const itemsBySku = new Map<string, { totalQuantity: number; lastPrice: number; name: string; originalItems: ExtractedSaleItem[] }>();
         setOrderCount(uniqueOrderCount);
 
         items.forEach(item => {
@@ -226,11 +226,11 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
             if (!skuKey) return; 
 
             if (!itemsBySku.has(skuKey)) {
-                itemsBySku.set(skuKey, { totalQuantity: 0, totalValue: 0, name: item.name, originalItems: [] });
+                itemsBySku.set(skuKey, { totalQuantity: 0, lastPrice: item.price, name: item.name, originalItems: [] });
             }
             const existing = itemsBySku.get(skuKey)!;
             existing.totalQuantity += item.quantity;
-            existing.totalValue += item.price * item.quantity;
+            existing.lastPrice = item.price; // Always update to the latest price found
             existing.originalItems.push(item);
         });
 
@@ -240,8 +240,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         const initialMappings: Record<string, string> = {};
 
         for (const [skuKey, aggregatedData] of itemsBySku.entries()) {
-            const { totalQuantity, totalValue, name } = aggregatedData;
-            const averagePrice = totalQuantity > 0 ? totalValue / totalQuantity : 0;
+            const { totalQuantity, lastPrice, name } = aggregatedData;
             const dbProduct = dbProducts.find(p => p.id.toLowerCase() === skuKey.toLowerCase());
             const existingMapping = dbSkuMappings.find(m => m.importSku.toLowerCase() === skuKey.toLowerCase());
             
@@ -251,7 +250,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                 sku: skuKey,
                 name,
                 quantity: totalQuantity,
-                price: averagePrice,
+                price: lastPrice, // Use the last found price
                 isNew,
             };
 
@@ -780,7 +779,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                                             <TableHead>Nama Produk</TableHead>
                                             <TableHead>SKU</TableHead>
                                             <TableHead className="text-right">Jumlah</TableHead>
-                                            <TableHead className="text-right">Harga Jual (Rata-rata)</TableHead>
+                                            <TableHead className="text-right">Harga Jual Satuan</TableHead>
                                             <TableHead className="text-right">Status</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -930,3 +929,4 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 >>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
 
 export default SalesImporterPage;
+
