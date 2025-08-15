@@ -132,7 +132,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                         name: (row['Nama SKU'] || sku).toString(),
                         sku: sku,
                         quantity: Number(row['Jumlah'] || 0),
-                        price: Number(row['Harga Satuan'] || 0),
+                        price: Number(row['harga jual'] || row['Harga Satuan'] || 0),
                     };
                 }).filter(item => item.sku && item.quantity > 0);
 
@@ -390,7 +390,7 @@ export const SalesImporter: React.FC<SalesImporterProps> = ({ onImportComplete, 
                         <DialogClose asChild>
                             <Button variant="secondary">Batal</Button>
                         </DialogClose>
-                        <Button onClick={handleAnalyze} disabled={!file || analysisState === 'analyzing'}>
+                        <Button onClick={handleAnalyze} disabled={!file}>
                             {analysisState === 'analyzing' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : getAnalysisButton()}
                         </Button>
                      </>
