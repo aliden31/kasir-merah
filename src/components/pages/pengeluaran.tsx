@@ -178,10 +178,10 @@ setDate(new Date(expense.date));
                 <DialogTitle>{expense ? 'Edit Pengeluaran' : 'Catat Pengeluaran Baru'}</DialogTitle>
             </DialogHeader>
              <div className="grid gap-4 py-4">
-                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="category" className="text-right">Kategori</Label>
+                 <div className="space-y-2">
+                    <Label htmlFor="category">Kategori</Label>
                     <Select onValueChange={(value) => setCategory(value)} value={category}>
-                        <SelectTrigger className="col-span-3">
+                        <SelectTrigger>
                             <SelectValue placeholder="Pilih kategori" />
                         </SelectTrigger>
                         <SelectContent>
@@ -193,10 +193,10 @@ setDate(new Date(expense.date));
                 </div>
                  
                  {showSubCategoryInput && (
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="subcategory" className="text-right">Deskripsi</Label>
+                     <div className="space-y-2">
+                        <Label htmlFor="subcategory">Deskripsi</Label>
                         <Select onValueChange={setSelectedSubCategory} value={selectedSubCategory}>
-                            <SelectTrigger className="col-span-3">
+                            <SelectTrigger>
                                 <SelectValue placeholder="Pilih deskripsi" />
                             </SelectTrigger>
                             <SelectContent>
@@ -210,38 +210,36 @@ setDate(new Date(expense.date));
                  )}
 
                  {showFreeTextInput && (
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="name" className="text-right">
+                    <div className="space-y-2">
+                        <Label htmlFor="name">
                            {showSubCategoryInput ? 'Deskripsi Lain' : 'Deskripsi'}
                         </Label>
                         <Input 
                             id="name" 
                             value={name} 
                             onChange={(e) => setName(e.target.value)} 
-                            className="col-span-3"
                             placeholder="Deskripsi pengeluaran"
                         />
                     </div>
                  )}
 
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="amount" className="text-right">Jumlah</Label>
+                <div className="space-y-2">
+                    <Label htmlFor="amount">Jumlah</Label>
                     <Input 
                         id="amount" 
                         type="number" 
                         value={amount} 
                         onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))} 
-                        className="col-span-3"
                         placeholder="0"
                      />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="date" className="text-right">Tanggal</Label>
+                <div className="space-y-2">
+                    <Label htmlFor="date">Tanggal</Label>
                      <Popover>
                         <PopoverTrigger asChild>
                         <Button
                             variant={"outline"}
-                            className="col-span-3 justify-start text-left font-normal"
+                            className="w-full justify-start text-left font-normal"
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {format(date, "PPP", { locale: id })}
@@ -533,4 +531,3 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
 
 PengeluaranPage.displayName = 'PengeluaranPage';
 export default PengeluaranPage;
-

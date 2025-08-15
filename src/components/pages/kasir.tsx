@@ -627,10 +627,3 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
 
 KasirPage.displayName = 'KasirPage';
 export default KasirPage;
-
-    
-    
-
-    
-
-

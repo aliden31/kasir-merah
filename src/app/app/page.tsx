@@ -388,7 +388,7 @@ function AppPageContent() {
             <main className="p-4 md:p-6">{renderView()}</main>
              {user && userRole && <ChatWidget user={user} userRole={userRole} />}
              
-             {isMobile && activeView !== 'kasir' && activeView !== 'pengaturan' && activeView !== 'erp' && activeView !== 'kalkulator-roas' && (
+             {isMobile && activeView !== 'kasir' && (
                 <Button
                     className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-lg z-20"
                     size="icon"
@@ -420,5 +420,3 @@ export default function AppPage() {
     </SidebarProvider>
   )
 }
-
-    

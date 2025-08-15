@@ -154,10 +154,10 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
                 <DialogDescription>Pilih transaksi, lalu pilih produk yang akan dikembalikan.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="saleId" className="text-right">Transaksi</Label>
+                <div className="space-y-2">
+                    <Label htmlFor="saleId">Transaksi</Label>
                     <Select onValueChange={setSelectedSaleId} value={selectedSaleId}>
-                        <SelectTrigger className="col-span-3">
+                        <SelectTrigger>
                             <SelectValue placeholder="Pilih ID Transaksi..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -172,59 +172,55 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
 
                 {selectedSale && (
                     <>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right">Tambah Produk</Label>
-                            <div className="col-span-3">
-                                <Select onValueChange={handleAddProductToReturn} disabled={availableProductsForReturn.length === 0} value="">
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Pilih produk untuk diretur..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {availableProductsForReturn.map((item, index) => (
-                                            <SelectItem key={`${item.product.id}-${index}`} value={item.product.id}>
-                                                {item.product.name} (Dibeli: {item.quantity})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                         <div className="space-y-2">
+                            <Label>Tambah Produk</Label>
+                            <Select onValueChange={handleAddProductToReturn} disabled={availableProductsForReturn.length === 0} value="">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Pilih produk untuk diretur..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableProductsForReturn.map((item, index) => (
+                                        <SelectItem key={`${item.product.id}-${index}`} value={item.product.id}>
+                                            {item.product.name} (Dibeli: {item.quantity})
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {itemsToReturn.length > 0 && (
-                            <div className="col-span-4">
-                                <Card>
-                                    <CardContent className="p-4 max-h-48 overflow-y-auto">
-                                    <h4 className="font-semibold mb-2">Produk yang akan diretur:</h4>
-                                     <div className="space-y-4">
-                                        {itemsToReturn.map(item => (
-                                            <div key={item.product.id} className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="font-medium">{item.product.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{formatCurrency(item.priceAtSale)}</p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.product.id, item.quantity - 1)}>
-                                                        <MinusCircle className="h-4 w-4" />
-                                                    </Button>
-                                                    <Input 
-                                                        type="number" 
-                                                        className="w-16 h-8 text-center" 
-                                                        value={item.quantity}
-                                                        onChange={(e) => updateReturnQuantity(item.product.id, parseInt(e.target.value))}
-                                                    />
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.product.id, item.quantity + 1)}>
-                                                        <PlusCircle className="h-4 w-4" />
-                                                    </Button>
-                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => updateReturnQuantity(item.product.id, 0)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
+                            <Card>
+                                <CardContent className="p-4 max-h-48 overflow-y-auto">
+                                <h4 className="font-semibold mb-2">Produk yang akan diretur:</h4>
+                                 <div className="space-y-4">
+                                    {itemsToReturn.map(item => (
+                                        <div key={item.product.id} className="flex items-center justify-between">
+                                            <div>
+                                                <p className="font-medium">{item.product.name}</p>
+                                                <p className="text-sm text-muted-foreground">{formatCurrency(item.priceAtSale)}</p>
                                             </div>
-                                        ))}
-                                     </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
+                                            <div className="flex items-center gap-2">
+                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.product.id, item.quantity - 1)}>
+                                                    <MinusCircle className="h-4 w-4" />
+                                                </Button>
+                                                <Input 
+                                                    type="number" 
+                                                    className="w-16 h-8 text-center" 
+                                                    value={item.quantity}
+                                                    onChange={(e) => updateReturnQuantity(item.product.id, parseInt(e.target.value))}
+                                                />
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateReturnQuantity(item.product.id, item.quantity + 1)}>
+                                                    <PlusCircle className="h-4 w-4" />
+                                                </Button>
+                                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => updateReturnQuantity(item.product.id, 0)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                 </div>
+                                </CardContent>
+                            </Card>
                         )}
                     </>
                 )}

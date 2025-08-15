@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { FC } from 'react';
@@ -295,5 +296,3 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
 
 ErpPage.displayName = 'ErpPage';
 export default ErpPage;
-
-    

@@ -112,36 +112,34 @@ export const OtherIncomeForm = ({
                 <DialogTitle>{income ? 'Edit Pemasukan' : 'Catat Pemasukan Baru'}</DialogTitle>
             </DialogHeader>
              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
+                <div className="space-y-2">
+                    <Label htmlFor="name">
                         Deskripsi
                     </Label>
                     <Input 
                         id="name" 
                         value={name} 
                         onChange={(e) => setName(e.target.value)} 
-                        className="col-span-3"
                         placeholder="Deskripsi pemasukan"
                     />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="amount" className="text-right">Jumlah</Label>
+                <div className="space-y-2">
+                    <Label htmlFor="amount">Jumlah</Label>
                     <Input 
                         id="amount" 
                         type="number" 
                         value={amount} 
                         onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))} 
-                        className="col-span-3"
                         placeholder="0"
                      />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="date" className="text-right">Tanggal</Label>
+                <div className="space-y-2">
+                    <Label htmlFor="date">Tanggal</Label>
                      <Popover>
                         <PopoverTrigger asChild>
                         <Button
                             variant={"outline"}
-                            className="col-span-3 justify-start text-left font-normal"
+                            className="w-full justify-start text-left font-normal"
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {format(date, "PPP", { locale: id })}
@@ -157,13 +155,12 @@ export const OtherIncomeForm = ({
                         </PopoverContent>
                     </Popover>
                 </div>
-                 <div className="grid grid-cols-4 items-start gap-4">
-                    <Label htmlFor="notes" className="text-right pt-2">Catatan</Label>
+                 <div className="space-y-2">
+                    <Label htmlFor="notes">Catatan</Label>
                     <Textarea 
                         id="notes" 
                         value={notes} 
                         onChange={(e) => setNotes(e.target.value)} 
-                        className="col-span-3"
                         placeholder="Catatan tambahan (opsional)"
                     />
                 </div>
