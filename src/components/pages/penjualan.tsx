@@ -22,7 +22,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { getSales, getProducts, updateSale, deleteSale } from '@/lib/data-service';
+import { getSales, getProducts, updateSale, deleteSale, batchDeleteSales } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format, isWithinInterval, startOfDay, endOfDay, subDays } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
+import { Checkbox } from '../ui/checkbox';
 
 
 const formatCurrency = (amount: number) => {
@@ -306,6 +307,8 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
         from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         to: new Date(),
     });
+    const [selectedSales, setSelectedSales] = useState<Record<string, boolean>>({});
+    const [isMassDeleting, setIsMassDeleting] = useState(false);
 
     const fetchSalesData = async () => {
         setLoading(true);
@@ -368,7 +371,44 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
 
     const handleDatePreset = (days: number) => {
         setDate({ from: subDays(new Date(), days - 1), to: new Date() });
-    }
+    };
+
+    const handleSelectSale = (saleId: string, isSelected: boolean) => {
+        setSelectedSales(prev => ({...prev, [saleId]: isSelected}));
+    };
+
+    const handleSelectAll = (isSelected: boolean) => {
+        const newSelectedSales: Record<string, boolean> = {};
+        if (isSelected) {
+            filteredSales.forEach(s => newSelectedSales[s.id] = true);
+        }
+        setSelectedSales(newSelectedSales);
+    };
+
+    const selectedSaleIds = useMemo(() => {
+        return Object.keys(selectedSales).filter(id => selectedSales[id]);
+    }, [selectedSales]);
+
+    const handleMassDelete = async () => {
+        if(selectedSaleIds.length === 0) return;
+        
+        setIsMassDeleting(true);
+        const salesToDelete = sales.filter(s => selectedSaleIds.includes(s.id));
+
+        try {
+            await batchDeleteSales(salesToDelete, userRole);
+            toast({ title: "Sukses", description: `${salesToDelete.length} transaksi berhasil dihapus.`});
+            await fetchSalesData();
+            onDataChange();
+            setSelectedSales({});
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Gagal menghapus transaksi secara massal.";
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        } finally {
+            setIsMassDeleting(false);
+        }
+    };
+
 
     if (loading) {
         return <div>Memuat data penjualan...</div>
@@ -381,7 +421,29 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
               <h1 className="text-2xl font-bold">Riwayat Penjualan</h1>
               <p className="text-muted-foreground">Analisis riwayat penjualan dalam rentang waktu tertentu.</p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
+             <div className="flex items-center gap-2 flex-wrap justify-end">
+                {selectedSaleIds.length > 0 && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" disabled={isMassDeleting}>
+                                {isMassDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Hapus Terpilih ({selectedSaleIds.length})
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Konfirmasi Penghapusan</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Anda akan menghapus {selectedSaleIds.length} transaksi secara permanen. Stok produk yang terjual akan dikembalikan. Tindakan ini tidak dapat diurungkan.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleMassDelete}>Ya, Hapus</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
                 <Button variant="outline" size="sm" onClick={() => handleDatePreset(14)}>14 Hari</Button>
                 <Button variant="outline" size="sm" onClick={() => handleDatePreset(30)}>1 Bulan Terakhir</Button>
                 <Popover>
@@ -433,10 +495,21 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
         <TabsContent value="riwayat" className="mt-4">
              <Card>
                 <CardHeader>
-                    <CardTitle>Daftar Transaksi</CardTitle>
-                    <CardDescription>
-                        Menampilkan {filteredSales.length} transaksi untuk periode yang dipilih.
-                    </CardDescription>
+                     <div className="flex items-center gap-4">
+                         <Checkbox
+                            id="select-all-sales"
+                            checked={filteredSales.length > 0 && selectedSaleIds.length === filteredSales.length}
+                            onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                        />
+                        <div>
+                            <CardTitle>
+                                <label htmlFor="select-all-sales">Daftar Transaksi</label>
+                            </CardTitle>
+                            <CardDescription>
+                                Menampilkan {filteredSales.length} transaksi untuk periode yang dipilih.
+                            </CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Accordion type="single" collapsible className="w-full">
@@ -446,13 +519,22 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
 
                             return (
                             <AccordionItem value={sale.id} key={sale.id}>
-                                <AccordionTrigger>
-                                    <div className="flex justify-between items-center w-full pr-4 text-sm">
-                                        <span className="font-semibold text-primary">ID: trx {String(sale.displayId).padStart(4, '0')}</span>
-                                        <Badge variant="outline">{new Date(sale.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</Badge>
-                                        <span className="font-bold text-base">{formatCurrency(sale.finalTotal)}</span>
+                                <div className="flex items-center w-full">
+                                    <div className="pl-4 pr-2 py-4">
+                                        <Checkbox 
+                                            checked={!!selectedSales[sale.id]}
+                                            onCheckedChange={(checked) => handleSelectSale(sale.id, !!checked)}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
                                     </div>
-                                </AccordionTrigger>
+                                    <AccordionTrigger className="flex-1">
+                                        <div className="flex justify-between items-center w-full pr-4 text-sm">
+                                            <span className="font-semibold text-primary">ID: trx {String(sale.displayId).padStart(4, '0')}</span>
+                                            <Badge variant="outline">{new Date(sale.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</Badge>
+                                            <span className="font-bold text-base">{formatCurrency(sale.finalTotal)}</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                </div>
                                 <AccordionContent>
                                 <div className="p-4 bg-muted/50 rounded-md">
                                     <div className="flow-root">

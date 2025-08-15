@@ -324,6 +324,42 @@ export const deleteSale = async (sale: Sale, user: UserRole): Promise<void> => {
     await addActivityLog(user, `menghapus penjualan (ID: ...${sale.id.slice(-6)})`);
 };
 
+export const batchDeleteSales = async (sales: Sale[], user: UserRole): Promise<void> => {
+    await runTransaction(db, async (transaction) => {
+        const stockChanges: Record<string, number> = {};
+
+        // Calculate all stock restorations needed
+        for (const sale of sales) {
+            for (const item of sale.items) {
+                 if (!item.product || item.product.id === 'unknown') continue;
+                 stockChanges[item.product.id] = (stockChanges[item.product.id] || 0) + item.quantity;
+            }
+        }
+        
+        // Apply all stock changes
+        for (const productId in stockChanges) {
+            const productRef = doc(db, "products", productId);
+            const productDoc = await transaction.get(productRef);
+            if (productDoc.exists()) {
+                const productData = productDoc.data() as Product;
+                const newStock = productData.stock + stockChanges[productId];
+                transaction.update(productRef, { stock: newStock });
+            } else {
+                 console.warn(`Product with ID ${productId} not found during batch sale deletion. Stock not restored.`);
+            }
+        }
+
+        // Delete all sale documents
+        for (const sale of sales) {
+            const saleRef = doc(db, "sales", sale.id);
+            transaction.delete(saleRef);
+        }
+    });
+
+    await addActivityLog(user, `menghapus ${sales.length} transaksi penjualan secara massal.`);
+};
+
+
 
 // Expense-specific functions
 export async function getExpenses(): Promise<Expense[]> {
