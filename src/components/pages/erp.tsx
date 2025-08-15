@@ -27,7 +27,8 @@ type View =
   | 'pengaturan'
   | 'activity-log'
   | 'erp'
-  | 'kalkulator-roas';
+  | 'kalkulator-roas'
+  | 'sales-importer';
 
 interface ErpPageProps {
   onNavigate: (view: View) => void;
@@ -250,6 +251,10 @@ const ErpPage: FC<ErpPageProps> = React.memo(({ onNavigate }) => {
                     <CardContent className="flex-grow space-y-3">
                          <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('kalkulator-roas')}>
                             <span>Kalkulator ROAS</span>
+                             <ArrowRight className="h-4 w-4"/>
+                        </Button>
+                        <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('sales-importer')}>
+                            <span>Impor Penjualan</span>
                              <ArrowRight className="h-4 w-4"/>
                         </Button>
                         <Button variant="outline" className="w-full justify-between" onClick={() => onNavigate('pengaturan')}>

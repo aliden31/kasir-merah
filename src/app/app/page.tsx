@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -64,6 +65,7 @@ import { logout } from '@/lib/auth-service';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import SalesImporterPage from '@/components/pages/sales-importer-page';
 
 type View =
   | 'dashboard'
@@ -79,7 +81,8 @@ type View =
   | 'pengaturan'
   | 'activity-log'
   | 'erp'
-  | 'kalkulator-roas';
+  | 'kalkulator-roas'
+  | 'sales-importer';
 
 const defaultSettings: AppSettings = { 
   storeName: 'Memuat...', 
@@ -223,12 +226,13 @@ function AppPageContent() {
     { id: 'pemasukan-lain', label: 'Pemasukan Lain', icon: PlusSquare, roles: ['admin'] },
     { id: 'laporan', label: 'Laporan Arus Kas', icon: AreaChart, roles: ['admin'] },
     { id: 'kalkulator-roas', label: 'Kalkulator ROAS', icon: Calculator, roles: ['admin'] },
+    { id: 'sales-importer', label: 'Impor Penjualan', icon: FileUp, roles: ['admin'] },
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
     { id: 'pengaturan', label: 'Pengaturan', icon: Settings, roles: ['admin', 'kasir'] },
     { id: 'activity-log', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
   ];
 
-  const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(userRole));
+  const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(item.role));
   
   const activeMenu = menuItems.find(item => item.id === activeView);
 
@@ -289,6 +293,8 @@ function AppPageContent() {
         return <LaporanPage onNavigate={handleNavigate} />;
       case 'kalkulator-roas':
         return <KalkulatorRoasPage />;
+      case 'sales-importer':
+        return <SalesImporterPage onImportSuccess={refreshAllData} userRole={userRole!} />;
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':

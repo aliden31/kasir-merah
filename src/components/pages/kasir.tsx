@@ -40,6 +40,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Skeleton } from '../ui/skeleton';
 import { ReturnForm } from './retur';
 import { ExpenseForm } from './pengeluaran';
+import SalesImporterPage from './sales-importer-page';
 
 
 const formatCurrency = (amount: number) => {
@@ -84,6 +85,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
   const [sortOrder, setSortOrder] = useState('terlaris');
   const [isReturnFormOpen, setReturnFormOpen] = useState(false);
   const [isExpenseFormOpen, setExpenseFormOpen] = useState(false);
+  const [isImporterOpen, setImporterOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -254,6 +256,11 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
     }
   }
 
+  const handleImportSuccess = () => {
+    setImporterOpen(false);
+    onDataNeedsRefresh();
+  }
+
   const renderProductGrid = (isMobile = false) => (
     <Card className={`h-full flex flex-col shadow-none border-0 ${isMobile ? '' : 'lg:col-span-2'}`}>
       <CardHeader>
@@ -365,7 +372,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                     <Badge variant="outline">{cartItemCount} Item</Badge>
                 </div>
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 lg:grid-cols-3 gap-2">
                 <Dialog open={isReturnFormOpen} onOpenChange={setReturnFormOpen}>
                     <DialogTrigger asChild>
                         <Button variant="outline" className="w-full">
@@ -381,6 +388,14 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                         </Button>
                     </DialogTrigger>
                     <ExpenseForm onSave={handleSaveExpense} onOpenChange={setExpenseFormOpen} userRole={userRole}/>
+                </Dialog>
+                <Dialog open={isImporterOpen} onOpenChange={setImporterOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full">
+                            <FileUp className="mr-2 h-4 w-4" /> Impor
+                        </Button>
+                    </DialogTrigger>
+                    <SalesImporterPage onImportSuccess={handleImportSuccess} userRole={userRole} />
                 </Dialog>
             </div>
         </CardHeader>
