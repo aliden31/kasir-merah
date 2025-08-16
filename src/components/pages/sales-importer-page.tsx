@@ -30,7 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { extractSales } from '@/ai/flows/extract-sales-flow';
-import type { ExtractedSale } from '@/ai/schemas/extract-sales-schema';
+import type { ExtractedSale, ExtractedSaleItem } from '@/ai/schemas/extract-sales-schema';
 import { getProducts, addProduct, hasImportedFile, addImportedFile, addExpense, getSkuMappings, saveSkuMapping, batchAddSales, getPublicSettings } from '@/lib/data-service';
 import type { Product, UserRole, SaleItem, SkuMapping, PublicSettings, Sale } from '@/lib/types';
 import { FileQuestion, Loader2, Wand2, CheckCircle2, AlertCircle, Sparkles, FileSpreadsheet, ArrowLeft } from 'lucide-react';
@@ -265,7 +265,24 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
             finalAggregatedItems.push(aggregatedItem);
         }
         
-        setSalesToCreate(sales);
+        const finalSalesToCreate: Omit<Sale, 'id'>[] = sales.map(sale => {
+            const subtotal = sale.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            const discount = publicSettings.defaultDiscount || 0;
+            const finalTotal = subtotal * (1 - discount / 100);
+            return {
+                items: sale.items.map(item => ({
+                    ...item,
+                    product: { id: '', name: item.name, category: '', costPrice: 0 },
+                    costPriceAtSale: 0
+                })),
+                date: new Date(),
+                subtotal: subtotal,
+                discount: discount,
+                finalTotal: finalTotal,
+            };
+        });
+
+        setSalesToCreate(finalSalesToCreate);
         setProductMappings(initialMappings);
         setAggregatedItems(finalAggregatedItems.sort((a,b) => a.name.localeCompare(b.name)));
         setUnrecognizedItems(finalUnrecognizedItems);
@@ -308,7 +325,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 =======
                 json.forEach((row, index) => {
                     const orderId = (row['Nomor Pesanan'] || `excel-row-${index}`).toString().trim();
-                    const sku = (row['SKU Gudang'] || '').toString().trim();
+                    const sku = (row['SKU Gudang'] || row['Nomor Referensi SKU'] || '').toString().trim();
                     if (!sku) return;
 
                     if (!orders.has(orderId)) {
@@ -321,8 +338,12 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                     
                     if (quantity > 0) {
                         order.items.push({
+<<<<<<< HEAD
 >>>>>>> d4f50cc (Saat impor excell. Apakah bisa di catatkan pertransaksi saja?)
                             name: (row['Nama SKU'] || sku).toString(),
+=======
+                            name: (row['Nama Produk'] || sku).toString(),
+>>>>>>> a727393 (Anda perlu memastikan bahwa objek yang Anda simpan ke dalam state sales)
                             sku: sku,
                             quantity: quantity,
                             price: price,
@@ -346,12 +367,15 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         reader.readAsArrayBuffer(file);
     };
 
-    const handlePdfImageParse = (file: File) => {
+    const handlePdfImageParse = async (file: File) => {
          const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 try {
-                    const result = await extractSales({ fileDataUri: reader.result as string });
+                    const result = await extractSales({ 
+                        fileDataUri: reader.result as string,
+                        products: dbProducts,
+                    });
                     
                     if (result && result.sales.length > 0) {
                         processExtractedSales(result.sales); 
@@ -380,7 +404,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         if(file.type.includes('spreadsheetml') || file.type.includes('csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv')) {
             handleStructuredFileParse(file);
         } else if (file.type.startsWith('image/') || file.type === 'application/pdf') {
-            handlePdfImageParse(file);
+            await handlePdfImageParse(file);
         } else {
             setErrorMessage('Tipe file tidak didukung. Harap unggah file Excel, CSV, PDF, atau gambar.');
             setAnalysisState('error');
@@ -620,20 +644,21 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
             }
 
             const finalSales: Omit<Sale, 'id'>[] = salesToCreate.map(sale => {
-                const saleItems: SaleItem[] = sale.items.map(item => {
+                const saleItems: SaleItem[] = sale.items.map((item: any) => {
                     let finalProductId: string | undefined;
-                    const existingProduct = dbProducts.find(p => p.id.toLowerCase() === item.sku.toLowerCase());
+                    let importSku = item.sku;
+                    const existingProduct = dbProducts.find(p => p.id.toLowerCase() === importSku.toLowerCase());
 
                     if (existingProduct) {
                         finalProductId = existingProduct.id;
                     } else {
-                         const mappedId = productMappings[item.sku];
+                         const mappedId = productMappings[importSku];
                         if(mappedId && mappedId !== CREATE_NEW_PRODUCT_VALUE) {
                             finalProductId = mappedId;
-                        } else if (newProductIds.has(item.sku)) {
-                            finalProductId = newProductIds.get(item.sku);
-                        } else if (productMappings[item.sku] === CREATE_NEW_PRODUCT_VALUE) {
-                            finalProductId = item.sku;
+                        } else if (newProductIds.has(importSku)) {
+                            finalProductId = newProductIds.get(importSku);
+                        } else if (productMappings[importSku] === CREATE_NEW_PRODUCT_VALUE) {
+                            finalProductId = importSku;
                         }
                     }
 
@@ -962,4 +987,3 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 >>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
 
 export default SalesImporterPage;
-
