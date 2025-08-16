@@ -644,11 +644,12 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
             }
             
             const finalSales: Omit<Sale, 'id'>[] = salesToCreate.map(sale => {
-                 const saleItems: SaleItem[] = sale.items.reduce((acc: SaleItem[], item: any) => {
+                const saleItems: SaleItem[] = sale.items.reduce((acc: SaleItem[], item: any) => {
                     let validItem: SaleItem | null = null;
                     let finalProductId: string | undefined;
                     let importSku = item.sku;
-                    const existingProduct = dbProducts.find(p => p.id.toLowerCase() === importSku.toLowerCase());
+            
+                    const existingProduct = updatedDbProducts.find(p => p.id.toLowerCase() === importSku.toLowerCase());
             
                     if (existingProduct) {
                         finalProductId = existingProduct.id;
@@ -658,8 +659,6 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                             finalProductId = mappedId;
                         } else if (newProductIds.has(importSku)) {
                             finalProductId = newProductIds.get(importSku);
-                        } else if (productMappings[importSku] === CREATE_NEW_PRODUCT_VALUE) {
-                            finalProductId = importSku;
                         }
                     }
             
@@ -983,15 +982,14 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 };
 =======
                     </Card>
-
-                     <div className="flex justify-end gap-4 mt-6">
-                        <Button variant="outline" onClick={resetState} disabled={analysisState === 'saving'}>Mulai Ulang</Button>
-                        <Button onClick={handleConfirmImport} disabled={analysisState === 'saving' || !isMappingComplete}>
-                            {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Konfirmasi & Catat Penjualan
-                        </Button>
-                    </div>
-
+                    
+                    <div className="flex justify-end gap-4 mt-6">
+                       <Button variant="outline" onClick={resetState} disabled={analysisState === 'saving'}>Mulai Ulang</Button>
+                       <Button onClick={handleConfirmImport} disabled={analysisState === 'saving' || !isMappingComplete}>
+                           {analysisState === 'saving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                           Konfirmasi & Catat Penjualan
+                       </Button>
+                   </div>
                 </div>
             )}
         </div>
