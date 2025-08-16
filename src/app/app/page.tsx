@@ -63,7 +63,11 @@ import KalkulatorRoasPage from '@/components/pages/kalkulator-roas';
 =======
 import PdfConverterPage from '@/components/pages/pdf-converter';
 import SalesImporterPage from '@/components/pages/sales-importer-page';
+<<<<<<< HEAD
 >>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
+=======
+import SalesImporterReviewPage from '@/components/pages/sales-importer-review-page';
+>>>>>>> 61426a4 (Karan terjadi typescrip error terus di page sales importer, sebaikanya k)
 import { SaleItem, Product, Settings as AppSettings, UserRole, FlashSale, Category, PublicSettings, Sale, Return } from '@/lib/types';
 import { getSettings, getFlashSaleSettings, getProducts, getPublicSettings, getSales, getReturns } from '@/lib/data-service';
 import { useToast } from '@/hooks/use-toast';
@@ -95,8 +99,13 @@ type View =
 <<<<<<< HEAD
 =======
   | 'pdf-converter'
+<<<<<<< HEAD
 >>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
   | 'sales-importer';
+=======
+  | 'sales-importer'
+  | 'sales-importer-review';
+>>>>>>> 61426a4 (Karan terjadi typescrip error terus di page sales importer, sebaikanya k)
 
 const defaultSettings: AppSettings = { 
   storeName: 'Memuat...', 
@@ -252,11 +261,12 @@ function AppPageContent() {
     { id: 'flash-sale', label: 'Flash Sale', icon: Zap, roles: ['admin'] },
     { id: 'pengaturan', label: 'Pengaturan', icon: Settings, roles: ['admin', 'kasir'] },
     { id: 'activity-log', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
+    { id: 'sales-importer-review', label: 'Review Impor', icon: FileUp, roles: ['admin'], hidden: true },
   ];
 
-  const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(userRole));
+  const menuItems = allMenuItems.filter(item => userRole && item.roles.includes(item.id === 'sales-importer-review' ? 'admin' : userRole) && !item.hidden);
   
-  const activeMenu = menuItems.find(item => item.id === activeView);
+  const activeMenu = allMenuItems.find(item => item.id === activeView);
 
   const handleNavigate = (view: View) => {
     setActiveView(view);
@@ -334,10 +344,22 @@ function AppPageContent() {
 >>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
 =======
         return <SalesImporterPage 
-          onImportComplete={refreshAllData} 
+          onNavigateToReview={() => handleNavigate('sales-importer-review')} 
           userRole={userRole!} 
         />;
+<<<<<<< HEAD
 >>>>>>> a82167a (Make the following changes:)
+=======
+      case 'sales-importer-review':
+        return <SalesImporterReviewPage
+            onImportComplete={() => {
+                refreshAllData();
+                handleNavigate('penjualan');
+            }}
+            onCancel={() => handleNavigate('sales-importer')}
+            userRole={userRole!}
+        />;
+>>>>>>> 61426a4 (Karan terjadi typescrip error terus di page sales importer, sebaikanya k)
       case 'flash-sale':
         return <FlashSalePage onSettingsSave={refreshAllData} userRole={userRole!} />;
       case 'pengaturan':

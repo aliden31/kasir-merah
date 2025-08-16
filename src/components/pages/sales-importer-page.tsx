@@ -4,6 +4,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+<<<<<<< HEAD
 import type { Product, UserRole, SkuMapping, ExtractedSaleItem, ExtractedSales, Expense } from '@/lib/types';
 import { getProducts, saveSkuMapping, getSkuMappings, addImportedFile, hasImportedFile, addExpense, addSale } from '@/lib/data-service';
 import { extractSales } from '@/ai/flows/extract-sales-flow';
@@ -21,20 +22,20 @@ import { ScrollArea } from '../ui/scroll-area';
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+=======
+>>>>>>> 61426a4 (Karan terjadi typescrip error terus di page sales importer, sebaikanya k)
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { extractSales } from '@/ai/flows/extract-sales-flow';
 import type { ExtractedSale } from '@/ai/schemas/extract-sales-schema';
-import { getProducts, addProduct, hasImportedFile, addImportedFile, addExpense, getSkuMappings, saveSkuMapping, batchAddSales, getPublicSettings } from '@/lib/data-service';
-import type { Product, UserRole, SaleItem, SkuMapping, PublicSettings, Sale } from '@/lib/types';
-import { Loader2, Wand2, CheckCircle2, AlertCircle, Sparkles, FileSpreadsheet, ArrowLeft, FileUp } from 'lucide-react';
+import { getProducts } from '@/lib/data-service';
+import type { Product, UserRole } from '@/lib/types';
+import { Loader2, Wand2, AlertCircle, FileSpreadsheet, FileUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+<<<<<<< HEAD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 <<<<<<< HEAD
 import { useRouter } from 'next/navigation';
@@ -181,6 +182,11 @@ const CREATE_NEW_PRODUCT_VALUE = 'CREATE_NEW_PRODUCT';
 type AnalysisState = 'idle' | 'analyzing' | 'review' | 'saving' | 'error' | 'success';
 
 type AggregatedSaleItem = {
+=======
+
+type AnalysisState = 'idle' | 'analyzing' | 'error';
+export type AggregatedSaleItem = {
+>>>>>>> 61426a4 (Karan terjadi typescrip error terus di page sales importer, sebaikanya k)
     sku: string;
     name: string;
     quantity: number;
@@ -188,48 +194,39 @@ type AggregatedSaleItem = {
     isNew: boolean;
 };
 
+export interface AnalysisResult {
+    aggregatedItems: AggregatedSaleItem[];
+    unrecognizedItems: AggregatedSaleItem[];
+    salesToCreate: Omit<ExtractedSale, 'id'>[];
+    fileName: string;
+}
+
 interface SalesImporterPageProps {
-    onImportComplete: () => void;
+    onNavigateToReview: () => void;
     userRole: UserRole;
 }
 
-const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete, userRole }) => {
+const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onNavigateToReview, userRole }) => {
     const [file, setFile] = useState<File | null>(null);
     const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
     const [dbProducts, setDbProducts] = useState<Product[]>([]);
-    const [dbSkuMappings, setDbSkuMappings] = useState<SkuMapping[]>([]);
-    const [publicSettings, setPublicSettings] = useState<PublicSettings>({ defaultDiscount: 0 });
     const [errorMessage, setErrorMessage] = useState('');
     const { toast } = useToast();
-
-    // Data from analysis
-    const [aggregatedItems, setAggregatedItems] = useState<AggregatedSaleItem[]>([]);
-    const [unrecognizedItems, setUnrecognizedItems] = useState<AggregatedSaleItem[]>([]);
-    const [productMappings, setProductMappings] = useState<Record<string, string>>({});
-    const [salesToCreate, setSalesToCreate] = useState<Omit<Sale, 'id' | 'displayId'>[]>([]);
-
-    const isMappingComplete = useMemo(() => {
-        return unrecognizedItems.every(item => productMappings[item.sku]);
-    }, [unrecognizedItems, productMappings]);
 
     useEffect(() => {
         const fetchInitialData = async () => {
             const products = await getProducts();
-            const mappings = await getSkuMappings();
-            const settings = await getPublicSettings();
             setDbProducts(products);
-            setDbSkuMappings(mappings);
-            setPublicSettings(settings);
         };
         fetchInitialData();
     }, []);
 
-    const processExtractedSales = (sales: ExtractedSale[]) => {
+    const processAndNavigate = (sales: ExtractedSale[], fileName: string) => {
         const allItems = sales.flatMap(s => s.items);
         const itemsBySku = new Map<string, { totalQuantity: number; lastPrice: number; name: string }>();
 
         allItems.forEach(item => {
-            const skuKey = (item.sku || '').trim();
+            const skuKey = (item.sku || item.name).trim();
             if (!skuKey) return;
 
             if (!itemsBySku.has(skuKey)) {
@@ -239,60 +236,33 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
             existing.totalQuantity += item.quantity;
             existing.lastPrice = item.price;
         });
-
+        
         const finalAggregatedItems: AggregatedSaleItem[] = [];
         const finalUnrecognizedItems: AggregatedSaleItem[] = [];
-        const initialMappings: Record<string, string> = {};
 
         for (const [skuKey, aggregatedData] of itemsBySku.entries()) {
             const { totalQuantity, lastPrice, name } = aggregatedData;
             const dbProduct = dbProducts.find(p => p.id.toLowerCase() === skuKey.toLowerCase());
-            const existingMapping = dbSkuMappings.find(m => m.importSku.toLowerCase() === skuKey.toLowerCase());
-
             const isNew = !dbProduct;
 
-            const aggregatedItem: AggregatedSaleItem = {
-                sku: skuKey,
-                name,
-                quantity: totalQuantity,
-                price: lastPrice,
-                isNew,
-            };
+            const aggregatedItem: AggregatedSaleItem = { sku: skuKey, name, quantity: totalQuantity, price: lastPrice, isNew };
 
             if (isNew) {
-                if (existingMapping) {
-                    initialMappings[skuKey] = existingMapping.mappedProductId;
-                }
                 finalUnrecognizedItems.push(aggregatedItem);
             }
-
             finalAggregatedItems.push(aggregatedItem);
         }
 
-        const finalSalesToCreate: Omit<Sale, 'id'>[] = sales.map(sale => {
-            const subtotal = sale.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-            const discount = publicSettings.defaultDiscount || 0;
-            const finalTotal = subtotal * (1 - discount / 100);
-            return {
-                items: sale.items.map(item => ({
-                    ...item,
-                    product: { id: '', name: item.name, category: '', costPrice: 0 },
-                    costPriceAtSale: 0
-                })),
-                date: new Date(),
-                subtotal: subtotal,
-                discount: discount,
-                finalTotal: finalTotal,
-            };
-        });
+        const analysisResult: AnalysisResult = {
+            aggregatedItems: finalAggregatedItems.sort((a, b) => a.name.localeCompare(b.name)),
+            unrecognizedItems: finalUnrecognizedItems,
+            salesToCreate: sales,
+            fileName: fileName,
+        };
 
-        setSalesToCreate(finalSalesToCreate);
-        setProductMappings(initialMappings);
-        setAggregatedItems(finalAggregatedItems.sort((a, b) => a.name.localeCompare(b.name)));
-        setUnrecognizedItems(finalUnrecognizedItems);
-        setAnalysisState('review');
+        sessionStorage.setItem('salesImportAnalysis', JSON.stringify(analysisResult));
+        onNavigateToReview();
     };
-
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
@@ -358,13 +328,13 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 
                 const extractedSales = Array.from(orders.values());
                 if (extractedSales.length > 0) {
-                    processExtractedSales(extractedSales);
+                    processAndNavigate(extractedSales, file.name);
                 } else {
                     setErrorMessage('Format file tidak sesuai atau tidak ada data yang valid. Pastikan ada kolom "Nomor Pesanan", "SKU Gudang", "Jumlah", dan "Harga Satuan".');
                     setAnalysisState('error');
                 }
             } catch (err) {
-                setErrorMessage('Gagal memproses file. Pastikan formatnya benar.');
+                setErrorMessage('Gagal memproses file Excel. Pastikan formatnya benar.');
                 setAnalysisState('error');
             }
         };
@@ -382,14 +352,14 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                 });
 
                 if (result && result.sales.length > 0) {
-                    processExtractedSales(result.sales);
+                    processAndNavigate(result.sales, file.name);
                 } else {
                     setErrorMessage('AI tidak dapat menemukan data penjualan di dalam file. Coba file lain atau pastikan formatnya jelas.');
                     setAnalysisState('error');
                 }
             } catch (error) {
                 console.error('Analysis failed:', error);
-                setErrorMessage('Terjadi kesalahan saat menganalisis file. Lihat konsol untuk detail.');
+                setErrorMessage('Terjadi kesalahan saat menganalisis file dengan AI. Lihat konsol untuk detail.');
                 setAnalysisState('error');
             }
         };
@@ -401,7 +371,6 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
 
     const handleAnalyze = async () => {
         if (!file) return;
-
         setAnalysisState('analyzing');
         setErrorMessage('');
 
@@ -419,6 +388,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         }
     };
 
+<<<<<<< HEAD
     const handleConfirmImport = async () => {
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -760,25 +730,36 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
         )
     }
 
+=======
+>>>>>>> 61426a4 (Karan terjadi typescrip error terus di page sales importer, sebaikanya k)
     return (
         <div className="space-y-6">
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Impor Penjualan dari File</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                        <FileUp className="h-6 w-6"/> Impor Penjualan dari File
+                    </CardTitle>
                     <CardDescription>
-                        Unggah file Excel (disarankan), CSV, PDF, atau gambar (JPG, PNG). AI akan digunakan untuk PDF/gambar.
+                        Unggah file Excel (disarankan), CSV, PDF, atau gambar (JPG, PNG). AI akan digunakan untuk PDF/gambar secara otomatis.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center gap-4">
-                        <Input id="file-upload" type="file" onChange={handleFileChange} accept=".csv,application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" disabled={analysisState === 'analyzing' || analysisState === 'saving'} />
-                        <Button onClick={handleAnalyze} disabled={!file || analysisState === 'analyzing' || analysisState === 'saving'}>
-                            {(analysisState === 'analyzing' || analysisState === 'saving') && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Input id="file-upload" type="file" onChange={handleFileChange} accept=".csv,application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" disabled={analysisState === 'analyzing'} />
+                        <Button onClick={handleAnalyze} disabled={!file || analysisState === 'analyzing'}>
+                            {analysisState === 'analyzing' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {file?.type.includes('spreadsheet') ? <FileSpreadsheet className="mr-2 h-4 w-4" /> : <Wand2 className="mr-2 h-4 w-4" />}
                             Proses File
                         </Button>
                     </div>
-                    {errorMessage && (
+                     {analysisState === 'analyzing' && (
+                        <div className="text-center py-4">
+                            <Loader2 className="mx-auto h-8 w-8 text-primary animate-spin" />
+                            <h3 className="mt-2 text-md font-medium">Memproses File...</h3>
+                            <p className="mt-1 text-sm text-muted-foreground">Harap tunggu, sistem sedang bekerja. Ini mungkin memakan waktu beberapa saat.</p>
+                        </div>
+                    )}
+                    {analysisState === 'error' && (
                         <Alert variant="destructive">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>Analisis Gagal</AlertTitle>
@@ -787,6 +768,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                     )}
                 </CardContent>
             </Card>
+<<<<<<< HEAD
 
             {(analysisState === 'analyzing' || analysisState === 'saving') && (
                 <div className="text-center py-10">
@@ -1044,10 +1026,11 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                     </div>
                 </div>
             )}
+=======
+>>>>>>> 61426a4 (Karan terjadi typescrip error terus di page sales importer, sebaikanya k)
         </div>
     );
 }
 >>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
 
 export default SalesImporterPage;
-
