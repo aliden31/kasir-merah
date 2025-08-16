@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { FC } from 'react';
@@ -10,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { SaleItem, Product, Settings, FlashSale, Sale, Expense, Return, UserRole } from '@/lib/types';
-import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap, Undo2, Wallet, Trash2, FileUp } from 'lucide-react';
+import { PlusCircle, MinusCircle, Search, Calendar as CalendarIcon, ArrowLeft, ShoppingCart, Zap, Undo2, Wallet, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -33,7 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { addSale, addReturn, addExpense, getProducts } from '@/lib/data-service';
+import { addSale, addReturn, addExpense } from '@/lib/data-service';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
@@ -367,11 +366,7 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                     <Badge variant="outline">{cartItemCount} Item</Badge>
                 </div>
             </div>
-<<<<<<< HEAD
-            <div className="grid grid-cols-3 lg:grid-cols-3 gap-2">
-=======
             <div className="grid grid-cols-2 lg:grid-cols-2 gap-2">
->>>>>>> 7821238 (Untuk UI import sebaiknya berikan page baru saja. Supaya lebih luas)
                 <Dialog open={isReturnFormOpen} onOpenChange={setReturnFormOpen}>
                     <DialogTrigger asChild>
                         <Button variant="outline" className="w-full">
@@ -386,11 +381,8 @@ const KasirPage: FC<KasirPageProps> = React.memo(({
                             <Wallet className="mr-2 h-4 w-4" /> Pengeluaran
                         </Button>
                     </DialogTrigger>
-                    <ExpenseForm onSave={handleSaveExpense} onOpenChange={setExpenseFormOpen} userRole={userRole}/>
+                    <ExpenseForm onSave={handleSaveExpense} onOpenChange={setExpenseFormOpen} userRole={userRole} settings={settings} />
                 </Dialog>
-                <Button variant="outline" className="w-full" onClick={onOpenImporter}>
-                    <FileUp className="mr-2 h-4 w-4" /> Impor
-                </Button>
             </div>
         </CardHeader>
         <CardContent className="flex-grow">

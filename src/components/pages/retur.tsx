@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { FC } from 'react';
@@ -52,7 +51,10 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
             setLoading(true);
             try {
                 const salesData = await getSales();
-                setSales(salesData);
+                const salesWithDisplayId = salesData
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                    .map((sale, index) => ({ ...sale, displayId: index + 1 }));
+                setSales(salesWithDisplayId.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
             } catch (error) {
                 toast({ title: "Error", description: "Gagal memuat riwayat transaksi.", variant: "destructive"});
             } finally {
@@ -144,9 +146,6 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
         saleItem => !itemsToReturn.some(returnItem => returnItem.product.id === saleItem.product.id)
     ) || [];
     
-    const sortedSales = useMemo(() => sales.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [sales]);
-    const salesMap = useMemo(() => new Map(sortedSales.map((sale, index) => [sale.id, sortedSales.length - index])), [sortedSales]);
-
     return (
         <DialogContent className="max-w-2xl">
             <DialogHeader>
@@ -161,9 +160,9 @@ export const ReturnForm = ({ onSave, onOpenChange, userRole }: { onSave: (item: 
                             <SelectValue placeholder="Pilih ID Transaksi..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {loading ? <SelectItem value="loading" disabled>Memuat transaksi...</SelectItem> : sortedSales.map((sale) => (
+                            {loading ? <SelectItem value="loading" disabled>Memuat transaksi...</SelectItem> : sales.map((sale) => (
                                 <SelectItem key={sale.id} value={sale.id}>
-                                    trx {String(salesMap.get(sale.id)).padStart(4, '0')} - {new Date(sale.date).toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
+                                    trx {String(sale.displayId).padStart(4, '0')} - {new Date(sale.date).toLocaleDateString('id-ID')} - {formatCurrency(sale.finalTotal)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -255,8 +254,12 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
         try {
             const [returnsData, salesData] = await Promise.all([getReturns(), getSales()]);
 
+            const salesWithDisplayId = salesData
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                .map((sale, index) => ({ ...sale, displayId: index + 1 }));
+
             setReturns(returnsData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-            setSales(salesData);
+            setSales(salesWithDisplayId);
         } catch (error) {
             toast({ title: "Error", description: "Gagal memuat data.", variant: "destructive" });
             console.error(error);
@@ -268,8 +271,7 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
   }, [toast, userRole]);
 
   const salesMap = useMemo(() => {
-    const sortedSales = sales.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    return new Map(sortedSales.map((sale, index) => [sale.id, index + 1]));
+    return new Map(sales.map(sale => [sale.id, sale.displayId]));
   }, [sales]);
   
   const handleSaveReturn = async (itemData: Omit<Return, 'id'>) => {
@@ -280,8 +282,11 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
             description: "Data retur baru telah berhasil disimpan.",
         });
         const [returnsData, salesData] = await Promise.all([getReturns(), getSales()]);
+        const salesWithDisplayId = salesData
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .map((sale, index) => ({ ...sale, displayId: index + 1 }));
         setReturns(returnsData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        setSales(salesData);
+        setSales(salesWithDisplayId);
         onDataChange();
     } catch(error) {
         const errorMessage = error instanceof Error ? error.message : "Gagal menyimpan data retur.";
@@ -330,25 +335,28 @@ const ReturPage: FC<ReturPageProps> = React.memo(({ onDataChange, userRole }) =>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {returns.length > 0 ? returns.map((item) => (
-                        <TableRow key={item.id}>
-                        <TableCell>{new Date(item.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
-                        <TableCell className="font-mono text-muted-foreground">
-                            trx {salesMap.has(item.saleId) ? String(salesMap.get(item.saleId)).padStart(4, '0') : `...${item.saleId.slice(-6)}`}
-                        </TableCell>
-                        <TableCell>
-                            <ul className="list-disc pl-4 text-sm">
-                                {item.items.map((productItem, index) => (
-                                    <li key={`${productItem.product.id}-${index}`}>
-                                        <span className="font-medium">{productItem.product.name}</span> x {productItem.quantity}
-                                    </li>
-                                ))}
-                            </ul>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{item.reason}</TableCell>
-                        <TableCell className="text-right font-medium text-destructive">-{formatCurrency(item.totalRefund)}</TableCell>
-                        </TableRow>
-                    )) : (
+                    {returns.length > 0 ? returns.map((item) => {
+                        const displayId = salesMap.get(item.saleId);
+                        return (
+                            <TableRow key={item.id}>
+                            <TableCell>{new Date(item.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</TableCell>
+                            <TableCell className="font-mono text-muted-foreground">
+                                {displayId ? `trx ${String(displayId).padStart(4, '0')}` : `...${item.saleId.slice(-6)}`}
+                            </TableCell>
+                            <TableCell>
+                                <ul className="list-disc pl-4 text-sm">
+                                    {item.items.map((productItem, index) => (
+                                        <li key={`${productItem.product.id}-${index}`}>
+                                            <span className="font-medium">{productItem.product.name}</span> x {productItem.quantity}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{item.reason}</TableCell>
+                            <TableCell className="text-right font-medium text-destructive">-{formatCurrency(item.totalRefund)}</TableCell>
+                            </TableRow>
+                        );
+                    }) : (
                         <TableRow>
                             <TableCell colSpan={5} className="h-24 text-center">
                                 Belum ada data retur.

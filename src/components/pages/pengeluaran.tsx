@@ -42,7 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { Expense, Settings, UserRole, SubCategory } from '@/lib/types';
 import { PlusCircle, Calendar as CalendarIcon, Edit, Search, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getExpenses, addExpense, getSettings, updateExpense, deleteExpense } from '@/lib/data-service';
+import { getExpenses, addExpense, updateExpense, deleteExpense } from '@/lib/data-service';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -96,33 +96,24 @@ export const ExpenseForm = ({
     expense,
     onSave, 
     onOpenChange, 
-    userRole
+    userRole,
+    settings,
 }: { 
     expense?: Expense;
     onSave: (data: Omit<Expense, 'id'> | Expense) => Promise<void>, 
     onOpenChange: (open: boolean) => void, 
     userRole: UserRole,
+    settings: Settings | null,
 }) => {
     const [name, setName] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
     const [category, setCategory] = useState('');
     const [date, setDate] = useState<Date>(new Date());
     const [isSaving, setIsSaving] = useState(false);
-    const [settings, setSettings] = useState<Settings | null>(null);
     const [selectedSubCategory, setSelectedSubCategory] = useState<string>('');
     const [resiMultiplier, setResiMultiplier] = useState<number | ''>('');
     
     useEffect(() => {
-        const fetchFormSettings = async () => {
-            try {
-                const settingsData = await getSettings();
-                setSettings(settingsData);
-            } catch (e) {
-                console.error("Failed to fetch settings for expense form", e);
-            }
-        };
-        fetchFormSettings();
-
         if (expense) {
             setName(expense.name);
             setAmount(expense.amount);
@@ -307,9 +298,10 @@ export const ExpenseForm = ({
 
 interface PengeluaranPageProps {
     userRole: UserRole;
+    settings: Settings;
 }
 
-const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
+const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole, settings }) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
@@ -404,7 +396,6 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
                 <Skeleton className="h-4 w-80" />
             </div>
             <div className="flex items-center gap-2">
-                <Skeleton className="h-10 w-64" />
                 <Skeleton className="h-10 w-24" />
             </div>
         </div>
@@ -441,6 +432,7 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
                     onSave={handleSaveExpense} 
                     onOpenChange={setFormOpen} 
                     userRole={userRole}
+                    settings={settings}
                 />
             </Dialog>
         </div>
@@ -601,6 +593,3 @@ const PengeluaranPage: FC<PengeluaranPageProps> = React.memo(({ userRole }) => {
 
 PengeluaranPage.displayName = 'PengeluaranPage';
 export default PengeluaranPage;
-
-
-

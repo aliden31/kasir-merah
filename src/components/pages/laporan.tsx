@@ -76,7 +76,10 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
             setLoading(true);
             try {
                 const [salesData, expensesData, returnsData, otherIncomesData] = await Promise.all([getSales(), getExpenses(), getReturns(), getOtherIncomes()]);
-                setSales(salesData);
+                const salesWithDisplayId = salesData
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                    .map((sale, index) => ({ ...sale, displayId: index + 1 }));
+                setSales(salesWithDisplayId);
                 setExpenses(expensesData);
                 setReturns(returnsData);
                 setOtherIncomes(otherIncomesData);
@@ -206,7 +209,7 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
                 return acc + (costPrice * item.quantity);
             }, 0);
             const labaKotor = sale.finalTotal - totalPokok;
-            return { ...sale, totalPokok, labaKotor, displayId: salesMap.get(sale.id) };
+            return { ...sale, totalPokok, labaKotor, displayId: sale.displayId };
         });
         
         const totalReturnsValue = filteredReturns.reduce((acc, ret) => acc + ret.totalRefund, 0);
@@ -292,10 +295,11 @@ const LaporanPage: FC<LaporanPageProps> = React.memo(({ onNavigate }) => {
             const returnsHeader = ['Tanggal', 'ID Transaksi Asal', 'Item', 'Qty', 'Total Refund'];
             sheetData.push(returnsHeader);
             filteredReturns.forEach(ret => {
+                const displayId = sales.find(s => s.id === ret.saleId)?.displayId;
                 ret.items.forEach(item => {
                     sheetData.push([
                         format(new Date(ret.date), 'dd/MM/yyyy'),
-                        `trx ${salesMap.has(ret.saleId) ? String(salesMap.get(ret.saleId)).padStart(4, '0') : `...${ret.saleId.slice(-6)}`}`,
+                        displayId ? `trx ${String(displayId).padStart(4, '0')}` : `...${ret.saleId.slice(-6)}`,
                         item.product.name,
                         { t: 'n', v: item.quantity },
                         { t: 'n', v: item.priceAtSale * item.quantity, z: numFormat }

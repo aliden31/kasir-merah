@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { FC } from 'react';
@@ -308,11 +307,7 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
         to: new Date(),
     });
     const [selectedSales, setSelectedSales] = useState<Record<string, boolean>>({});
-<<<<<<< HEAD
     const [isMassDeleting, setIsMassDeleting] = useState(false);
-=======
-    const [isDeleting, setIsDeleting] = useState(false);
->>>>>>> 10743f6 (Halaman riwayat penjualan berikan fungsi untuk hapis massal menggunakan)
 
     const fetchSalesData = async () => {
         setLoading(true);
@@ -369,26 +364,6 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
         setSelectedSales(newSelected);
     };
 
-    const handleBatchDelete = async () => {
-        setIsDeleting(true);
-        const salesToDelete = sales.filter(s => selectedSaleIds.includes(s.id));
-        try {
-            await batchDeleteSales(salesToDelete, userRole);
-            toast({
-                title: "Hapus Massal Berhasil",
-                description: `${salesToDelete.length} transaksi telah dihapus.`,
-            });
-            handleSave(); // refetches all data
-            setSelectedSales({});
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Gagal menghapus transaksi secara massal.";
-            toast({ title: "Error", description: errorMessage, variant: "destructive" });
-        } finally {
-            setIsDeleting(false);
-        }
-    };
-
-
     const handleEditClick = (sale: Sale) => {
       setEditingSale(sale);
     };
@@ -415,22 +390,6 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
     const handleDatePreset = (days: number) => {
         setDate({ from: subDays(new Date(), days - 1), to: new Date() });
     };
-
-    const handleSelectSale = (saleId: string, isSelected: boolean) => {
-        setSelectedSales(prev => ({...prev, [saleId]: isSelected}));
-    };
-
-    const handleSelectAll = (isSelected: boolean) => {
-        const newSelectedSales: Record<string, boolean> = {};
-        if (isSelected) {
-            filteredSales.forEach(s => newSelectedSales[s.id] = true);
-        }
-        setSelectedSales(newSelectedSales);
-    };
-
-    const selectedSaleIds = useMemo(() => {
-        return Object.keys(selectedSales).filter(id => selectedSales[id]);
-    }, [selectedSales]);
 
     const handleMassDelete = async () => {
         if(selectedSaleIds.length === 0) return;
@@ -538,53 +497,11 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
         <TabsContent value="riwayat" className="mt-4">
              <Card>
                 <CardHeader>
-<<<<<<< HEAD
-                     <div className="flex items-center gap-4">
-                         <Checkbox
-                            id="select-all-sales"
-                            checked={filteredSales.length > 0 && selectedSaleIds.length === filteredSales.length}
-                            onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                        />
-                        <div>
-                            <CardTitle>
-                                <label htmlFor="select-all-sales">Daftar Transaksi</label>
-                            </CardTitle>
-=======
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle>Daftar Transaksi</CardTitle>
->>>>>>> 10743f6 (Halaman riwayat penjualan berikan fungsi untuk hapis massal menggunakan)
-                            <CardDescription>
-                                Menampilkan {filteredSales.length} transaksi untuk periode yang dipilih.
-                            </CardDescription>
-                        </div>
-<<<<<<< HEAD
-=======
-                        {selectedSaleIds.length > 0 && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isDeleting}>
-                                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                    Hapus Terpilih ({selectedSaleIds.length})
-                                </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Hapus {selectedSaleIds.length} Transaksi?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Tindakan ini akan menghapus semua transaksi yang dipilih secara permanen. Stok produk akan dikembalikan. Aksi ini tidak dapat diurungkan.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleBatchDelete} className="bg-destructive hover:bg-destructive/90">
-                                        Ya, Hapus
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        )}
->>>>>>> 10743f6 (Halaman riwayat penjualan berikan fungsi untuk hapis massal menggunakan)
+                     <div>
+                        <CardTitle>Daftar Transaksi</CardTitle>
+                        <CardDescription>
+                            Menampilkan {filteredSales.length} transaksi untuk periode yang dipilih.
+                        </CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -604,7 +521,6 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
 
                             return (
                             <AccordionItem value={sale.id} key={sale.id}>
-<<<<<<< HEAD
                                 <div className="flex items-center w-full">
                                     <div className="pl-4 pr-2 py-4">
                                         <Checkbox 
@@ -615,17 +531,6 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
                                     </div>
                                     <AccordionTrigger className="flex-1">
                                         <div className="flex justify-between items-center w-full pr-4 text-sm">
-=======
-                                <div className="flex items-center w-full pr-4 text-sm">
-                                    <Checkbox
-                                        id={`select-${sale.id}`}
-                                        className="ml-4"
-                                        checked={!!selectedSales[sale.id]}
-                                        onCheckedChange={(checked) => handleSelectSale(sale.id, !!checked)}
-                                    />
-                                    <AccordionTrigger className="flex-1">
-                                        <div className="flex justify-between items-center w-full pl-4">
->>>>>>> 10743f6 (Halaman riwayat penjualan berikan fungsi untuk hapis massal menggunakan)
                                             <span className="font-semibold text-primary">ID: trx {String(sale.displayId).padStart(4, '0')}</span>
                                             <Badge variant="outline">{new Date(sale.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</Badge>
                                             <span className="font-bold text-base">{formatCurrency(sale.finalTotal)}</span>
@@ -705,5 +610,3 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
 
 PenjualanPage.displayName = 'PenjualanPage';
 export default PenjualanPage;
-
-    
