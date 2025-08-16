@@ -642,7 +642,7 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                     }
                 }
             }
-
+            
             const finalSales: Omit<Sale, 'id'>[] = salesToCreate.map(sale => {
                 const saleItems: SaleItem[] = sale.items.reduce((acc: SaleItem[], item: any) => {
                     let validItem: SaleItem | null = null;
@@ -680,11 +680,9 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                             };
                         }
                     }
-
                     if (validItem) {
                         acc.push(validItem);
                     }
-            
                     return acc;
                 }, []);
                 
@@ -695,9 +693,11 @@ const SalesImporterPage: React.FC<SalesImporterPageProps> = ({ onImportComplete,
                 return {
                     items: saleItems, subtotal, discount, finalTotal, date: new Date(),
                 };
-            });
+            }).filter(sale => sale.items.length > 0);
 
-            await batchAddSales(finalSales, userRole);
+            if (finalSales.length > 0) {
+              await batchAddSales(finalSales, userRole);
+            }
             
             onImportComplete();
             setAnalysisState('success');
@@ -1005,3 +1005,4 @@ export default SalesImporterPage;
 
 
     
+
