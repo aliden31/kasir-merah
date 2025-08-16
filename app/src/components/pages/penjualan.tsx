@@ -611,5 +611,3 @@ const PenjualanPage: FC<PenjualanPageProps> = React.memo(({ onDataChange, userRo
 
 PenjualanPage.displayName = 'PenjualanPage';
 export default PenjualanPage;
-
-    
