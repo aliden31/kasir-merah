@@ -145,3 +145,5 @@ export interface SkuMapping {
     mappedProductId: string;
     mappedProductName: string;
 }
+
+    
